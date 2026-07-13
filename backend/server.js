@@ -8,6 +8,13 @@ const morgan = require('morgan'); // HTTP request logger
 // Load environment variables (Sabse upar load karna zaroori hai)
 dotenv.config();
 
+console.log('🔧 Environment Check:');
+console.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`   MONGODB_URI: ${process.env.MONGODB_URI ? '✅ Set' : '❌ Missing'}`);
+console.log(`   JWT_SECRET: ${process.env.JWT_SECRET ? '✅ Set' : '❌ Missing'}`);
+console.log(`   FRONTEND_URL: ${process.env.FRONTEND_URL || 'Not set'}`);
+console.log(`   CORS_ORIGIN: ${process.env.CORS_ORIGIN || 'Not set'}`);
+
 // Initialize Express App
 const app = express();
 
