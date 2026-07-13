@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 12px;
+      color: #333;
+      line-height: 1.5;
+      padding: 40px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 30px;
+      border-bottom: 3px solid <%= brand && brand.primary_color ? brand.primary_color : '#C8922A' %>;
+      padding-bottom: 20px;
+    }
+    .company-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: <%= brand && brand.primary_color ? brand.primary_color : '#C8922A' %>;
+    }
+    .company-address {
+      font-size: 11px;
+      color: #666;
+      margin-top: 4px;
+      max-width: 320px;
+    }
+    .company-contact {
+      font-size: 11px;
+      color: #666;
+      margin-top: 4px;
+    }
+    .doc-title {
+      text-align: right;
+    }
+    .doc-title h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #333;
+      letter-spacing: 1px;
+    }
+    .doc-title .prop-number {
+      font-size: 13px;
+      color: #666;
+      margin-top: 4px;
+    }
+    .meta-section {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+    }
+    .meta-box {
+      width: 48%;
+    }
+    .meta-box h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 4px;
+    }
+    .meta-box p {
+      font-size: 12px;
+      margin-bottom: 3px;
+    }
+    .meta-box .label {
+      color: #888;
+      display: inline-block;
+      width: 100px;
+    }
+    .title-section {
+      margin-bottom: 25px;
+    }
+    .title-section h2 {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .content-section {
+      margin-bottom: 30px;
+      font-size: 12.5px;
+      color: #333;
+      white-space: pre-wrap;
+    }
+    .notes-section {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-left: 3px solid <%= brand && brand.primary_color ? brand.primary_color : '#C8922A' %>;
+    }
+    .notes-section h4 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 6px;
+    }
+    .notes-section p {
+      font-size: 12px;
+      color: #555;
+      white-space: pre-wrap;
+    }
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 10px;
+      color: #999;
+      border-top: 1px solid #eee;
+      padding-top: 15px;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .status-draft { background: #f0f0f0; color: #666; }
+    .status-sent { background: #e3f2fd; color: #1565c0; }
+    .status-accepted { background: #e8f5e9; color: #2e7d32; }
+    .status-rejected { background: #ffebee; color: #c62828; }
+  </style>
+</head>
+<body>
+ <div class="header">
+    <div style="display: flex; align-items: center; gap: 15px;">
+      <% if (logo_base64) { %>
+      <img src="<%= logo_base64 %>" alt="Company Logo" style="height: 60px; width: auto; object-fit: contain;">
+      <% } else if (brand && brand.firm_name) { %>
+      <div class="company-name" style="font-size:14px;"><%= brand.firm_name %></div>
+      <% } %>
+
+      <div>
+        <div class="company-name"><%= brand && brand.firm_name ? brand.firm_name : '' %></div>
+        <% if (brand && brand.firm_address) { %>
+          <div class="company-address"><%= brand.firm_address %></div>
+        <% } %>
+        <% if (brand && (brand.firm_phone || brand.firm_email)) { %>
+          <div class="company-contact">
+            <%= brand.firm_phone ? brand.firm_phone : '' %><%= brand.firm_phone && brand.firm_email ? ' | ' : '' %><%= brand.firm_email ? brand.firm_email : '' %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="doc-title">
+      <h1>PROPOSAL</h1>
+      <div class="prop-number"><%= proposal.prop_number %></div>
+    </div>
+  </div>
+
+  <div class="meta-section">
+    <div class="meta-box">
+      <h3>Client &amp; Project</h3>
+      <% if (proposal.project && proposal.project.client) { %>
+        <p><span class="label">Client:</span> <strong><%= proposal.project.client.full_name %></strong></p>
+        <% if (proposal.project.client.email) { %>
+          <p><span class="label">Email:</span> <%= proposal.project.client.email %></p>
+        <% } %>
+        <% if (proposal.project.client.phone) { %>
+          <p><span class="label">Phone:</span> <%= proposal.project.client.phone %></p>
+        <% } %>
+      <% } %>
+      <% if (proposal.project) { %>
+        <p><span class="label">Project:</span> <%= proposal.project.name %></p>
+      <% } %>
+    </div>
+    <div class="meta-box">
+      <h3>Proposal Details</h3>
+      <p><span class="label">Date:</span> <%= new Date(proposal.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) %></p>
+      <% if (proposal.valid_until) { %>
+        <p><span class="label">Valid Until:</span> <%= new Date(proposal.valid_until).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) %></p>
+      <% } %>
+      <% if (proposal.template && proposal.template.name) { %>
+        <p><span class="label">Template:</span> <%= proposal.template.name %></p>
+      <% } %>
+      <p><span class="label">Status:</span> <span class="status-badge status-<%= proposal.status %>"><%= proposal.status %></span></p>
+    </div>
+  </div>
+
+  <div class="title-section">
+    <h2><%= proposal.title %></h2>
+  </div>
+
+  <div class="content-section">
+    <%- proposal.content && proposal.content.trim() !== '' ? proposal.content : '<p style="color:#999;">No content provided.</p>' %>
+  </div>
+
+  <% if (proposal.notes) { %>
+  <div class="notes-section">
+    <h4>Notes</h4>
+    <p><%= proposal.notes %></p>
+  </div>
+  <% } %>
+
+  <div class="footer">
+    <p>This is a computer-generated document. | <%= brand && brand.firm_name ? brand.firm_name : 'The Design Space' %></p>
+  </div>
+</body>
+</html>

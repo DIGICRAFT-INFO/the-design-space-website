@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 12px;
+      color: #333;
+      line-height: 1.5;
+      background: #fff;
+    }
+    /* ── COVER PAGE ── */
+    .cover-page {
+      width: 100%;
+      min-height: 297mm;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(135deg, #1C1C1C 0%, #2D2D2D 100%);
+      color: #fff;
+      page-break-after: always;
+      padding: 60px 50px;
+    }
+    .cover-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 80px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+    .cover-logo img {
+      height: 60px;
+      width: auto;
+      object-fit: contain;
+    }
+    .cover-firm {
+      text-align: right;
+    }
+    .cover-firm-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #C8922A;
+    }
+    .cover-firm-contact {
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 4px;
+    }
+    .cover-title-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .cover-eyebrow {
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #C8922A;
+      margin-bottom: 16px;
+    }
+    .cover-title {
+      font-size: 42px;
+      font-weight: 800;
+      line-height: 1.1;
+      color: #fff;
+      margin-bottom: 20px;
+      max-width: 500px;
+    }
+    .cover-category-badge {
+      display: inline-block;
+      padding: 6px 18px;
+      border: 1px solid rgba(200,146,42,0.5);
+      border-radius: 50px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #C8922A;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 40px;
+    }
+    .cover-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 40px;
+    }
+    .cover-meta-item label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.4);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .cover-meta-item span {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .cover-footer {
+      margin-top: auto;
+      padding-top: 30px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cover-footer p {
+      font-size: 10px;
+      color: rgba(255,255,255,0.3);
+    }
+    .cover-accent {
+      width: 60px;
+      height: 4px;
+      background: #C8922A;
+      border-radius: 2px;
+      margin-bottom: 24px;
+    }
+
+    /* ── CONTENT PAGES ── */
+    .content-page {
+      padding: 40px 50px;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 2px solid <%= brand && brand.primary_color ? brand.primary_color : '#C8922A' %>;
+      margin-bottom: 30px;
+    }
+    .page-header-left {
+      font-size: 10px;
+      color: #9A8F82;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .page-header-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1C1C1C;
+    }
+
+    /* ── DESCRIPTION SECTION ── */
+    .description-section {
+      margin-bottom: 35px;
+    }
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #9A8F82;
+      margin-bottom: 10px;
+    }
+    .description-text {
+      font-size: 13px;
+      color: #4A4A4A;
+      line-height: 1.7;
+      max-width: 700px;
+    }
+
+    /* ── PHOTO GRID ── */
+    .photo-section {
+      margin-bottom: 35px;
+    }
+    .photo-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .photo-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+    .photo-grid-1 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .photo-item {
+      position: relative;
+      overflow: hidden;
+      border-radius: 8px;
+      background: #F5F2ED;
+    }
+    .photo-item img {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      display: block;
+      border-radius: 8px;
+    }
+    .photo-grid-1 .photo-item img {
+      height: 380px;
+    }
+    .photo-caption {
+      font-size: 10px;
+      color: #9A8F82;
+      margin-top: 5px;
+      text-align: center;
+    }
+
+    /* ── CLIENT INFO SECTION ── */
+    .client-section {
+      background: #FAF8F5;
+      border-left: 4px solid <%= brand && brand.primary_color ? brand.primary_color : '#C8922A' %>;
+      padding: 20px 24px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 30px;
+    }
+    .client-section h4 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #9A8F82;
+      margin-bottom: 12px;
+    }
+    .client-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .client-row {
+      display: flex;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .client-row .key {
+      color: #9A8F82;
+      min-width: 60px;
+    }
+    .client-row .val {
+      font-weight: 600;
+      color: #1C1C1C;
+    }
+
+    /* ── FOOTER ── */
+    .page-footer {
+      margin-top: 50px;
+      padding-top: 16px;
+      border-top: 1px solid #EDE8DF;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #9A8F82;
+    }
+
+    /* ── PAGE BREAK ── */
+    .page-break {
+      page-break-after: always;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!--  COVER PAGE                                       -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="cover-page">
+    <div class="cover-header">
+      <div class="cover-logo">
+        <% if (logo_base64) { %>
+          <img src="<%= logo_base64 %>" alt="Company Logo">
+        <% } else if (brand && brand.firm_name) { %>
+          <div style="font-size:20px;font-weight:800;color:#C8922A;"><%= brand.firm_name %></div>
+        <% } %>
+      </div>
+      <div class="cover-firm">
+        <% if (brand && brand.firm_name) { %>
+          <div class="cover-firm-name"><%= brand.firm_name %></div>
+        <% } %>
+        <% if (brand && (brand.firm_phone || brand.firm_email)) { %>
+          <div class="cover-firm-contact">
+            <%= brand.firm_phone || '' %><%= brand.firm_phone && brand.firm_email ? '  ·  ' : '' %><%= brand.firm_email || '' %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="cover-title-area">
+      <div class="cover-eyebrow">Portfolio Showcase</div>
+      <div class="cover-accent"></div>
+      <div class="cover-title"><%= portfolio.title %></div>
+      <div class="cover-category-badge">
+        <%= portfolio.category ? portfolio.category.replace(/_/g, ' ') : 'Interior Design' %>
+      </div>
+
+      <div class="cover-meta-grid">
+        <% if (portfolio.project && portfolio.project.client) { %>
+        <div class="cover-meta-item">
+          <label>Client</label>
+          <span><%= portfolio.project.client.full_name || '—' %></span>
+        </div>
+        <% } %>
+        <% if (portfolio.project) { %>
+        <div class="cover-meta-item">
+          <label>Project</label>
+          <span><%= portfolio.project.name || '—' %></span>
+        </div>
+        <% } %>
+        <div class="cover-meta-item">
+          <label>Photos</label>
+          <span><%= portfolio.images ? portfolio.images.length : 0 %></span>
+        </div>
+        <div class="cover-meta-item">
+          <label>Status</label>
+          <span style="text-transform:capitalize;"><%= portfolio.status || 'draft' %></span>
+        </div>
+        <div class="cover-meta-item">
+          <label>Date</label>
+          <span><%= new Date(portfolio.created_at || Date.now()).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) %></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-footer">
+      <p>This is a computer-generated document.</p>
+      <p><%= brand && brand.firm_name ? brand.firm_name : 'The Design Space' %> — Confidential</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!--  CONTENT PAGE — Description + Photos             -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="content-page">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div>
+        <div class="page-header-left">Portfolio</div>
+        <div class="page-header-title"><%= portfolio.title %></div>
+      </div>
+      <div style="font-size:11px;color:#9A8F82;">
+        <%= new Date(portfolio.created_at || Date.now()).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) %>
+      </div>
+    </div>
+
+    <!-- Client / Project info block -->
+    <% if ((portfolio.project && portfolio.project.client) || (portfolio.project && portfolio.project.name)) { %>
+    <div class="client-section">
+      <h4>Project Details</h4>
+      <div class="client-grid">
+        <% if (portfolio.project && portfolio.project.client) { %>
+        <div class="client-row">
+          <span class="key">Client:</span>
+          <span class="val"><%= portfolio.project.client.full_name %></span>
+        </div>
+        <% if (portfolio.project.client.phone) { %>
+        <div class="client-row">
+          <span class="key">Phone:</span>
+          <span class="val"><%= portfolio.project.client.phone %></span>
+        </div>
+        <% } %>
+        <% } %>
+        <% if (portfolio.project) { %>
+        <div class="client-row">
+          <span class="key">Project:</span>
+          <span class="val"><%= portfolio.project.name %></span>
+        </div>
+        <% if (portfolio.project.property_type) { %>
+        <div class="client-row">
+          <span class="key">Type:</span>
+          <span class="val" style="text-transform:capitalize;"><%= portfolio.project.property_type %></span>
+        </div>
+        <% } %>
+        <% } %>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Description -->
+    <% if (portfolio.description) { %>
+    <div class="description-section">
+      <div class="section-label">About This Work</div>
+      <div class="description-text"><%= portfolio.description %></div>
+    </div>
+    <% } %>
+
+    <!-- Photos -->
+    <% if (portfolio.images && portfolio.images.length > 0) { %>
+    <div class="photo-section">
+      <div class="section-label">Work Gallery (<%= portfolio.images.length %> Photos)</div>
+
+      <%
+        // Group images into rows of 2 or 3
+        var imgs = portfolio.images;
+        var i = 0;
+      %>
+
+      <% while (i < imgs.length) { %>
+        <%
+          var remaining = imgs.length - i;
+          var cols = remaining === 1 ? 1 : remaining === 2 ? 2 : 3;
+          if (remaining >= 4 && i === 0) cols = 2; // First row 2 large images
+          var rowImgs = imgs.slice(i, i + cols);
+          i += cols;
+        %>
+        <div class="photo-grid-<%= cols %>" style="margin-bottom:14px;">
+          <% rowImgs.forEach(function(img) { %>
+            <div class="photo-item">
+              <%
+                var imgSrc = img.file_url || '';
+                // Convert relative path to backend-accessible URL if needed
+                // The pdf_engine_service should pass resolved URLs or base64
+              %>
+              <img src="<%= imgSrc %>" alt="<%= img.caption || portfolio.title %>" onerror="this.style.display='none'">
+              <% if (img.caption) { %>
+                <div class="photo-caption"><%= img.caption %></div>
+              <% } %>
+            </div>
+          <% }); %>
+        </div>
+        <% if (i < imgs.length) { %>
+          <!-- page break only if more images remain and we've done 6+ already -->
+          <% if (i >= 6) { %>
+            </div><div class="page-break"></div><div class="content-page">
+          <% } %>
+        <% } %>
+      <% } %>
+    </div>
+    <% } else { %>
+    <div style="text-align:center;padding:60px;color:#9A8F82;background:#FAF8F5;border-radius:12px;margin:20px 0;">
+      <p style="font-size:14px;font-weight:600;">No photos uploaded yet</p>
+      <p style="font-size:12px;margin-top:6px;">Upload images in the Portfolio section to include them in the PDF.</p>
+    </div>
+    <% } %>
+
+    <!-- Footer -->
+    <div class="page-footer">
+      <p>This is a computer-generated document. | <%= brand && brand.firm_name ? brand.firm_name : 'The Design Space' %></p>
+      <p><%= portfolio.title %></p>
+    </div>
+  </div>
+
+</body>
+</html>

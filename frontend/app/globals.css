@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+/* Enables `dark:` utilities driven by a `.dark` class on <html>, which is how
+   next-themes toggles theme. Used only by the public website — the admin CRM
+   never applies dark: classes, so this is purely additive. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Public website design tokens ("quiet luxury" palette) ─────────────────
+   Warm Chalk White / Obsidian Stone Black with a restrained Champagne Gold
+   accent. Kept as CSS variables so both Tailwind arbitrary values and plain
+   CSS in website components can share one source of truth. */
+:root {
+  --ds-bg: #FDFDFD;
+  --ds-bg-alt: #F5F3EF;
+  --ds-ink: #1C1C1C;
+  --ds-ink-soft: #6B6259;
+  --ds-border: #E5E5E5;
+  --ds-gold: #B8923F;
+  --ds-gold-soft: #D4AF37;
+}
+
+.dark {
+  --ds-bg: #0D0D0C;
+  --ds-bg-alt: #161615;
+  --ds-ink: #F1F1F0;
+  --ds-ink-soft: #A8A29A;
+  --ds-border: #262624;
+  --ds-gold: #D4AF37;
+  --ds-gold-soft: #E6C687;
+}
+
+/* Custom cursor: hide the native pointer only within the website scope */
+.ds-cursor-enabled,
+.ds-cursor-enabled * {
+  cursor: none !important;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .ds-cursor-enabled,
+  .ds-cursor-enabled * {
+    cursor: auto !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-cursor-enabled,
+  .ds-cursor-enabled * {
+    cursor: auto !important;
+  }
+}
+
+@keyframes ds-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ds-marquee-track {
+  animation: ds-marquee 34s linear infinite;
+}
+.ds-marquee-track:hover {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-marquee-track {
+    animation: none;
+  }
+}
+
+/* Blog post markdown typography */
+.ds-prose {
+  font-size: 1.0625rem;
+  line-height: 1.8;
+  color: var(--ds-ink);
+}
+.ds-prose > * + * {
+  margin-top: 1.4em;
+}
+.ds-prose h1, .ds-prose h2, .ds-prose h3 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  line-height: 1.25;
+  margin-top: 1.8em;
+}
+.ds-prose h1 { font-size: 1.9rem; }
+.ds-prose h2 { font-size: 1.6rem; }
+.ds-prose h3 { font-size: 1.3rem; }
+.ds-prose p { color: var(--ds-ink); }
+.ds-prose a { color: var(--ds-gold); text-underline-offset: 3px; text-decoration: underline; }
+.ds-prose strong { font-weight: 600; }
+.ds-prose ul, .ds-prose ol { padding-left: 1.4em; }
+.ds-prose ul { list-style: disc; }
+.ds-prose ol { list-style: decimal; }
+.ds-prose li + li { margin-top: 0.4em; }
+.ds-prose blockquote {
+  border-left: 2px solid var(--ds-gold);
+  padding-left: 1.2em;
+  font-style: italic;
+  color: var(--ds-ink-soft);
+}
+.ds-prose img { border-radius: 2px; }
+.ds-prose code {
+  background: var(--ds-bg-alt);
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}

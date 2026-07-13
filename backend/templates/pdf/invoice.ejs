@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 12px;
+      color: #333;
+      line-height: 1.5;
+      padding: 40px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 30px;
+      border-bottom: 3px solid <%= brand && brand.primary_color ? brand.primary_color : '#C8922A' %>;
+      padding-bottom: 20px;
+    }
+    .company-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: <%= brand && brand.primary_color ? brand.primary_color : '#C8922A' %>;
+    }
+    .company-meta {
+      font-size: 11px;
+      color: #666;
+      margin-top: 4px;
+      max-width: 280px;
+    }
+    .doc-title {
+      text-align: right;
+    }
+    .doc-title h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #333;
+      letter-spacing: 1px;
+    }
+    .doc-title .doc-number {
+      font-size: 13px;
+      color: #666;
+      margin-top: 4px;
+    }
+    .meta-section {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+    }
+    .meta-box {
+      width: 48%;
+    }
+    .meta-box h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 4px;
+    }
+    .meta-box p {
+      font-size: 12px;
+      margin-bottom: 3px;
+    }
+    .meta-box .label {
+      color: #888;
+      display: inline-block;
+      width: 100px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 25px;
+    }
+    thead th {
+      background: <%= brand && brand.primary_color ? brand.primary_color : '#C8922A' %>;
+      color: #fff;
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    thead th:last-child,
+    thead th:nth-child(3),
+    thead th:nth-child(4),
+    thead th:nth-child(5) {
+      text-align: right;
+    }
+    tbody td {
+      padding: 9px 12px;
+      border-bottom: 1px solid #eee;
+      font-size: 12px;
+    }
+    tbody td:last-child,
+    tbody td:nth-child(3),
+    tbody td:nth-child(4),
+    tbody td:nth-child(5) {
+      text-align: right;
+    }
+    tbody tr:nth-child(even) {
+      background: #fafafa;
+    }
+    .totals-section {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 30px;
+    }
+    .totals-table {
+      width: 320px;
+    }
+    .totals-table table {
+      margin-bottom: 0;
+    }
+    .totals-table td {
+      padding: 7px 12px;
+      border-bottom: 1px solid #eee;
+    }
+    .totals-table td:first-child {
+      color: #666;
+    }
+    .totals-table td:last-child {
+      text-align: right;
+      font-weight: 500;
+    }
+    .totals-table tr.grand-total td {
+      background: <%= brand && brand.primary_color ? brand.primary_color : '#C8922A' %>;
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      border-bottom: none;
+    }
+    .totals-table tr.balance-due td {
+      font-weight: 700;
+      color: #C0392B;
+    }
+    .bank-section {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-left: 3px solid <%= brand && brand.primary_color ? brand.primary_color : '#C8922A' %>;
+      width: 60%;
+    }
+    .bank-section h4 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 6px;
+    }
+    .bank-section p {
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 2px;
+    }
+    .notes-section {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-left: 3px solid <%= brand && brand.primary_color ? brand.primary_color : '#C8922A' %>;
+    }
+    .notes-section h4 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 6px;
+    }
+    .notes-section p {
+      font-size: 12px;
+      color: #555;
+    }
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 10px;
+      color: #999;
+      border-top: 1px solid #eee;
+      padding-top: 15px;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .status-draft { background: #f0f0f0; color: #666; }
+    .status-issued { background: #e3f2fd; color: #1565c0; }
+    .status-partial { background: #fff8e1; color: #f57f17; }
+    .status-paid { background: #e8f5e9; color: #2e7d32; }
+    .status-overdue { background: #ffebee; color: #c62828; }
+    .status-cancelled { background: #f3f4f6; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div style="display: flex; align-items: center; gap: 15px;">
+      <% if (logo_base64) { %>
+      <img src="<%= logo_base64 %>" alt="Company Logo" style="height: 60px; width: auto; object-fit: contain;">
+      <% } %>
+      <div>
+        <% if (brand && brand.firm_name) { %>
+          <div class="company-name"><%= brand.firm_name %></div>
+        <% } %>
+        <% if (brand && brand.firm_address) { %>
+          <div class="company-meta"><%= brand.firm_address %></div>
+        <% } %>
+        <% if (brand && (brand.firm_phone || brand.firm_email)) { %>
+          <div class="company-meta">
+            <%= brand.firm_phone || '' %><%= brand.firm_phone && brand.firm_email ? ' · ' : '' %><%= brand.firm_email || '' %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+    <div class="doc-title">
+      <h1>INVOICE</h1>
+      <div class="doc-number"><%= invoice.invoice_number %></div>
+    </div>
+  </div>
+
+  <div class="meta-section">
+    <div class="meta-box">
+      <h3>Billed To</h3>
+      <% if (invoice.project && invoice.project.client) { %>
+        <p><span class="label">Client:</span> <strong><%= invoice.project.client.full_name %></strong></p>
+        <% if (invoice.project.client.email) { %>
+          <p><span class="label">Email:</span> <%= invoice.project.client.email %></p>
+        <% } %>
+        <% if (invoice.project.client.phone_number) { %>
+          <p><span class="label">Phone:</span> <%= invoice.project.client.phone_number %></p>
+        <% } %>
+        <% if (invoice.project.client.address) { %>
+          <p><span class="label">Address:</span> <%= invoice.project.client.address %></p>
+        <% } %>
+      <% } %>
+      <% if (invoice.project) { %>
+        <p><span class="label">Project:</span> <%= invoice.project.name %></p>
+      <% } %>
+    </div>
+    <div class="meta-box">
+      <h3>Invoice Details</h3>
+      <p><span class="label">Invoice Date:</span> <%= new Date(invoice.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) %></p>
+      <% if (invoice.due_date) { %>
+        <p><span class="label">Due Date:</span> <%= new Date(invoice.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) %></p>
+      <% } %>
+      <p><span class="label">Type:</span> <%= invoice.invoice_type %></p>
+      <% if (invoice.invoice_type === 'milestone' && invoice.milestone_label) { %>
+        <p><span class="label">Milestone:</span> <%= invoice.milestone_label %> (<%= invoice.milestone_percentage %>%)</p>
+      <% } %>
+      <% if (tax_cfg && tax_cfg.firm_gstin) { %>
+        <p><span class="label">Firm GSTIN:</span> <%= tax_cfg.firm_gstin %></p>
+      <% } %>
+      <p><span class="label">Status:</span> <span class="status-badge status-<%= invoice.status %>"><%= invoice.status %></span></p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Description</th>
+        <th>Qty</th>
+        <th>Rate (₹)</th>
+        <th>Amount (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (items && items.length > 0) { %>
+        <% items.forEach(function(item, index) { %>
+          <tr>
+            <td><%= index + 1 %></td>
+            <td><%= item.description %><% if (item.unit) { %> <span style="color:#999">(<%= item.unit %>)</span><% } %></td>
+            <td><%= item.quantity %></td>
+            <td><%= Number(item.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
+            <td><%= Number(item.amount || (item.quantity * item.rate)).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
+          </tr>
+        <% }); %>
+      <% } else { %>
+        <tr><td colspan="5" style="text-align:center; color:#999;">No items</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+
+  <div class="totals-section">
+    <div class="totals-table">
+      <table>
+        <tr>
+          <td>Subtotal</td>
+          <td>₹ <%= Number(invoice.subtotal).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
+        </tr>
+        <% if (invoice.discount_amount > 0) { %>
+        <tr>
+          <td>Discount</td>
+          <td>- ₹ <%= Number(invoice.discount_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
+        </tr>
+        <% } %>
+        <tr>
+          <td>Taxable Amount</td>
+          <td>₹ <%= Number(invoice.taxable_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
+        </tr>
+        <% if (invoice.cgst_amount > 0) { %>
+        <tr>
+          <td>CGST</td>
+          <td>₹ <%= Number(invoice.cgst_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
+        </tr>
+        <% } %>
+        <% if (invoice.sgst_amount > 0) { %>
+        <tr>
+          <td>SGST</td>
+          <td>₹ <%= Number(invoice.sgst_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
+        </tr>
+        <% } %>
+        <% if (invoice.igst_amount > 0) { %>
+        <tr>
+          <td>IGST</td>
+          <td>₹ <%= Number(invoice.igst_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
+        </tr>
+        <% } %>
+        <tr class="grand-total">
+          <td>Grand Total</td>
+          <td>₹ <%= Number(invoice.grand_total).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
+        </tr>
+        <% if (invoice.amount_paid > 0) { %>
+        <tr>
+          <td>Amount Paid</td>
+          <td>₹ <%= Number(invoice.amount_paid).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
+        </tr>
+        <% } %>
+        <% if (invoice.balance_due > 0) { %>
+        <tr class="balance-due">
+          <td>Balance Due</td>
+          <td>₹ <%= Number(invoice.balance_due).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
+        </tr>
+        <% } %>
+      </table>
+    </div>
+  </div>
+
+  <% if (bank && bank.bank_name) { %>
+  <div class="bank-section">
+    <h4>Bank Details</h4>
+    <p><span class="label">Account Name:</span> <%= bank.account_name %></p>
+    <p><span class="label">Bank:</span> <%= bank.bank_name %></p>
+    <p><span class="label">Account No:</span> <%= bank.account_number %></p>
+    <p><span class="label">IFSC:</span> <%= bank.ifsc_code %></p>
+    <% if (bank.upi_id) { %>
+      <p><span class="label">UPI ID:</span> <%= bank.upi_id %></p>
+    <% } %>
+  </div>
+  <% } %>
+
+  <% if (invoice.notes) { %>
+  <div class="notes-section">
+    <h4>Notes</h4>
+    <p><%= invoice.notes %></p>
+  </div>
+  <% } %>
+
+  <div class="footer">
+    <p>This is a computer-generated document. | <%= brand && brand.firm_name ? brand.firm_name : 'The Design Space' %></p>
+  </div>
+</body>
+</html>
