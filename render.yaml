@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: thedesignspace-backend
+    env: node
+    region: singapore
+    plan: free
+    
+    rootDir: backend
+    
+    buildCommand: npm install
+    startCommand: npm start
+    
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        fromDatabase:
+          name: mongodb
+          property: connectionString
+      - key: BACKEND_URL
+        value: https://thedesignspace-backend.onrender.com
+      - key: FRONTEND_URL
+        value: https://the-design-space-websiteadmin.vercel.app
+      - key: CORS_ORIGIN
+        value: https://the-design-space-websiteadmin.vercel.app
+      - key: PRODUCTION_DOMAIN
+        value: onrender.com
+      - key: FIRM_NAME
+        value: The Design Space
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: "true"

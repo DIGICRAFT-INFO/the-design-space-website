@@ -22,7 +22,7 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "api.thedesignspace.in",
+        hostname: "thedesignspace-website-mix-13july26.onrender.com",
         pathname: "/uploads/**",
       },
       {
