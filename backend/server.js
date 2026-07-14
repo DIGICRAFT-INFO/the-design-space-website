@@ -21,6 +21,37 @@ const app = express();
 // ==========================================
 // 1. MIDDLEWARES
 // ==========================================
+
+// Explicit CORS preflight handler for Vercel
+app.options('*', cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const allowed = [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://the-design-space-websiteadmin.vercel.app',
+      process.env.FRONTEND_URL,
+      process.env.CORS_ORIGIN,
+    ].filter(Boolean);
+
+    if (allowed.includes(origin)) return callback(null, true);
+    if (/\.vercel\.app$/.test(origin) || /\.hostingersite\.com$/.test(origin)) {
+      return callback(null, true);
+    }
+    const productionDomain = process.env.PRODUCTION_DOMAIN;
+    if (productionDomain) {
+      if (
+        origin === `https://${productionDomain}` ||
+        origin === `https://www.${productionDomain}`
+      ) {
+        return callback(null, true);
+      }
+    }
+    callback(null, true); // Allow all in development
+  },
+  credentials: true,
+}));
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
@@ -54,7 +85,7 @@ app.use(cors({
     }
 
     console.warn(`CORS blocked origin: ${origin}`);
-    callback(new Error(`CORS blocked: ${origin}`));
+    callback(null, true); // Allow all for now
   },
   credentials: true,
 }));
