@@ -71,7 +71,7 @@ async function resetDB() {
   const passwordOk = await bcrypt.compare(NEW_USER.password, user.password);
   console.log('\n🔐 Password verification:', passwordOk ? '✅ PASS' : '❌ FAIL');
 
-  // 4. Create default homepage with dummy image
+  // 4. Create default homepage with dummy images
   console.log('\n📄 Creating default homepage...');
   const webHomeCollection = db.collection('web_homes');
   await webHomeCollection.insertOne({
@@ -104,7 +104,7 @@ async function resetDB() {
     about_preview: {
       title: 'About Us',
       description: 'We believe in creating spaces that tell stories.',
-      image_url: '',
+      image_url: '/uploads/website/images/1783947645943-images.jpg',
     },
     careers_banner: {
       title: 'Join Our Team',
@@ -125,7 +125,7 @@ async function resetDB() {
     created_at: new Date(),
     updated_at: new Date(),
   });
-  console.log('✅ Homepage with dummy image created');
+  console.log('✅ Homepage with dummy images created');
 
   await mongoose.disconnect();
   console.log('\n🎉 DB reset complete. You can now login.\n');
