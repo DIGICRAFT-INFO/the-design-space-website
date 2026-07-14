@@ -233,11 +233,14 @@ exports.delete_image = async (req, res) => {
     const portfolio = await Portfolio.findById(req.params.id);
     if (!portfolio) return res.status(404).json({ error: 'Portfolio not found.' });
 
-    const image = portfolio.images.id(req.params.imageId);
+    // Try finding by _id (works for both ObjectId and string)
+    const image = portfolio.images.find(
+      (img) => img._id.toString() === req.params.imageId || img.id === req.params.imageId
+    );
     if (!image) return res.status(404).json({ error: 'Image not found.' });
 
     safeUnlink(image.file_url);
-    portfolio.images.pull({ _id: req.params.imageId });
+    portfolio.images.pull({ _id: image._id });
     await portfolio.save();
 
     res.status(204).send();

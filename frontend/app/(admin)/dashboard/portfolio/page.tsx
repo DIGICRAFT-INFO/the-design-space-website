@@ -311,8 +311,9 @@ function PortfolioCard({
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={resolveImageUrl(img.file_url)} alt={img.caption || ""} className="w-full h-20 object-cover rounded-md border border-[#EDE8DF]" />
                     <button
-                      onClick={() => onDeleteImage(img.id)}
-                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); onDeleteImage(img.id); }}
+                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors shadow-sm"
+                      title="Delete image"
                     >
                       <X className="w-3 h-3" />
                     </button>

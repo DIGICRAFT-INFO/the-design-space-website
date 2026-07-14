@@ -10,7 +10,15 @@ const portfolioImageSchema = new mongoose.Schema(
     sort_order: { type: Number, default: 0 },
     uploaded_at: { type: Date, default: Date.now },
   },
-  { _id: true }
+  {
+    _id: true,
+    toJSON: {
+      transform: (doc, ret) => {
+        ret.id = ret._id.toString();
+        delete ret._id;
+      },
+    },
+  }
 );
 
 const portfolioDocumentSchema = new mongoose.Schema(
