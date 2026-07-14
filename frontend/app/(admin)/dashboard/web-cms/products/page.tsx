@@ -188,6 +188,16 @@ export default function WebCmsProductsPage() {
                       </div>
                     </div>
 
+                    <div className="mb-4">
+                      <label className={labelClass}>Published Date (optional)</label>
+                      <input
+                        type="date"
+                        className={inputClass}
+                        value={product.published_date ? product.published_date.split("T")[0] : ""}
+                        onChange={(e) => patchLocal(product.id, { published_date: e.target.value || null })}
+                      />
+                    </div>
+
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <label className="flex items-center gap-2 text-[12px] text-[#6B6259]">

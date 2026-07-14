@@ -162,6 +162,15 @@ export default function WebCmsServicesPage() {
                     </div>
                     <MediaUploadField label="Cover Image" kind="image" aspect="aspect-video" value={pkg.cover_image} onChange={(url) => patchLocal(pkg.id, { cover_image: url })} />
 
+                    <div className="mb-4">
+                      <label className={labelClass}>Published Date (optional)</label>
+                      <input
+                        type="date"
+                        className={inputClass}
+                        value={pkg.published_date ? pkg.published_date.split("T")[0] : ""}
+                        onChange={(e) => patchLocal(pkg.id, { published_date: e.target.value || null })}
+                      />
+                    </div>
                     <div className="flex items-center justify-between mt-4">
                       <label className="flex items-center gap-2 text-[12px] text-[#6B6259]">
                         <input type="checkbox" checked={pkg.is_published} onChange={(e) => patchLocal(pkg.id, { is_published: e.target.checked })} />

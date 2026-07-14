@@ -17,6 +17,7 @@ const webServicePackageSchema = new mongoose.Schema(
       default: 'other',
     },
     tier_label: { type: String, default: '', maxLength: 100 }, // custom label when tier is "other"
+    published_date: { type: Date, default: null }, // manual date shown on public website
     price_estimation: { type: String, default: '', maxLength: 100 }, // e.g. "Starting ₹1,800/sqft"
     cover_image: { type: String, default: '' },
     highlights: [{ type: String, maxLength: 200 }], // bullet list inside the accordion/tab

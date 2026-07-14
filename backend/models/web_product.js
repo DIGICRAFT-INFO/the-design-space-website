@@ -30,6 +30,7 @@ const webProductSchema = new mongoose.Schema(
       default: 'other',
     },
     category_label: { type: String, default: '', maxLength: 100 }, // custom label when category is "other"
+    published_date: { type: Date, default: null }, // manual date shown on public website
     description: { type: String, default: '', maxLength: 2000 },
     item_images: [productImageSchema],
     is_in_stock: { type: Boolean, default: true },

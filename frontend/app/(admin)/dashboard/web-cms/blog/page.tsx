@@ -176,6 +176,29 @@ export default function WebCmsBlogPage() {
                       </div>
                     </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className={labelClass}>Published Date</label>
+                        <input
+                          type="date"
+                          className={inputClass}
+                          value={post.published_at ? post.published_at.split("T")[0] : ""}
+                          onChange={(e) => patchLocal(post.id, { published_at: e.target.value || null })}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Status</label>
+                        <select
+                          className={inputClass}
+                          value={post.status}
+                          onChange={(e) => patchLocal(post.id, { status: e.target.value as "draft" | "published" })}
+                        >
+                          <option value="draft">Draft</option>
+                          <option value="published">Published</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 text-[12px] text-[#6B6259]">
                         <input

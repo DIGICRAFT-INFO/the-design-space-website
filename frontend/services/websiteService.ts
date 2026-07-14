@@ -81,6 +81,7 @@ export type WebServicePackage = {
   is_published: boolean;
   is_featured_home: boolean;
   sort_order: number;
+  published_date?: string | null;
 };
 
 export type WebProduct = {
@@ -94,6 +95,7 @@ export type WebProduct = {
   item_images: { id: string; file_url: string; sort_order: number }[];
   is_in_stock: boolean;
   is_published: boolean;
+  published_date?: string | null;
 };
 
 export type PublicPortfolioItem = {
