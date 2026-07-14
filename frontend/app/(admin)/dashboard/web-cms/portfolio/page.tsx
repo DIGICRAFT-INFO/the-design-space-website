@@ -81,6 +81,7 @@ export default function WebCmsPortfolioPage() {
       const updated = await updatePortfolio(p.id, {
         status: p.status,
         project_type: p.project_type,
+        project_type_label: p.project_type_label || "",
         is_featured: p.is_featured,
         sort_order: p.sort_order,
         metrics: p.metrics,
@@ -197,6 +198,14 @@ export default function WebCmsPortfolioPage() {
                             <option key={t.value} value={t.value}>{t.label}</option>
                           ))}
                         </select>
+                        {(p.project_type === "other" || !p.project_type) && (
+                          <input
+                            className={`${inputClass} mt-2`}
+                            placeholder="Specify type (optional)"
+                            value={p.project_type_label || ""}
+                            onChange={(e) => patchLocal(p.id, { project_type_label: e.target.value })}
+                          />
+                        )}
                       </div>
                       <div>
                         <label className={labelClass}>Sort Order</label>

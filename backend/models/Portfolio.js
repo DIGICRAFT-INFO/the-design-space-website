@@ -50,6 +50,7 @@ const portfolioSchema = new mongoose.Schema(
       enum: ['residential', 'commercial', 'renovation', 'other'],
       default: 'other',
     },
+    project_type_label: { type: String, default: '', maxLength: 100 }, // custom label when project_type is "other"
     // Free-form, admin-managed categories (e.g. "Modular Kitchens", "Luxury
     // Villas") — separate from project_type, which is the fixed public filter.
     custom_categories: [{ type: String, maxLength: 100 }],
