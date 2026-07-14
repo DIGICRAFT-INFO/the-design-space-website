@@ -71,6 +71,62 @@ async function resetDB() {
   const passwordOk = await bcrypt.compare(NEW_USER.password, user.password);
   console.log('\n🔐 Password verification:', passwordOk ? '✅ PASS' : '❌ FAIL');
 
+  // 4. Create default homepage with dummy image
+  console.log('\n📄 Creating default homepage...');
+  const webHomeCollection = db.collection('web_homes');
+  await webHomeCollection.insertOne({
+    _id: uuidv4(),
+    hero: {
+      mini_title: 'THE DESIGN SPACE',
+      main_title: 'We Design Your Luxury Space',
+      subtitle: 'Bespoke interiors for those who see home as an art form.',
+      cta_label: 'EXPLORE SPACES',
+      cta_link: '/portfolio',
+      video_url: '',
+      poster_image: '/uploads/website/images/1783947193498-Untitled_design__2_.webp',
+    },
+    grid_matrix: {
+      title: 'Our Expertise',
+      cards: [
+        { icon: '✨', label: 'Residential Design', description: 'Luxurious home interiors' },
+        { icon: '🏢', label: 'Commercial Spaces', description: 'Office & retail design' },
+        { icon: '🎨', label: 'Custom Solutions', description: 'Tailored to your needs' },
+      ],
+    },
+    process: {
+      title: 'Our Process',
+      steps: [
+        { number: '1', title: 'Consultation', description: 'Understand your vision' },
+        { number: '2', title: 'Design', description: 'Create your perfect space' },
+        { number: '3', title: 'Execution', description: 'Bring it to life' },
+      ],
+    },
+    about_preview: {
+      title: 'About Us',
+      description: 'We believe in creating spaces that tell stories.',
+      image_url: '',
+    },
+    careers_banner: {
+      title: 'Join Our Team',
+      subtitle: 'We\'re looking for talented designers',
+      cta_label: 'APPLY NOW',
+    },
+    section_visibility: {
+      hero: true,
+      grid_matrix: true,
+      process: true,
+      about_preview: true,
+      services_grid: true,
+      products_carousel: true,
+      blog_highlights: true,
+      careers_banner: true,
+      map: true,
+    },
+    created_at: new Date(),
+    updated_at: new Date(),
+  });
+  console.log('✅ Homepage with dummy image created');
+
   await mongoose.disconnect();
   console.log('\n🎉 DB reset complete. You can now login.\n');
 }
