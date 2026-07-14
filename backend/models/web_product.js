@@ -29,6 +29,7 @@ const webProductSchema = new mongoose.Schema(
       enum: ['seating', 'lighting', 'kitchen_modules', 'decor', 'other'],
       default: 'other',
     },
+    category_label: { type: String, default: '', maxLength: 100 }, // custom label when category is "other"
     description: { type: String, default: '', maxLength: 2000 },
     item_images: [productImageSchema],
     is_in_stock: { type: Boolean, default: true },

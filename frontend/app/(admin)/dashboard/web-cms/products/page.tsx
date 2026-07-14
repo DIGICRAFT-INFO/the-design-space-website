@@ -141,6 +141,14 @@ export default function WebCmsProductsPage() {
                             <option key={c.value} value={c.value}>{c.label}</option>
                           ))}
                         </select>
+                        {product.category_tag === "other" && (
+                          <input
+                            className={`${inputClass} mt-2`}
+                            placeholder="Specify category (optional)"
+                            value={product.category_label || ""}
+                            onChange={(e) => patchLocal(product.id, { category_label: e.target.value })}
+                          />
+                        )}
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

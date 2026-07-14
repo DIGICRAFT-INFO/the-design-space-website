@@ -89,6 +89,7 @@ export type WebProduct = {
   material_specs: string;
   dimensions: string;
   category_tag: "seating" | "lighting" | "kitchen_modules" | "decor" | "other";
+  category_label?: string;
   description: string;
   item_images: { id: string; file_url: string; sort_order: number }[];
   is_in_stock: boolean;
