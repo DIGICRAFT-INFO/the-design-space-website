@@ -131,6 +131,14 @@ export default function WebCmsServicesPage() {
                             <option key={t.value} value={t.value}>{t.label}</option>
                           ))}
                         </select>
+                        {pkg.tier_classification === "other" && (
+                          <input
+                            className={`${inputClass} mt-2`}
+                            placeholder="Specify tier (optional)"
+                            value={pkg.tier_label || ""}
+                            onChange={(e) => patchLocal(pkg.id, { tier_label: e.target.value })}
+                          />
+                        )}
                       </div>
                     </div>
                     <div className="mb-4">

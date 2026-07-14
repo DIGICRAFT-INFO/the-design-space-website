@@ -74,6 +74,7 @@ export type WebServicePackage = {
   package_name: string;
   scope_summary: string;
   tier_classification: "residential" | "commercial" | "consultation" | "turnkey" | "other";
+  tier_label?: string;
   price_estimation: string;
   cover_image: string;
   highlights: string[];
