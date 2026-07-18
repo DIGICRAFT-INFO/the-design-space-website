@@ -21,6 +21,7 @@ export type Client = {
   client_type?: string;
   client_type_other?: string;
   all_projects_completed?: boolean;
+  created_at?: string;
 };
 
 export type ClientFormData = {
@@ -36,6 +37,7 @@ export type ClientFormData = {
   lead_source: string;
   lead_source_other: string;
   client_type: string;
+  client_type_other: string;
 };
 
 // ─── Helper: Auth headers ─────────────────────────────────────────────────────

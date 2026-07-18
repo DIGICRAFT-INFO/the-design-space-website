@@ -15,6 +15,7 @@ const clientSchema = new mongoose.Schema(
       enum: ['local', 'vendor', 'corporate', 'builder', 'architect', 'other', ''],
       default: ''
     },
+    client_type_other: { type: String, default: '', maxLength: 120 },
     lead_source: {
       type: String,
       enum: ['instagram', 'facebook', 'google', 'website', 'walkin', 'referral', 'architect', 'builder', 'broker', 'portal', 'other', ''],

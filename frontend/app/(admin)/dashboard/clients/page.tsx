@@ -96,7 +96,7 @@ function toClientUI(client: Client): ClientUI {
     lead_source_other: client.lead_source_other || "",
     country: client.country || "India",
     client_type: client.client_type || "",
-    client_type_other: (client as any).client_type_other || "",
+    client_type_other: client.client_type_other || "",
     all_projects_completed: !!client.all_projects_completed,
   };
 }
@@ -227,12 +227,20 @@ export default function ClientsPage() {
     setActiveMenu(null);
   };
 
-  const filteredClients = clients.filter(
-    (c) =>
-      c.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.phone?.includes(searchQuery),
-  );
+  const filteredClients = clients.filter((c) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      c.full_name.toLowerCase().includes(q) ||
+      (c.email?.toLowerCase() ?? "").includes(q) ||
+      (c.phone ?? "").includes(q) ||
+      (c.city?.toLowerCase() ?? "").includes(q) ||
+      (c.state?.toLowerCase() ?? "").includes(q) ||
+      (c.client_type?.toLowerCase() ?? "").includes(q) ||
+      (c.client_type_other?.toLowerCase() ?? "").includes(q) ||
+      (c.gstin?.toLowerCase() ?? "").includes(q)
+    );
+  });
 
   return (
     <div className="p-8 bg-[#FAF8F5] min-h-screen font-sans text-[#1C1C1C]">
@@ -295,7 +303,7 @@ export default function ClientsPage() {
           <p className="text-2xl font-black mt-1 text-green-600">
             {
               clients.filter((c) => {
-                const created = (c as any).created_at;
+                const created = c.created_at;
                 if (!created) return false;
                 const d = new Date(created);
                 const now = new Date();

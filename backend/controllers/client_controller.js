@@ -26,7 +26,7 @@ exports.get_clients = async (req, res) => {
           lead_source: 1,
           lead_source_other: 1,
           client_type: 1,
-          client_type_other: 1,
+          client_type_other: { $ifNull: ['$client_type_other', ''] },
           city: 1,
           state: 1,
           country: 1,
