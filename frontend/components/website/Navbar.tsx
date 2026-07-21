@@ -14,7 +14,7 @@ const NAV_LINKS = [
   { label: "Services", href: "/services" },
   { label: "Portfolio", href: "/portfolio" },
   { label: "Products", href: "/products" },
-  { label: "Contact", href: "/contact" },
+  { label: "Journal", href: "/blog" },
 ];
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];

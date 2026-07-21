@@ -76,6 +76,7 @@ export type WebAbout = {
     story_para_two: string;
     hero_image: string;
   };
+  about_slides: HeroSlide[];
   studio_gallery: { id: string; file_url: string; caption: string; sort_order: number }[];
   studio_video_url: string;
   team_members: TeamMember[];

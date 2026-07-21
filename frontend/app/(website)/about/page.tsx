@@ -3,6 +3,7 @@ import { resolveMediaUrl } from "@/lib/media";
 import SplitText from "@/components/website/SplitText";
 import RevealImage from "@/components/website/RevealImage";
 import FadeIn from "@/components/website/FadeIn";
+import HeroSlider from "@/components/website/home/HeroSlider";
 
 export async function generateMetadata() {
   const seo = resolveSeo(await getSeoEntries().catch(() => []), "/about", {
@@ -18,17 +19,47 @@ export default async function AboutPage() {
   const gallery = about?.studio_gallery || [];
   const team = (about?.team_members || []).slice().sort((a, b) => a.sort_order - b.sort_order);
 
+  // Resolve and sort about slides
+  const aboutSlides = (about?.about_slides ?? [])
+    .filter((s) => s.image_url)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((s) => ({ ...s, image_url: resolveMediaUrl(s.image_url) }));
+
+  const useSlider = aboutSlides.length > 0;
+
   return (
     <>
+      {/* ── About Hero: Slider OR static ──────────────────────────────── */}
+      {useSlider ? (
+        <HeroSlider slides={aboutSlides} autoPlayInterval={5500} />
+      ) : (
+        /* Static title hero when no slides configured */
+        <section className="pt-40 md:pt-48 pb-0">
+          <div className="max-w-[1600px] mx-auto px-6 md:px-10">
+            <SplitText
+              text={narrative?.philosophy_title || "Crafting Quiet Luxury"}
+              as="h1"
+              className="text-4xl md:text-6xl lg:text-7xl font-light tracking-tight mb-0"
+              style={{ fontFamily: "var(--font-display)" }}
+            />
+          </div>
+        </section>
+      )}
+
       {/* ── Philosophy / Story ─────────────────────────────────────────── */}
-      <section className="pt-40 md:pt-48 pb-24 md:pb-32">
+      <section className={`${useSlider ? "pt-24" : "pt-16"} pb-24 md:pb-32`}>
         <div className="max-w-[1600px] mx-auto px-6 md:px-10">
-          <SplitText
-            text={narrative?.philosophy_title || "Crafting Quiet Luxury"}
-            as="h1"
-            className="text-4xl md:text-6xl lg:text-7xl font-light tracking-tight mb-16 md:mb-24"
-            style={{ fontFamily: "var(--font-display)" }}
-          />
+          {/* When using slider, show the title here in the body section */}
+          {useSlider && (
+            <FadeIn className="mb-16 md:mb-24">
+              <SplitText
+                text={narrative?.philosophy_title || "Crafting Quiet Luxury"}
+                as="h1"
+                className="text-4xl md:text-6xl lg:text-7xl font-light tracking-tight"
+                style={{ fontFamily: "var(--font-display)" }}
+              />
+            </FadeIn>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-start">
             <FadeIn className="space-y-6 text-base md:text-lg leading-relaxed text-[var(--ds-ink-soft)]">

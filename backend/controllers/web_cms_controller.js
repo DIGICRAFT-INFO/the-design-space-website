@@ -143,8 +143,9 @@ exports.get_about = async (req, res) => {
 exports.update_about = async (req, res) => {
   try {
     const doc = await getOrCreateAbout();
-    const { narrative, studio_gallery, studio_video_url } = req.body;
+    const { narrative, about_slides, studio_gallery, studio_video_url } = req.body;
     if (narrative) doc.narrative = { ...doc.narrative.toObject(), ...narrative };
+    if (about_slides !== undefined) doc.about_slides = about_slides;
     if (studio_gallery) doc.studio_gallery = studio_gallery;
     if (studio_video_url !== undefined) doc.studio_video_url = studio_video_url;
     doc.updated_by = req.user ? req.user._id : null;

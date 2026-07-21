@@ -49,6 +49,22 @@ const webAboutSchema = new mongoose.Schema(
       hero_image: { type: String, default: '' },
     },
 
+    // ── Multi-slide hero for the About page
+    //    When about_slides.length > 0, a full-screen slider is shown at the
+    //    top of the About page instead of the static hero image.
+    about_slides: [
+      {
+        _id: { type: String, default: uuidv4 },
+        mini_title: { type: String, default: '' },
+        main_title: { type: String, default: '' },
+        subtitle: { type: String, default: '' },
+        cta_label: { type: String, default: '' },
+        cta_link: { type: String, default: '' },
+        image_url: { type: String, default: '' },
+        sort_order: { type: Number, default: 0 },
+      },
+    ],
+
     studio_gallery: [galleryImageSchema],
     studio_video_url: { type: String, default: '' },
 
