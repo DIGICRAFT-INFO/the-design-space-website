@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Plus, Trash2, Save } from "lucide-react";
+import { Loader2, Plus, Trash2, Save, Images, GripVertical } from "lucide-react";
 import { getHomeAdmin, updateHomeAdmin } from "@/services/webCmsService";
-import type { WebHome, BentoCard, ProcessStep } from "@/services/websiteService";
+import type { WebHome, BentoCard, ProcessStep, HeroSlide } from "@/services/websiteService";
 import MediaUploadField from "@/components/webcms/MediaUploadField";
 import Toast, { type ToastState } from "@/components/webcms/Toast";
 import { getErrorMessage } from "@/lib/errors";
@@ -41,6 +41,7 @@ export default function WebCmsHomePage() {
     try {
       const updated = await updateHomeAdmin({
         hero: data.hero,
+        hero_slides: data.hero_slides,
         grid_matrix: data.grid_matrix,
         process: data.process,
         about_preview: data.about_preview,
@@ -115,6 +116,58 @@ export default function WebCmsHomePage() {
     setData((d) => (d ? { ...d, process: { ...d.process, steps: d.process.steps.filter((s) => s.id !== id) } } : d));
   }
 
+  // ── Hero Slides helpers ──────────────────────────────────────────────────
+  const slides = data.hero_slides ?? [];
+
+  function updateSlide(id: string, patch: Partial<HeroSlide>) {
+    setData((d) =>
+      d
+        ? { ...d, hero_slides: (d.hero_slides ?? []).map((s) => (s.id === id ? { ...s, ...patch } : s)) }
+        : d
+    );
+  }
+
+  function addSlide() {
+    setData((d) =>
+      d
+        ? {
+            ...d,
+            hero_slides: [
+              ...(d.hero_slides ?? []),
+              {
+                id: nextId(),
+                mini_title: "THE DESIGN SPACE",
+                main_title: "",
+                subtitle: "",
+                cta_label: "Explore Spaces",
+                cta_link: "/portfolio",
+                image_url: "",
+                sort_order: (d.hero_slides ?? []).length,
+              },
+            ],
+          }
+        : d
+    );
+  }
+
+  function removeSlide(id: string) {
+    setData((d) =>
+      d ? { ...d, hero_slides: (d.hero_slides ?? []).filter((s) => s.id !== id) } : d
+    );
+  }
+
+  function moveSlide(id: string, dir: 1 | -1) {
+    setData((d) => {
+      if (!d) return d;
+      const arr = [...(d.hero_slides ?? [])];
+      const idx = arr.findIndex((s) => s.id === id);
+      const next = idx + dir;
+      if (next < 0 || next >= arr.length) return d;
+      [arr[idx], arr[next]] = [arr[next], arr[idx]];
+      return { ...d, hero_slides: arr.map((s, i) => ({ ...s, sort_order: i })) };
+    });
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto pb-24">
       <div className="flex items-center justify-between mb-6">
@@ -172,6 +225,143 @@ export default function WebCmsHomePage() {
             onChange={(url) => setData({ ...data, hero: { ...data.hero, poster_image: url } })}
           />
         </div>
+      </section>
+
+      {/* Hero Slides — shown on homepage when slides are configured */}
+      <section className="bg-white border border-[#EDE8DF] rounded-2xl p-5 mb-6">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <Images size={16} className="text-[#C8922A]" />
+            <h2 className="text-[14px] font-bold text-[#2B2620]">Hero Slider — Multiple Slides</h2>
+          </div>
+          <button
+            onClick={addSlide}
+            className="flex items-center gap-1.5 text-[12px] font-semibold text-[#C8922A] hover:text-[#B07A20]"
+          >
+            <Plus size={14} /> Add Slide
+          </button>
+        </div>
+        <p className="text-[11px] text-[#9A8F82] mb-4">
+          When slides are added here the full-screen slider replaces the single hero above.
+          Each slide has its own background image, titles and CTA button.
+          Remove all slides to revert to the single-hero layout.
+        </p>
+
+        {slides.length === 0 ? (
+          <div className="border-2 border-dashed border-[#EDE8DF] rounded-xl py-10 flex flex-col items-center gap-2 text-[#9A8F82]">
+            <Images size={28} className="opacity-40" />
+            <p className="text-[12px] font-medium">No slides yet — using single Hero above</p>
+            <button
+              onClick={addSlide}
+              className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-[#C8922A] hover:text-[#B07A20] bg-[#FDF3E3] px-3 py-1.5 rounded-lg"
+            >
+              <Plus size={13} /> Add First Slide
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {slides.map((slide, idx) => (
+              <div key={slide.id} className="border border-[#EDE8DF] rounded-2xl p-4 bg-[#FAFAF9]">
+                {/* Slide header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-[#C8922A] text-white text-[10px] font-black flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <span className="text-[12px] font-semibold text-[#6B6259]">Slide {idx + 1}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {/* Move up */}
+                    <button
+                      onClick={() => moveSlide(slide.id, -1)}
+                      disabled={idx === 0}
+                      className="p-1.5 text-[#9A8F82] hover:text-[#1C1C1C] disabled:opacity-30 rounded"
+                      title="Move up"
+                    >
+                      <GripVertical size={14} />
+                    </button>
+                    <button
+                      onClick={() => removeSlide(slide.id)}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Left — image upload */}
+                  <MediaUploadField
+                    label="Slide Background Image"
+                    kind="image"
+                    aspect="aspect-video"
+                    value={slide.image_url}
+                    onChange={(url) => updateSlide(slide.id, { image_url: url })}
+                  />
+
+                  {/* Right — text fields */}
+                  <div className="space-y-3">
+                    <div>
+                      <label className={labelClass}>Mini Title (eyebrow text)</label>
+                      <input
+                        className={inputClass}
+                        placeholder="THE DESIGN SPACE"
+                        value={slide.mini_title}
+                        onChange={(e) => updateSlide(slide.id, { mini_title: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Main Title *</label>
+                      <input
+                        className={inputClass}
+                        placeholder="We Design Your Luxury Space"
+                        value={slide.main_title}
+                        onChange={(e) => updateSlide(slide.id, { main_title: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Subtitle</label>
+                      <textarea
+                        rows={2}
+                        className={inputClass}
+                        placeholder="Bespoke interiors for those who see home as an art form."
+                        value={slide.subtitle}
+                        onChange={(e) => updateSlide(slide.id, { subtitle: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelClass}>CTA Button Label</label>
+                        <input
+                          className={inputClass}
+                          placeholder="Explore Spaces"
+                          value={slide.cta_label}
+                          onChange={(e) => updateSlide(slide.id, { cta_label: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>CTA Link</label>
+                        <input
+                          className={inputClass}
+                          placeholder="/portfolio"
+                          value={slide.cta_link}
+                          onChange={(e) => updateSlide(slide.id, { cta_link: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <button
+              onClick={addSlide}
+              className="w-full border-2 border-dashed border-[#EDE8DF] rounded-xl py-3 text-[12px] font-semibold text-[#C8922A] hover:border-[#C8922A] hover:bg-[#FDF3E3] transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Plus size={14} /> Add Another Slide
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Bento Grid */}
