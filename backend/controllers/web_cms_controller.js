@@ -105,8 +105,9 @@ exports.get_home = async (req, res) => {
 exports.update_home = async (req, res) => {
   try {
     const doc = await getOrCreateHome();
-    const { hero, grid_matrix, process: processData, about_preview, careers_banner, section_visibility } = req.body;
+    const { hero, hero_slides, grid_matrix, process: processData, about_preview, careers_banner, section_visibility } = req.body;
     if (hero) doc.hero = { ...doc.hero.toObject(), ...hero };
+    if (hero_slides !== undefined) doc.hero_slides = hero_slides;
     if (grid_matrix) doc.grid_matrix = grid_matrix;
     if (processData) doc.process = processData;
     if (about_preview) doc.about_preview = { ...doc.about_preview.toObject(), ...about_preview };

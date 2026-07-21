@@ -21,6 +21,17 @@ export type ProcessStep = {
   sort_order: number;
 };
 
+export type HeroSlide = {
+  id: string;
+  mini_title: string;
+  main_title: string;
+  subtitle: string;
+  cta_label: string;
+  cta_link: string;
+  image_url: string;
+  sort_order: number;
+};
+
 export type WebHome = {
   id: string;
   hero: {
@@ -32,6 +43,7 @@ export type WebHome = {
     video_url: string;
     poster_image: string;
   };
+  hero_slides: HeroSlide[];
   grid_matrix: { mini_title: string; cards: BentoCard[] };
   process: { mini_title: string; steps: ProcessStep[] };
   about_preview: { title: string; body: string; cta_label: string; image: string };

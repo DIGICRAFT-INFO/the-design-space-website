@@ -4,13 +4,14 @@ import SplitText from "@/components/website/SplitText";
 import RevealImage from "@/components/website/RevealImage";
 import FadeIn from "@/components/website/FadeIn";
 import MagneticButton from "@/components/website/MagneticButton";
+import HeroSlider from "@/components/website/home/HeroSlider";
 import ProcessSection from "@/components/website/home/ProcessSection";
 import AboutPreview from "@/components/website/home/AboutPreview";
 import ServicesQuickGrid from "@/components/website/home/ServicesQuickGrid";
 import ProductsCarousel from "@/components/website/home/ProductsCarousel";
 import BlogHighlights from "@/components/website/home/BlogHighlights";
-import CareersBanner from "@/components/website/home/CareersBanner";
-import MapSection from "@/components/website/home/MapSection";
+// import CareersBanner from "@/components/website/home/CareersBanner";
+// import MapSection from "@/components/website/home/MapSection";
 import Link from "next/link";
 
 export async function generateMetadata() {
@@ -38,6 +39,13 @@ export default async function HomePage() {
     : allServices.slice(0, 3);
 
   const hero = home?.hero;
+  const heroSlides = (home?.hero_slides ?? [])
+    .filter((s) => s.image_url)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((s) => ({ ...s, image_url: resolveMediaUrl(s.image_url) }));
+
+  // Use slider when CMS slides are configured, otherwise fall back to single hero
+  const useSlider = heroSlides.length > 0;
   const gridCards = home?.grid_matrix?.cards?.length
     ? home.grid_matrix.cards
         .slice()
@@ -54,54 +62,58 @@ export default async function HomePage() {
     <>
       {/* ── Section A: Hero ─────────────────────────────────────────────── */}
       {isVisible("hero") && (
-      <section className="relative h-[100svh] w-full overflow-hidden flex items-end">
-        <div className="absolute inset-0">
-          {hero?.video_url ? (
-            <video
-              className="w-full h-full object-cover aspect-[9/16] md:aspect-auto"
-              autoPlay
-              muted
-              loop
-              playsInline
-              poster={resolveMediaUrl(hero?.poster_image)}
-            >
-              <source src={resolveMediaUrl(hero.video_url)} type="video/mp4" />
-            </video>
-          ) : hero?.poster_image ? (
-            <img src={resolveMediaUrl(hero.poster_image)} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-[var(--ds-bg-alt)]" />
-          )}
-          <div className="absolute inset-0 bg-black/30" />
-        </div>
+        useSlider ? (
+          <HeroSlider slides={heroSlides} autoPlayInterval={5000} />
+        ) : (
+        <section className="relative h-[100svh] w-full overflow-hidden flex items-end">
+          <div className="absolute inset-0">
+            {hero?.video_url ? (
+              <video
+                className="w-full h-full object-cover aspect-[9/16] md:aspect-auto"
+                autoPlay
+                muted
+                loop
+                playsInline
+                poster={resolveMediaUrl(hero?.poster_image)}
+              >
+                <source src={resolveMediaUrl(hero.video_url)} type="video/mp4" />
+              </video>
+            ) : hero?.poster_image ? (
+              <img src={resolveMediaUrl(hero.poster_image)} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-[var(--ds-bg-alt)]" />
+            )}
+            <div className="absolute inset-0 bg-black/30" />
+          </div>
 
-        <div className="relative z-10 max-w-[1600px] w-full mx-auto px-6 md:px-10 pb-16 md:pb-20">
-          <FadeIn>
-            <p className="text-[12px] tracking-[0.3em] uppercase text-[#E6C687] mb-4">
-              {hero?.mini_title || "THE DESIGN SPACE"}
-            </p>
-          </FadeIn>
-          <SplitText
-            text={hero?.main_title || "We Design Your Luxury Space"}
-            as="h1"
-            className="text-white font-light tracking-tight text-5xl lg:text-8xl max-w-4xl"
-            style={{ fontFamily: "var(--font-display)" }}
-          />
-          <FadeIn delay={0.7} className="max-w-xl mt-6 flex flex-col sm:flex-row sm:items-center gap-6">
-            <p className="text-base text-white/80 leading-relaxed">
-              {hero?.subtitle || "Bespoke interiors for those who see home as an art form."}
-            </p>
-            <MagneticButton
-              as="a"
-              href={hero?.cta_link || "/portfolio"}
-              data-cursor="View"
-              className="shrink-0 inline-flex items-center gap-2 px-6 py-3.5 bg-white text-[#1C1C1C] rounded-full text-[11px] tracking-[0.14em] uppercase font-medium"
-            >
-              {hero?.cta_label || "Explore Spaces"}
-            </MagneticButton>
-          </FadeIn>
-        </div>
-      </section>
+          <div className="relative z-10 max-w-[1600px] w-full mx-auto px-6 md:px-10 pb-16 md:pb-20">
+            <FadeIn>
+              <p className="text-[12px] tracking-[0.3em] uppercase text-[#E6C687] mb-4">
+                {hero?.mini_title || "THE DESIGN SPACE"}
+              </p>
+            </FadeIn>
+            <SplitText
+              text={hero?.main_title || "We Design Your Luxury Space"}
+              as="h1"
+              className="text-white font-light tracking-tight text-5xl lg:text-8xl max-w-4xl"
+              style={{ fontFamily: "var(--font-display)" }}
+            />
+            <FadeIn delay={0.7} className="max-w-xl mt-6 flex flex-col sm:flex-row sm:items-center gap-6">
+              <p className="text-base text-white/80 leading-relaxed">
+                {hero?.subtitle || "Bespoke interiors for those who see home as an art form."}
+              </p>
+              <MagneticButton
+                as="a"
+                href={hero?.cta_link || "/portfolio"}
+                data-cursor="View"
+                className="shrink-0 inline-flex items-center gap-2 px-6 py-3.5 bg-white text-[#1C1C1C] rounded-full text-[11px] tracking-[0.14em] uppercase font-medium"
+              >
+                {hero?.cta_label || "Explore Spaces"}
+              </MagneticButton>
+            </FadeIn>
+          </div>
+        </section>
+        )
       )}
 
       {/* ── Section B: About Preview ─────────────────────────────────────── */}
@@ -177,19 +189,19 @@ export default async function HomePage() {
       {/* ── Section G: Blog Highlights ───────────────────────────────────── */}
       {isVisible("blog_highlights") && <BlogHighlights posts={blogPosts} />}
 
-      {/* ── Section H: Careers Banner ────────────────────────────────────── */}
+      {/* ── Section H: Careers Banner ──────────────────────────────────────
       {isVisible("careers_banner") && home?.careers_banner && (
         <CareersBanner
           title={home.careers_banner.title}
           subtitle={home.careers_banner.subtitle}
           ctaLabel={home.careers_banner.cta_label}
         />
-      )}
+      )} */}
 
-      {/* ── Section I: Map ───────────────────────────────────────────────── */}
+      {/* ── Section I: Map ─────────────────────────────────────────────────
       {isVisible("map") && (
         <MapSection mapEmbedUrl={settings?.contact.map_embed_url} address={settings?.contact.office_address} />
-      )}
+      )} */}
     </>
   );
 }

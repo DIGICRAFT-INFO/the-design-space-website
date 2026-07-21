@@ -27,7 +27,7 @@ export default function Footer({ settings }: { settings?: WebSettings | null }) 
       <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-16 grid grid-cols-1 md:grid-cols-5 gap-12">
         <div className="md:col-span-2">
           <div className="flex items-center gap-2 mb-5">
-            <img src="/logo2.png" alt="The Design Space Logo" className="h-14 w-auto object-contain" />
+            <img src="/TheDesignSpace_Navbarlogo.png" alt="The Design Space Logo" className="h-14 w-auto object-contain" />
           </div>
           <p className="max-w-sm text-sm leading-relaxed text-[var(--ds-ink-soft)]">
             {settings?.footer_text ||

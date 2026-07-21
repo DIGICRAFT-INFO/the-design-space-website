@@ -60,6 +60,22 @@ const webHomeSchema = new mongoose.Schema(
       poster_image: { type: String, default: '' },
     },
 
+    // ── Multi-slide hero: when hero_slides.length > 0 the slider is shown
+    //    instead of the single hero above. Each slide has its own image,
+    //    titles and CTA so marketing can rotate campaigns without a deploy.
+    hero_slides: [
+      {
+        _id: { type: String, default: uuidv4 },
+        mini_title: { type: String, default: '' },
+        main_title: { type: String, default: '' },
+        subtitle: { type: String, default: '' },
+        cta_label: { type: String, default: 'Explore Spaces' },
+        cta_link: { type: String, default: '/portfolio' },
+        image_url: { type: String, default: '' },
+        sort_order: { type: Number, default: 0 },
+      },
+    ],
+
     grid_matrix: {
       mini_title: { type: String, default: '01 / Selected Architecture' },
       cards: [bentoCardSchema],
