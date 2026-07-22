@@ -110,7 +110,8 @@ const [form, setForm] = useState<ClientFormData>({
   city: "",
   lead_source: "",
   lead_source_other: "",
-  client_type: "individual",   // ← add this line
+  client_type: "",
+  client_type_other: "",
 });
 
   const [saving, setSaving] = useState(false);
