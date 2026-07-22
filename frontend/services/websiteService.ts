@@ -116,6 +116,7 @@ export type PublicPortfolioItem = {
   title: string;
   description: string;
   project_type: "residential" | "commercial" | "renovation" | "other";
+  project_type_label?: string;
   custom_categories: string[];
   is_featured: boolean;
   sort_order: number;

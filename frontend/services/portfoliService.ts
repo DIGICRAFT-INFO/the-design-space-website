@@ -69,6 +69,7 @@ export type CreatePortfolioPayload = {
   project?: string;
   status?: PortfolioStatus;
   project_type?: "residential" | "commercial" | "renovation" | "other";
+  project_type_label?: string;
   custom_categories?: string[];
   is_featured?: boolean;
   sort_order?: number;
