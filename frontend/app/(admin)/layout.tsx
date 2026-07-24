@@ -15,6 +15,7 @@ import {
   LogOut,
   FileText,
   Receipt,
+  ShieldCheck,
 } from "lucide-react";
 import { TbLayoutDashboard } from "react-icons/tb";
 import { FcServices } from "react-icons/fc";
@@ -127,12 +128,58 @@ export default function DashboardLayout({
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [pageAccess, setPageAccess] = useState<string[]>([]);
   const [authChecked, setAuthChecked] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Secure Role Verification
   const adminRoles = ["owner", "manager", "accountant"];
   const isAdmin = userRole ? adminRoles.includes(userRole) : false;
+  const isOwner = userRole === "owner";
+
+  // Page visibility — owner always sees all; others use page_access array
+  // page_access keys map to nav hrefs (see PAGE_KEY_MAP below)
+  const PAGE_KEY_MAP: Record<string, string> = {
+    dashboard: "/dashboard",
+    clients: "/dashboard/clients",
+    services: "/dashboard/services",
+    projects: "/dashboard/projects",
+    proposals: "/dashboard/proposals",
+    quotations: "/dashboard/quotations",
+    invoices: "/dashboard/invoices",
+    portfolio: "/dashboard/portfolio",
+    payments: "/dashboard/payments",
+    pending_users: "/dashboard/pending-users",
+    enquiries: "/dashboard/enquiry",
+    history: "/dashboard/history",
+    notifications: "/dashboard/notifications",
+    web_cms_overview: "/dashboard/web-cms",
+    web_cms_home: "/dashboard/web-cms/home",
+    web_cms_about: "/dashboard/web-cms/about",
+    web_cms_services: "/dashboard/web-cms/services",
+    web_cms_products: "/dashboard/web-cms/products",
+    web_cms_portfolio: "/dashboard/web-cms/portfolio",
+    web_cms_blog: "/dashboard/web-cms/blog",
+    web_cms_careers: "/dashboard/web-cms/careers",
+    web_cms_leads: "/dashboard/web-cms/leads",
+    web_cms_seo: "/dashboard/web-cms/seo",
+    web_cms_media: "/dashboard/web-cms/media",
+    web_cms_legal: "/dashboard/web-cms/legal",
+    web_cms_settings: "/dashboard/web-cms/settings",
+  };
+  const HREF_TO_KEY: Record<string, string> = Object.fromEntries(
+    Object.entries(PAGE_KEY_MAP).map(([k, v]) => [v, k])
+  );
+
+  function canSee(href: string): boolean {
+    if (isOwner) return true; // owner sees everything
+    // If page_access is populated, use it; otherwise fall back to role checks
+    if (pageAccess.length > 0) {
+      const key = HREF_TO_KEY[href];
+      return key ? pageAccess.includes(key) : true;
+    }
+    return true; // no restrictions set → role-based defaults apply
+  }
 
   useEffect(() => {
     const token =
@@ -156,6 +203,11 @@ export default function DashboardLayout({
 
         setUserRole(role);
         setUserName(user.full_name || "User");
+
+        // Load page_access from stored user
+        if (Array.isArray(user.page_access)) {
+          setPageAccess(user.page_access);
+        }
 
         // Load avatar from stored user
         if (user.profile_image) {
@@ -312,6 +364,7 @@ export default function DashboardLayout({
             if (item.roles && userRole && !item.roles.includes(userRole)) {
               return null;
             }
+            if (!canSee(item.href)) return null;
 
             const Icon = item.icon;
             const active = pathname === item.href;
@@ -367,6 +420,21 @@ export default function DashboardLayout({
 
         {/* Bottom Section */}
         <div className="px-3 pb-5 border-t border-[#EDE8DF] pt-4 space-y-0.5">
+          {/* Access Control — owner only */}
+          {isOwner && (
+            <Link
+              href="/dashboard/access-control"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all ${
+                pathname === "/dashboard/access-control"
+                  ? "bg-[#FDF3E3] text-[#C8922A]"
+                  : "text-[#6B6259] hover:bg-[#FAF8F5]"
+              }`}
+            >
+              <ShieldCheck size={16} className={pathname === "/dashboard/access-control" ? "text-[#C8922A]" : "text-[#9A8F82]"} />
+              Access Control
+            </Link>
+          )}
+
           {(isAdmin || userRole === "accountant") && (
             <Link
               href="/dashboard/settings"

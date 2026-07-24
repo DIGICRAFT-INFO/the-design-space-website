@@ -46,6 +46,13 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // ── Granular page-level access (superadmin sets which pages user can see)
+    page_access: {
+      type: [String],
+      default: [],
+    },
+    access_granted_by: { type: String, ref: 'User', default: null },
+    access_granted_at: { type: Date, default: null },
   },
   {
     timestamps: { 

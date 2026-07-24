@@ -77,12 +77,12 @@ const webHomeSchema = new mongoose.Schema(
     ],
 
     grid_matrix: {
-      mini_title: { type: String, default: '01 / Selected Architecture' },
+      mini_title: { type: String, default: 'Selected Architecture ' },
       cards: [bentoCardSchema],
     },
 
     process: {
-      mini_title: { type: String, default: '02 / How We Work' },
+      mini_title: { type: String, default: 'How We Work' },
       steps: [processStepSchema],
     },
 

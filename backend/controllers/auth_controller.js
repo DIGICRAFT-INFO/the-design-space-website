@@ -29,6 +29,7 @@ exports.token_obtain_pair = async (req, res) => {
         email: user.email,
         full_name: user.full_name,
         role: user.role,
+        page_access: user.page_access || [],
       }
     });
   } else {
@@ -70,6 +71,7 @@ exports.me = async (req, res) => {
     profile_image: req.user.profile_image,
     role: req.user.role,
     is_active: req.user.is_active,
+    page_access: req.user.page_access || [],
     created_at: req.user.created_at
   });
 };

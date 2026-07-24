@@ -48,9 +48,9 @@ async function seed() {
       video_url: '',
       poster_image: '',
     },
-    grid_matrix: { mini_title: '01 / Selected Architecture', cards: [] },
+    grid_matrix: { mini_title: ' Selected Architecture', cards: [] },
     process: {
-      mini_title: '02 / How We Work',
+      mini_title: 'How We Work',
       steps: [{ stage: '01', title: 'Consultation', body: 'We listen first.', associated_image: '', sort_order: 0 }],
     },
   });

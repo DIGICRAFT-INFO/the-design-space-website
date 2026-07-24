@@ -150,6 +150,9 @@ app.use('/api/v1/public', require('./routes/public_urls'));
 // Website Web-CMS (dashboard "Website Interactive CMS" panel) — manager/owner only
 app.use('/api/v1/web-cms', require('./routes/web_cms_urls'));
 
+// RBAC — Role-Based Access Control & User Management (owner only)
+app.use('/api/v1/rbac', require('./routes/rbac_urls'));
+
 
 // ==========================================
 // 4. GLOBAL ERROR HANDLER
