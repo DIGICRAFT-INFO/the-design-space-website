@@ -92,8 +92,8 @@ export default function Navbar() {
               <img
                 src={isDark ? "/tds_white_logo.png" : "/TheDesignSpace_Navbarlogo.png"}
                 alt="The Design Space Logo"
-                className={`w-auto object-contain relative z-10 transition-all duration-300 ${
-                  isDark ? "h-16 md:h-20" : "h-12 md:h-14"
+                className={`w-auto object-contain relative z-10 transition-all duration-300 h-12 md:h-14 ${
+                  isDark ? "scale-[2.2]" : ""
                 }`}
               />
               <motion.span
