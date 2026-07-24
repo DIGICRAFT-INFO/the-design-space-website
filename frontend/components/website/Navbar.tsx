@@ -24,6 +24,17 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [isDark, setIsDark] = useState(false);
+
+  // Detect dark mode by watching the html element's class
+  useEffect(() => {
+    const check = () =>
+      setIsDark(document.documentElement.classList.contains("dark"));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
 
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
@@ -79,9 +90,11 @@ export default function Navbar() {
               className="relative"
             >
               <img
-                src="/TheDesignSpace_Navbarlogo.png"
+                src={isDark ? "/tds_white_logo.png" : "/TheDesignSpace_Navbarlogo.png"}
                 alt="The Design Space Logo"
-                className="h-12 md:h-14 w-auto object-contain relative z-10 transition-transform duration-300"
+                className={`w-auto object-contain relative z-10 transition-all duration-300 ${
+                  isDark ? "h-16 md:h-20" : "h-12 md:h-14"
+                }`}
               />
               <motion.span
                 aria-hidden
