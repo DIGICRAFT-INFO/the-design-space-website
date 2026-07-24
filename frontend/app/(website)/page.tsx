@@ -134,7 +134,7 @@ export default async function HomePage() {
       <section className="max-w-[1600px] mx-auto px-6 md:px-10 py-24 md:py-36">
         <FadeIn>
           <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-3">
-            {home?.grid_matrix?.mini_title || "Selected Architecture"}
+            {(home?.grid_matrix?.mini_title || "Selected Architecture").replace(/^\d+\s*\/\s*/, "")}
           </p>
           <h2
             className="text-3xl md:text-5xl font-light tracking-tight max-w-2xl mb-12"
@@ -179,7 +179,7 @@ export default async function HomePage() {
 
       {/* ── Section E: Process ───────────────────────────────────────────── */}
       <ProcessSection
-        miniTitle={home?.process?.mini_title || " How We Work"}
+        miniTitle={(home?.process?.mini_title || "How We Work").replace(/^\d+\s*\/\s*/, "")}
         steps={home?.process?.steps || []}
       />
 
