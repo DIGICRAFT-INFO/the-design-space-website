@@ -357,24 +357,133 @@ exports.get_product_public = async (req, res) => {
 // SETTINGS — singleton (contact info, socials, footer, SEO defaults)
 // ═══════════════════════════════════════════════════════════════════════════
 
+const DEFAULT_PRIVACY_POLICY = `# Privacy Policy
+
+**Effective Date:** January 1, 2024
+**Last Updated:** July 2025
+
+## 1. Introduction
+
+The Design Space ("we", "our", or "us") is committed to protecting your personal information. This Privacy Policy explains how we collect, use, and safeguard your data when you visit our website at thedesignspace.in or contact us for our interior design services.
+
+## 2. Information We Collect
+
+We may collect the following information:
+
+- **Personal details** — Name, phone number, email address
+- **Project details** — Location, budget range, requirements you share with us
+- **Usage data** — Pages visited, time spent, browser/device information (via cookies)
+
+## 3. How We Use Your Information
+
+We use the information to:
+
+- Respond to your enquiries and provide design consultation
+- Prepare proposals, quotations, and project documentation
+- Send relevant updates about your project
+- Improve our website and services
+
+We do **not** sell, rent, or trade your personal information to third parties.
+
+## 4. Data Security
+
+Your data is stored securely. We use industry-standard practices to protect your information from unauthorised access, disclosure, or misuse.
+
+## 5. Cookies
+
+Our website may use cookies to enhance your browsing experience. You can disable cookies in your browser settings at any time.
+
+## 6. Third-Party Services
+
+We may use trusted third-party services (e.g., Google Maps, email delivery) that have their own privacy policies. We are not responsible for their practices.
+
+## 7. Your Rights
+
+You have the right to:
+- Request access to the personal data we hold about you
+- Request correction or deletion of your data
+- Withdraw consent at any time
+
+To exercise these rights, contact us at **hello@thedesignspace.in** or call **+91 93001 20500**.
+
+## 8. Changes to This Policy
+
+We may update this policy periodically. The latest version will always be available on this page.
+
+## 9. Contact Us
+
+**The Design Space**
+Raipur, Chhattisgarh 492001
+📞 +91 93001 20500
+📧 hello@thedesignspace.in`;
+
+const DEFAULT_COPYRIGHT_TERMS = `# Copyright & Terms of Use
+
+**Effective Date:** January 1, 2024
+**Last Updated:** July 2025
+
+## 1. Ownership
+
+All content on this website — including but not limited to text, images, photographs, design concepts, project portfolios, logos, and graphics — is the exclusive intellectual property of **The Design Space**, Raipur, Chhattisgarh, India, unless otherwise stated.
+
+## 2. Copyright Notice
+
+© 2024–2025 The Design Space. All rights reserved.
+
+Unauthorised reproduction, distribution, or commercial use of any content from this website is strictly prohibited without prior written permission from The Design Space.
+
+## 3. Portfolio & Project Images
+
+All interior design projects, photographs, and rendered images displayed on this website are the original work of The Design Space. These images may not be reproduced, copied, or used without explicit written consent.
+
+## 4. Website Usage
+
+You are permitted to:
+- Browse and view the website for personal, non-commercial use
+- Share links to pages on our website
+
+You are **not** permitted to:
+- Copy or reproduce content for commercial purposes
+- Scrape, download, or bulk-extract content from this website
+- Misrepresent our work as your own
+
+## 5. Design Services & Contracts
+
+Engagement of our design services is governed by separate project agreements signed between the client and The Design Space. These terms of use do not constitute a service contract.
+
+## 6. Disclaimer
+
+The information on this website is provided in good faith. We do not guarantee that all content is always up to date. Pricing, availability, and project timelines are subject to change.
+
+## 7. Governing Law
+
+These terms are governed by the laws of India. Any disputes shall be subject to the jurisdiction of courts in Raipur, Chhattisgarh.
+
+## 8. Contact for Permissions
+
+**The Design Space**
+Raipur, Chhattisgarh 492001
+📞 +91 93001 20500
+📧 hello@thedesignspace.in`;
+
 async function getOrCreateSettings() {
   let doc = await WebSettings.findById('web_settings_singleton');
   if (!doc) doc = await WebSettings.create({ _id: 'web_settings_singleton' });
 
-  // Seed default legal content if fields are empty
+  // Seed default legal content into existing documents that have empty fields
   let dirty = false;
-  const defaultPrivacy = WebSettings.schema.path('legal.privacy_policy').options.default;
-  const defaultCopyright = WebSettings.schema.path('legal.copyright_terms').options.default;
-
-  if (!doc.legal.privacy_policy && typeof defaultPrivacy === 'string') {
-    doc.legal.privacy_policy = defaultPrivacy;
+  if (!doc.legal.privacy_policy) {
+    doc.legal.privacy_policy = DEFAULT_PRIVACY_POLICY;
     dirty = true;
   }
-  if (!doc.legal.copyright_terms && typeof defaultCopyright === 'string') {
-    doc.legal.copyright_terms = defaultCopyright;
+  if (!doc.legal.copyright_terms) {
+    doc.legal.copyright_terms = DEFAULT_COPYRIGHT_TERMS;
     dirty = true;
   }
-  if (dirty) await doc.save();
+  if (dirty) {
+    doc.markModified('legal');
+    await doc.save();
+  }
 
   return doc;
 }
