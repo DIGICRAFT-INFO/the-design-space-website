@@ -360,6 +360,22 @@ exports.get_product_public = async (req, res) => {
 async function getOrCreateSettings() {
   let doc = await WebSettings.findById('web_settings_singleton');
   if (!doc) doc = await WebSettings.create({ _id: 'web_settings_singleton' });
+
+  // Seed default legal content if fields are empty
+  let dirty = false;
+  const defaultPrivacy = WebSettings.schema.path('legal.privacy_policy').options.default;
+  const defaultCopyright = WebSettings.schema.path('legal.copyright_terms').options.default;
+
+  if (!doc.legal.privacy_policy && typeof defaultPrivacy === 'string') {
+    doc.legal.privacy_policy = defaultPrivacy;
+    dirty = true;
+  }
+  if (!doc.legal.copyright_terms && typeof defaultCopyright === 'string') {
+    doc.legal.copyright_terms = defaultCopyright;
+    dirty = true;
+  }
+  if (dirty) await doc.save();
+
   return doc;
 }
 
