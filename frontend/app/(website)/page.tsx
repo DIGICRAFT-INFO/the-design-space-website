@@ -131,49 +131,53 @@ export default async function HomePage() {
 
       {/* ── Section D: Bento Grid Matrix (Portfolio) ────────────────────── */}
       {isVisible("bento_portfolio") && (
-      <section className="max-w-[1600px] mx-auto px-6 md:px-10 py-24 md:py-36">
-        <FadeIn>
-          <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-3">
-            {(home?.grid_matrix?.mini_title || "Selected Architecture").replace(/^\d+\s*\/\s*/, "")}
-          </p>
-          <h2
-            className="text-3xl md:text-5xl font-light tracking-tight max-w-2xl mb-12"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            A curated look at spaces we&rsquo;ve shaped.
-          </h2>
-        </FadeIn>
+      <section className="bg-[#F7F4EF] py-14 md:py-20">
+        <div className="max-w-[1600px] mx-auto px-6 md:px-10">
+          <FadeIn className="text-center mb-14">
+            <span className="inline-block text-[11px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-4 px-4 py-1.5 bg-[var(--ds-gold)]/10 rounded-full">
+              {(home?.grid_matrix?.mini_title || "Selected Architecture").replace(/^\d+\s*\/\s*/, "")}
+            </span>
+            <h2
+              className="text-3xl md:text-5xl font-light tracking-tight"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              A curated look at spaces we&rsquo;ve shaped.
+            </h2>
+          </FadeIn>
 
-        {gridCards.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-2 gap-4 md:gap-6 lg:h-[90vh]">
-            {gridCards.map((card, i) => (
-              <div key={card.id} className={`relative group aspect-[4/5] lg:aspect-auto rounded-sm overflow-hidden ${card.span}`}>
-                <RevealImage
-                  src={card.image || "/logo.png"}
-                  alt={card.title}
-                  delay={i * 0.08}
-                  cursorLabel="View"
-                  className="absolute inset-0"
-                  imgClassName="transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                  <p className="text-white text-sm tracking-wide">{card.title}</p>
+          {gridCards.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-2 gap-4 md:gap-6 lg:h-[90vh]">
+              {gridCards.map((card, i) => (
+                <div key={card.id} className={`relative group aspect-[4/5] lg:aspect-auto rounded-2xl overflow-hidden shadow-md ${card.span}`}>
+                  <RevealImage
+                    src={card.image || "/logo.png"}
+                    alt={card.title}
+                    delay={i * 0.08}
+                    cursorLabel="View"
+                    className="absolute inset-0"
+                    imgClassName="transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                    <p className="text-white text-sm font-medium tracking-wide">{card.title}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-[var(--ds-ink-soft)]">Featured projects will appear here once published.</p>
-        )}
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <p className="text-[var(--ds-ink-soft)] text-sm">Featured projects will appear here once published.</p>
+            </div>
+          )}
 
-        <FadeIn className="mt-12">
-          <Link
-            href="/portfolio"
-            className="inline-flex items-center gap-2 text-[12px] tracking-[0.14em] uppercase border-b border-[var(--ds-ink)] pb-1 hover:text-[var(--ds-gold)] hover:border-[var(--ds-gold)] transition-colors"
-          >
-            View Full Portfolio
-          </Link>
-        </FadeIn>
+          <FadeIn className="mt-12 text-center">
+            <Link
+              href="/portfolio"
+              className="inline-flex items-center gap-2 text-[12px] tracking-[0.14em] uppercase border-b border-[var(--ds-ink)] pb-1 hover:text-[var(--ds-gold)] hover:border-[var(--ds-gold)] transition-colors"
+            >
+              View Full Portfolio
+            </Link>
+          </FadeIn>
+        </div>
       </section>
       )}
 

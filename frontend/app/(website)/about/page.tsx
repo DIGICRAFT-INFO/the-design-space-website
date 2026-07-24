@@ -1,9 +1,10 @@
-import { getAbout, getSeoEntries, resolveSeo } from "@/services/websiteService";
+import { getAbout, getServices, getSeoEntries, resolveSeo } from "@/services/websiteService";
 import { resolveMediaUrl } from "@/lib/media";
 import SplitText from "@/components/website/SplitText";
 import RevealImage from "@/components/website/RevealImage";
 import FadeIn from "@/components/website/FadeIn";
 import HeroSlider from "@/components/website/home/HeroSlider";
+import ServicesMarquee from "@/components/website/about/ServicesMarquee";
 
 export async function generateMetadata() {
   const seo = resolveSeo(await getSeoEntries().catch(() => []), "/about", {
@@ -15,6 +16,7 @@ export async function generateMetadata() {
 
 export default async function AboutPage() {
   const about = await getAbout().catch(() => null);
+  const services = await getServices().catch(() => []);
   const narrative = about?.narrative;
   const gallery = about?.studio_gallery || [];
   const team = (about?.team_members || []).slice().sort((a, b) => a.sort_order - b.sort_order);
@@ -47,7 +49,7 @@ export default async function AboutPage() {
       )}
 
       {/* ── Philosophy / Story ─────────────────────────────────────────── */}
-      <section className={`${useSlider ? "pt-24" : "pt-16"} pb-24 md:pb-32`}>
+      <section className={`${useSlider ? "pt-14" : "pt-12"} pb-14 md:pb-20`}>
         <div className="max-w-[1600px] mx-auto px-6 md:px-10">
           {/* When using slider, show the title here in the body section */}
           {useSlider && (
@@ -110,7 +112,7 @@ export default async function AboutPage() {
       )}
 
       {/* ── Team ─────────────────────────────────────────────────────────── */}
-      <section className="pb-28 md:pb-40">
+      <section className="pb-14 md:pb-20">
         <div className="max-w-[1600px] mx-auto px-6 md:px-10">
           <FadeIn>
             <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-3">The People</p>
@@ -140,6 +142,9 @@ export default async function AboutPage() {
           )}
         </div>
       </section>
+
+      {/* ── Services Marquee ─────────────────────────────────────────────── */}
+      <ServicesMarquee services={services} />
     </>
   );
 }
