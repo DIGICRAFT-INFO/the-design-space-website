@@ -12,53 +12,63 @@ const generate_tokens = (id) => {
 
 // TokenObtainPairView (Login)
 exports.token_obtain_pair = async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
 
-  if (user && (await user.check_password(password))) {
-    // 🚀 SECURITY CHECK: Agar user active nahi hai toh token mat do
-    if (!user.is_active) {
-      return res.status(403).json({ detail: 'Your account is pending approval from the Manager.' });
-    }
-
-    const tokens = generate_tokens(user._id);
-    res.json({
-      ...tokens,
-      user: {
-        id: user._id,
-        email: user.email,
-        full_name: user.full_name,
-        role: user.role,
-        page_access: user.page_access || [],
+    if (user && (await user.check_password(password))) {
+      // 🚀 SECURITY CHECK: Agar user active nahi hai toh token mat do
+      if (!user.is_active) {
+        return res.status(403).json({ detail: 'Your account is pending approval from the Manager.' });
       }
-    });
-  } else {
-    res.status(401).json({ detail: 'No active account found with the given credentials' });
+
+      const tokens = generate_tokens(user._id);
+      res.json({
+        ...tokens,
+        user: {
+          id: user._id,
+          email: user.email,
+          full_name: user.full_name,
+          role: user.role,
+          page_access: user.page_access || [],
+        }
+      });
+    } else {
+      res.status(401).json({ detail: 'No active account found with the given credentials' });
+    }
+  } catch (err) {
+    console.error('token_obtain_pair error:', err.message);
+    res.status(500).json({ detail: 'Internal server error.' });
   }
 };
 
 // RegisterView
 exports.register = async (req, res) => {
-  const { email, full_name, role, password } = req.body;
+  try {
+    const { email, full_name, role, password } = req.body;
 
-  if (!password || password.length < 8) {
-    return res.status(400).json({ password: ['Ensure this field has at least 8 characters.'] });
+    if (!password || password.length < 8) {
+      return res.status(400).json({ password: ['Ensure this field has at least 8 characters.'] });
+    }
+
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ email: ['User with this email already exists.'] });
+    }
+
+    // default property model se is_active: false utha legi
+    const user = await User.create({ email, full_name, role, password });
+    res.status(201).json({
+      id: user._id, 
+      email: user.email, 
+      full_name: user.full_name, 
+      role: user.role,
+      detail: 'Registration successful. Waiting for Manager approval.'
+    });
+  } catch (err) {
+    console.error('register error:', err.message);
+    res.status(500).json({ detail: 'Internal server error.' });
   }
-
-  const userExists = await User.findOne({ email });
-  if (userExists) {
-    return res.status(400).json({ email: ['User with this email already exists.'] });
-  }
-
-  // default property model se is_active: false utha legi
-  const user = await User.create({ email, full_name, role, password });
-  res.status(201).json({
-    id: user._id, 
-    email: user.email, 
-    full_name: user.full_name, 
-    role: user.role,
-    detail: 'Registration successful. Waiting for Manager approval.'
-  });
 };
 
 // MeView
@@ -258,8 +268,13 @@ exports.logout = (req, res) => {
 
 // UserListView (Sirf unhe dikhayega jo already approved hain)
 exports.user_list = async (req, res) => {
-  const users = await User.find({ is_active: true }).sort('full_name').select('-password');
-  res.json(users);
+  try {
+    const users = await User.find({ is_active: true }).sort('full_name').select('-password');
+    res.json(users);
+  } catch (err) {
+    console.error('user_list error:', err.message);
+    res.status(500).json({ detail: 'Internal server error.' });
+  }
 };
 
 

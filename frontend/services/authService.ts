@@ -46,11 +46,26 @@ export async function loginUser(
     body: JSON.stringify(payload),
   });
 
-  const data = await response.json();
-
+  // Bug 8 fix: check response.ok BEFORE calling response.json() so that a
+  // non-JSON body (e.g. HTML 502 gateway error) doesn't throw a raw SyntaxError.
+  // Also extract the most specific error message available from the JSON body.
   if (!response.ok) {
-    throw new Error(data.detail || "Invalid login credentials");
+    let message = "Login failed. Please try again.";
+    try {
+      const errData = await response.json();
+      message =
+        errData.detail ||
+        (Array.isArray(errData.non_field_errors) ? errData.non_field_errors[0] : undefined) ||
+        (Object.values(errData).find((v) => typeof v === "string") as string | undefined) ||
+        response.statusText ||
+        message;
+    } catch {
+      // non-JSON body (e.g. HTML 502) — keep fallback message
+    }
+    throw new Error(message);
   }
+
+  const data = await response.json();
 
   // Store tokens — single canonical key only
   localStorage.setItem("access", data.access);

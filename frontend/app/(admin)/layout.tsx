@@ -270,23 +270,26 @@ export default function DashboardLayout({
 
   // 2. Strict URL Security Check (Pre-render Gate) - Role-based path access
   const checkPathAccess = (): boolean => {
+    // Bug 7 fix: use startsWith instead of includes to prevent false-positive
+    // 403s on nested paths like /dashboard/web-cms/portfolio matching /portfolio.
+
     // Settings: manager/owner/accountant only (not designer)
-    if (pathname.includes("/settings")) {
+    if (pathname.startsWith("/dashboard/settings")) {
       return userRole === "owner" || userRole === "manager" || userRole === "accountant";
     }
 
     // Quotations, Portfolio, Pending Users, Website CMS: manager/owner only
     if (
-      pathname.includes("/quotations") ||
-      pathname.includes("/portfolio") ||
-      pathname.includes("/pending-users") ||
-      pathname.includes("/web-cms")
+      pathname.startsWith("/dashboard/quotations") ||
+      pathname.startsWith("/dashboard/portfolio") ||
+      pathname.startsWith("/dashboard/pending-users") ||
+      pathname.startsWith("/dashboard/web-cms")
     ) {
       return userRole === "owner" || userRole === "manager";
     }
 
     // Invoices, Payments: admin (manager/owner) or accountant
-    if (pathname.includes("/invoices") || pathname.includes("/payments")) {
+    if (pathname.startsWith("/dashboard/invoices") || pathname.startsWith("/dashboard/payments")) {
       return (
         userRole === "owner" ||
         userRole === "manager" ||

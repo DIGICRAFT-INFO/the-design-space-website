@@ -546,7 +546,7 @@ export default function DashboardPage() {
                   <linearGradient id="invoicedGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#C8922A" stopOpacity={0.2} />
                     <stop offset="95%" stopColor="#C8922A" stopOpacity={0} />
-                  </linearGradient>sdf
+                  </linearGradient>
                   <linearGradient id="collectedGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
                     <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
