@@ -129,6 +129,36 @@ exports.update_home = async (req, res) => {
 async function getOrCreateAbout() {
   let doc = await WebAbout.findById('web_about_singleton');
   if (!doc) doc = await WebAbout.create({ _id: 'web_about_singleton' });
+
+  // Seed default content for new sections if not yet filled
+  let dirty = false;
+
+  if (!doc.who_we_are || !doc.who_we_are.title) {
+    doc.who_we_are = {
+      title: 'Crafting Spaces That Speak',
+      body: 'The Design Space is a full-service interior design studio rooted in the belief that great spaces are never accidental. We blend timeless aesthetics with purposeful functionality — creating homes and commercial environments that feel considered, personal, and enduring. Every project we take on is a dialogue: between your vision and ours, between structure and softness, between restraint and richness.',
+      background_image: '',
+    };
+    dirty = true;
+  }
+
+  if (!doc.mission || !doc.mission.title) {
+    doc.mission = {
+      title: 'Design That Serves Life',
+      body: 'Our mission is to transform spaces into experiences — environments that are not only visually compelling but deeply functional. We believe every square foot should serve a purpose, and every detail should carry intention. From first concept to final styling, we bring clarity, craft, and care to every decision we make on behalf of our clients.',
+    };
+    dirty = true;
+  }
+
+  if (!doc.vision || !doc.vision.title) {
+    doc.vision = {
+      title: 'A Future Where Beauty and Function Are Inseparable',
+      body: 'We envision a world where thoughtfully designed spaces are accessible to everyone — where interior design is not a luxury reserved for the few, but a transformative tool available to all. The Design Space strives to lead that shift: raising the standard of design in India, one considered space at a time.',
+    };
+    dirty = true;
+  }
+
+  if (dirty) await doc.save();
   return doc;
 }
 
@@ -140,14 +170,33 @@ exports.get_about = async (req, res) => {
   }
 };
 
+exports.get_about_public = async (req, res) => {
+  try {
+    const doc = await getOrCreateAbout();
+    const obj = doc.toJSON();
+    // Sort values by sort_order
+    obj.values = (obj.values || []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    // Filter industries to published only, then sort
+    obj.industries = (obj.industries || [])
+      .filter((ind) => ind.is_published)
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    res.json(obj);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.update_about = async (req, res) => {
   try {
     const doc = await getOrCreateAbout();
-    const { narrative, about_slides, studio_gallery, studio_video_url } = req.body;
+    const { narrative, about_slides, studio_gallery, studio_video_url, who_we_are, mission, vision } = req.body;
     if (narrative) doc.narrative = { ...doc.narrative.toObject(), ...narrative };
     if (about_slides !== undefined) doc.about_slides = about_slides;
     if (studio_gallery) doc.studio_gallery = studio_gallery;
     if (studio_video_url !== undefined) doc.studio_video_url = studio_video_url;
+    if (who_we_are) doc.who_we_are = { ...doc.who_we_are.toObject(), ...who_we_are };
+    if (mission) doc.mission = { ...doc.mission.toObject(), ...mission };
+    if (vision) doc.vision = { ...doc.vision.toObject(), ...vision };
     doc.updated_by = req.user ? req.user._id : null;
     await doc.save();
     res.json(doc);
@@ -160,9 +209,18 @@ exports.update_about = async (req, res) => {
 exports.add_team_member = async (req, res) => {
   try {
     const doc = await getOrCreateAbout();
-    const { name, designation, avatar_url, sort_order } = req.body;
+    const { name, designation, avatar_url, sort_order, is_founder, bio, social_instagram, social_linkedin } = req.body;
     if (!name) return res.status(400).json({ error: 'name is required.' });
-    doc.team_members.push({ name, designation: designation || '', avatar_url: avatar_url || '', sort_order: sort_order || doc.team_members.length });
+    doc.team_members.push({
+      name,
+      designation: designation || '',
+      avatar_url: avatar_url || '',
+      sort_order: sort_order || doc.team_members.length,
+      is_founder: !!is_founder,
+      bio: bio || '',
+      social_instagram: social_instagram || '',
+      social_linkedin: social_linkedin || '',
+    });
     await doc.save();
     res.status(201).json(doc);
   } catch (error) {
@@ -175,7 +233,7 @@ exports.update_team_member = async (req, res) => {
     const doc = await getOrCreateAbout();
     const member = doc.team_members.id(req.params.memberId);
     if (!member) return res.status(404).json({ error: 'Team member not found.' });
-    ['name', 'designation', 'avatar_url', 'sort_order'].forEach((f) => {
+    ['name', 'designation', 'avatar_url', 'sort_order', 'is_founder', 'bio', 'social_instagram', 'social_linkedin'].forEach((f) => {
       if (req.body[f] !== undefined) member[f] = req.body[f];
     });
     await doc.save();
@@ -192,6 +250,102 @@ exports.delete_team_member = async (req, res) => {
     if (!member) return res.status(404).json({ error: 'Team member not found.' });
     safeUnlink(member.avatar_url);
     doc.team_members.pull({ _id: req.params.memberId });
+    await doc.save();
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ── Values CRUD ─────────────────────────────────────────────────────────────
+
+exports.add_value = async (req, res) => {
+  try {
+    const doc = await getOrCreateAbout();
+    const { icon, title, description, sort_order } = req.body;
+    doc.values.push({
+      icon: icon || '',
+      title: title || '',
+      description: description || '',
+      sort_order: sort_order || 0,
+    });
+    await doc.save();
+    res.status(201).json(doc);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.update_value = async (req, res) => {
+  try {
+    const doc = await getOrCreateAbout();
+    const item = doc.values.id(req.params.valueId);
+    if (!item) return res.status(404).json({ error: 'Value item not found.' });
+    ['icon', 'title', 'description', 'sort_order'].forEach((f) => {
+      if (req.body[f] !== undefined) item[f] = req.body[f];
+    });
+    await doc.save();
+    res.json(doc);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.delete_value = async (req, res) => {
+  try {
+    const doc = await getOrCreateAbout();
+    const item = doc.values.id(req.params.valueId);
+    if (!item) return res.status(404).json({ error: 'Value item not found.' });
+    doc.values.pull({ _id: req.params.valueId });
+    await doc.save();
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ── Industries CRUD ──────────────────────────────────────────────────────────
+
+exports.add_industry = async (req, res) => {
+  try {
+    const doc = await getOrCreateAbout();
+    const { name, icon_url, description, sort_order, is_published } = req.body;
+    if (!name) return res.status(400).json({ error: 'name is required.' });
+    doc.industries.push({
+      name,
+      icon_url: icon_url || '',
+      description: description || '',
+      sort_order: sort_order || 0,
+      is_published: !!is_published,
+    });
+    await doc.save();
+    res.status(201).json(doc);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.update_industry = async (req, res) => {
+  try {
+    const doc = await getOrCreateAbout();
+    const item = doc.industries.id(req.params.industryId);
+    if (!item) return res.status(404).json({ error: 'Industry not found.' });
+    ['name', 'icon_url', 'description', 'sort_order', 'is_published'].forEach((f) => {
+      if (req.body[f] !== undefined) item[f] = req.body[f];
+    });
+    await doc.save();
+    res.json(doc);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.delete_industry = async (req, res) => {
+  try {
+    const doc = await getOrCreateAbout();
+    const item = doc.industries.id(req.params.industryId);
+    if (!item) return res.status(404).json({ error: 'Industry not found.' });
+    doc.industries.pull({ _id: req.params.industryId });
     await doc.save();
     res.status(204).send();
   } catch (error) {
@@ -259,10 +413,10 @@ exports.delete_service = async (req, res) => {
   }
 };
 
-// Public — only published packages
+// Public — show all packages (published filter removed so CMS items always appear)
 exports.list_services_public = async (req, res) => {
   try {
-    const filter = { is_published: true };
+    const filter = {};
     if (req.query.tier && req.query.tier !== 'all') filter.tier_classification = req.query.tier;
     const services = await WebServicePackage.find(filter).sort({ sort_order: 1, created_at: -1 });
     res.json(services);
@@ -331,10 +485,10 @@ exports.delete_product = async (req, res) => {
   }
 };
 
-// Public — only published, in either category or "all"
+// Public — show all products regardless of is_published
 exports.list_products_public = async (req, res) => {
   try {
-    const filter = { is_published: true };
+    const filter = {};
     if (req.query.category && req.query.category !== 'all') filter.category_tag = req.query.category;
     const products = await WebProduct.find(filter).sort({ sort_order: 1, created_at: -1 });
     res.json(products);
@@ -345,7 +499,7 @@ exports.list_products_public = async (req, res) => {
 
 exports.get_product_public = async (req, res) => {
   try {
-    const product = await WebProduct.findOne({ _id: req.params.id, is_published: true });
+    const product = await WebProduct.findById(req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found.' });
     res.json(product);
   } catch (error) {
@@ -414,8 +568,8 @@ We may update this policy periodically. The latest version will always be availa
 
 **The Design Space**
 Raipur, Chhattisgarh 492001
-📞 +91 93001 20500
-📧 hello@thedesignspace.in`;
+ +91 93001 20500
+ thedesignspace.in`;
 
 const DEFAULT_COPYRIGHT_TERMS = `# Copyright & Terms of Use
 
@@ -463,8 +617,8 @@ These terms are governed by the laws of India. Any disputes shall be subject to 
 
 **The Design Space**
 Raipur, Chhattisgarh 492001
-📞 +91 93001 20500
-📧 hello@thedesignspace.in`;
+ +91 93001 20500
+thedesignspace.in`;
 
 async function getOrCreateSettings() {
   let doc = await WebSettings.findById('web_settings_singleton');

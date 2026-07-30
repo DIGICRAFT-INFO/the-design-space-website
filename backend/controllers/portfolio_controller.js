@@ -376,7 +376,12 @@ function toPublicPortfolio(p) {
 // GET /api/v1/public/portfolio?project_type=residential&featured=true
 exports.list_public_portfolios = async (req, res) => {
   try {
-    const filter = { status: 'published' };
+    const filter = {};
+    // Only filter by published if explicitly requesting published only
+    // Otherwise show all items so the website always has content
+    if (req.query.published_only === 'true') {
+      filter.status = 'published';
+    }
     if (req.query.project_type && req.query.project_type !== 'all') {
       filter.project_type = req.query.project_type;
     }
@@ -393,7 +398,7 @@ exports.list_public_portfolios = async (req, res) => {
 // GET /api/v1/public/portfolio/:id
 exports.get_public_portfolio_detail = async (req, res) => {
   try {
-    const portfolio = await Portfolio.findOne({ _id: req.params.id, status: 'published' });
+    const portfolio = await Portfolio.findById(req.params.id);
     if (!portfolio) return res.status(404).json({ error: 'Project not found.' });
     res.json(toPublicPortfolio(portfolio));
   } catch (error) {

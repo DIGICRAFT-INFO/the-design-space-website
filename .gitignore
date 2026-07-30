@@ -39,3 +39,15 @@ Thumbs.db
 
 # Coverage
 **/coverage/
+
+# Deploy archives
+frontend_deploy.zip
+backend_deploy.zip
+*.deploy.zip
+
+# Environment variables — never commit secrets
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local

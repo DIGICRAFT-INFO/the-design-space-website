@@ -6,6 +6,8 @@ import type {
   WebProduct,
   WebSettings,
   TeamMember,
+  ValueItem,
+  IndustryItem,
   WebBlogPost,
   WebCareerJob,
   WebPortfolioCategory,
@@ -108,6 +110,24 @@ export const updateTeamMember = (id: string, data: Partial<TeamMember>) =>
   req<WebAbout>(`${CMS_URL}/about/team/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 export const deleteTeamMember = (id: string) =>
   req<void>(`${CMS_URL}/about/team/${id}`, { method: "DELETE" });
+
+// ─── About — Values ─────────────────────────────────────────────────────────
+
+export const addValue = (data: Partial<ValueItem>) =>
+  req<WebAbout>(`${CMS_URL}/about/values`, { method: "POST", body: JSON.stringify(data) });
+export const updateValue = (id: string, data: Partial<ValueItem>) =>
+  req<WebAbout>(`${CMS_URL}/about/values/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+export const deleteValue = (id: string) =>
+  req<void>(`${CMS_URL}/about/values/${id}`, { method: "DELETE" });
+
+// ─── About — Industries ──────────────────────────────────────────────────────
+
+export const addIndustry = (data: Partial<IndustryItem>) =>
+  req<WebAbout>(`${CMS_URL}/about/industries`, { method: "POST", body: JSON.stringify(data) });
+export const updateIndustry = (id: string, data: Partial<IndustryItem>) =>
+  req<WebAbout>(`${CMS_URL}/about/industries/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+export const deleteIndustry = (id: string) =>
+  req<void>(`${CMS_URL}/about/industries/${id}`, { method: "DELETE" });
 
 // ─── Services (packages) ───────────────────────────────────────────────────
 

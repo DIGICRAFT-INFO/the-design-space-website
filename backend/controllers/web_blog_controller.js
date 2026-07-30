@@ -100,11 +100,10 @@ exports.delete_blog_post = async (req, res) => {
 
 exports.list_blog_public = async (req, res) => {
   try {
-    const filter = { status: 'published' };
+    const filter = {};
     if (req.query.category && req.query.category !== 'all') filter.category = req.query.category;
     const limit = req.query.limit ? Math.min(Number(req.query.limit), 50) : 0;
-    let query = WebBlog.find(filter).sort({ published_at: -1 });
-    const posts = await query;
+    const posts = await WebBlog.find(filter).sort({ created_at: -1 });
     res.json(limit ? posts.slice(0, limit) : posts);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -113,7 +112,7 @@ exports.list_blog_public = async (req, res) => {
 
 exports.get_blog_post_public = async (req, res) => {
   try {
-    const post = await WebBlog.findOne({ slug: req.params.slug, status: 'published' });
+    const post = await WebBlog.findOne({ slug: req.params.slug });
     if (!post) return res.status(404).json({ error: 'Post not found.' });
     res.json(post);
   } catch (error) {

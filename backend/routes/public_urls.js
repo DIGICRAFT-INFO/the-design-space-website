@@ -10,7 +10,7 @@ const handleUpload = require('../middleware/handleUpload');
 
 // Content reads — no auth, published-only data
 router.get('/home', webCmsController.get_home);
-router.get('/about', webCmsController.get_about);
+router.get('/about', webCmsController.get_about_public);
 router.get('/services', webCmsController.list_services_public);
 router.get('/products', webCmsController.list_products_public);
 router.get('/products/:id', webCmsController.get_product_public);

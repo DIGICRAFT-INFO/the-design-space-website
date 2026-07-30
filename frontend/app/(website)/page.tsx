@@ -95,18 +95,18 @@ export default async function HomePage() {
             <SplitText
               text={hero?.main_title || "We Design Your Luxury Space"}
               as="h1"
-              className="text-white font-light tracking-tight text-5xl lg:text-8xl max-w-4xl"
+              className="text-white font-light tracking-tight text-3xl sm:text-5xl lg:text-7xl xl:text-8xl max-w-4xl"
               style={{ fontFamily: "var(--font-display)" }}
             />
-            <FadeIn delay={0.7} className="max-w-xl mt-6 flex flex-col sm:flex-row sm:items-center gap-6">
-              <p className="text-base text-white/80 leading-relaxed">
+            <FadeIn delay={0.7} className="max-w-xl mt-4 md:mt-6 flex flex-col sm:flex-row sm:items-center gap-4 md:gap-6">
+              <p className="text-sm md:text-base text-white/80 leading-relaxed">
                 {hero?.subtitle || "Bespoke interiors for those who see home as an art form."}
               </p>
               <MagneticButton
                 as="a"
                 href={hero?.cta_link || "/portfolio"}
                 data-cursor="View"
-                className="shrink-0 inline-flex items-center gap-2 px-6 py-3.5 bg-white text-[#1C1C1C] rounded-full text-[11px] tracking-[0.14em] uppercase font-medium"
+                className="shrink-0 inline-flex items-center gap-2 px-5 md:px-6 py-3 md:py-3.5 bg-white text-[#1C1C1C] rounded-full text-[11px] tracking-[0.14em] uppercase font-medium"
               >
                 {hero?.cta_label || "Explore Spaces"}
               </MagneticButton>
@@ -146,9 +146,9 @@ export default async function HomePage() {
           </FadeIn>
 
           {gridCards.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-2 gap-4 md:gap-6 lg:h-[90vh]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 lg:h-[88vh]">
               {gridCards.map((card, i) => (
-                <div key={card.id} className={`relative group aspect-[4/5] lg:aspect-auto rounded-2xl overflow-hidden shadow-md ${card.span}`}>
+                <div key={card.id} className={`relative group aspect-[4/3] sm:aspect-[4/4] lg:aspect-auto rounded-xl overflow-hidden shadow-md ${card.span}`}>
                   <RevealImage
                     src={card.image || "/logo.png"}
                     alt={card.title}
@@ -157,7 +157,7 @@ export default async function HomePage() {
                     className="absolute inset-0"
                     imgClassName="transition-transform duration-700 group-hover:scale-105"
                   />
-                  <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                  <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                     <p className="text-white text-sm font-medium tracking-wide">{card.title}</p>
                   </div>
                 </div>

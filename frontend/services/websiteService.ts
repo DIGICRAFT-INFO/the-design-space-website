@@ -60,12 +60,33 @@ export type WebHome = {
   };
 };
 
+export type ValueItem = {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+  sort_order: number;
+};
+
+export type IndustryItem = {
+  id: string;
+  name: string;
+  icon_url: string;
+  description: string;
+  sort_order: number;
+  is_published: boolean;
+};
+
 export type TeamMember = {
   id: string;
   name: string;
   designation: string;
   avatar_url: string;
   sort_order: number;
+  is_founder: boolean;
+  bio: string;
+  social_instagram: string;
+  social_linkedin: string;
 };
 
 export type WebAbout = {
@@ -80,6 +101,11 @@ export type WebAbout = {
   studio_gallery: { id: string; file_url: string; caption: string; sort_order: number }[];
   studio_video_url: string;
   team_members: TeamMember[];
+  who_we_are: { title: string; body: string; background_image: string };
+  mission: { title: string; body: string };
+  vision: { title: string; body: string };
+  values: ValueItem[];
+  industries: IndustryItem[];
 };
 
 export type WebServicePackage = {

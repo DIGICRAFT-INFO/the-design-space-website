@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { resolveMediaUrl } from "@/lib/media";
+import ZoomableImage from "@/components/website/ZoomableImage";
 import type { WebServicePackage } from "@/services/websiteService";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -74,11 +75,13 @@ export default function ServicesList({ packages }: { packages: WebServicePackage
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.4, ease: EASE }}
                 >
-                  {pkg.cover_image && (
-                    <div className="aspect-[4/3] rounded-sm overflow-hidden mb-6">
-                      <img src={resolveMediaUrl(pkg.cover_image)} alt={pkg.package_name} className="w-full h-full object-cover" />
-                    </div>
-                  )}
+                  <div className="aspect-[4/3] rounded-sm overflow-hidden mb-6">
+                    <ZoomableImage
+                      src={resolveMediaUrl(pkg.cover_image) || "/logo.png"}
+                      alt={pkg.package_name}
+                      className="w-full h-full"
+                    />
+                  </div>
                   <PackageBody pkg={pkg} />
                 </motion.div>
               )
@@ -92,6 +95,14 @@ export default function ServicesList({ packages }: { packages: WebServicePackage
 function PackageBody({ pkg }: { pkg: WebServicePackage }) {
   return (
     <div className="pb-8 lg:pb-0">
+      {/* Image — visible on mobile only (desktop shows it above in the panel) */}
+      <div className="aspect-[4/3] rounded-sm overflow-hidden mb-5 lg:hidden">
+        <ZoomableImage
+          src={resolveMediaUrl(pkg.cover_image) || "/logo.png"}
+          alt={pkg.package_name}
+          className="w-full h-full"
+        />
+      </div>
       <p className="text-sm md:text-base text-[var(--ds-ink-soft)] leading-relaxed mb-4">{pkg.scope_summary}</p>
       {pkg.highlights?.length > 0 && (
         <ul className="space-y-2 mb-6">

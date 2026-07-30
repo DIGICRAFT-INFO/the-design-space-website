@@ -21,7 +21,7 @@ export default async function BlogPage() {
           <SplitText
             text="Design Notes & Studio Insights"
             as="h1"
-            className="text-4xl md:text-6xl lg:text-7xl font-light tracking-tight max-w-3xl"
+            className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-light tracking-tight max-w-3xl"
             style={{ fontFamily: "var(--font-display)" }}
           />
         </div>

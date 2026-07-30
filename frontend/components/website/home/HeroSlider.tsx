@@ -93,7 +93,7 @@ export default function HeroSlider({ slides, autoPlayInterval = 5000 }: Props) {
       </AnimatePresence>
 
       {/* Content overlay */}
-      <div className="relative z-10 max-w-[1600px] w-full mx-auto px-6 md:px-10 pb-16 md:pb-20">
+      <div className="relative z-10 max-w-[1600px] w-full mx-auto px-5 md:px-10 pb-20 md:pb-24 pt-20">
         <AnimatePresence mode="wait">
           <motion.div
             key={`content-${activeSlide.id}`}
@@ -110,11 +110,11 @@ export default function HeroSlider({ slides, autoPlayInterval = 5000 }: Props) {
             <SplitText
               text={activeSlide.main_title}
               as="h1"
-              className="text-white font-light tracking-tight text-5xl lg:text-8xl max-w-4xl"
+              className="text-white font-light tracking-tight text-3xl sm:text-5xl lg:text-7xl xl:text-8xl max-w-4xl"
               style={{ fontFamily: "var(--font-display)" }}
             />
-            <FadeIn delay={0.7} className="max-w-xl mt-6 flex flex-col sm:flex-row sm:items-center gap-6">
-              <p className="text-base text-white/80 leading-relaxed">
+            <FadeIn delay={0.7} className="max-w-xl mt-4 md:mt-6 flex flex-col sm:flex-row sm:items-center gap-4 md:gap-6">
+              <p className="text-sm md:text-base text-white/80 leading-relaxed">
                 {activeSlide.subtitle}
               </p>
               {activeSlide.cta_label && activeSlide.cta_link && (
@@ -122,7 +122,7 @@ export default function HeroSlider({ slides, autoPlayInterval = 5000 }: Props) {
                   as="a"
                   href={activeSlide.cta_link}
                   data-cursor="View"
-                  className="shrink-0 inline-flex items-center gap-2 px-6 py-3.5 bg-white text-[#1C1C1C] rounded-full text-[11px] tracking-[0.14em] uppercase font-medium"
+                  className="shrink-0 inline-flex items-center gap-2 px-5 md:px-6 py-3 md:py-3.5 bg-white text-[#1C1C1C] rounded-full text-[11px] tracking-[0.14em] uppercase font-medium"
                 >
                   {activeSlide.cta_label}
                 </MagneticButton>
@@ -132,32 +132,32 @@ export default function HeroSlider({ slides, autoPlayInterval = 5000 }: Props) {
         </AnimatePresence>
       </div>
 
-      {/* Arrow buttons */}
-      {totalSlides > 1 && (
-        <>
-          {/* Left arrow */}
-          <motion.button
-            onClick={goToPrev}
-            whileHover={{ scale: 1.1, x: -4 }}
-            whileTap={{ scale: 0.95 }}
-            className="absolute left-6 md:left-10 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-            aria-label="Previous slide"
-          >
-            <ChevronLeft size={24} />
-          </motion.button>
+          {/* Arrow buttons — smaller on mobile */}
+          {totalSlides > 1 && (
+            <>
+              <motion.button
+                onClick={goToPrev}
+                whileHover={{ scale: 1.1, x: -4 }}
+                whileTap={{ scale: 0.95 }}
+                className="absolute left-3 md:left-10 top-1/2 -translate-y-1/2 z-20 w-9 h-9 md:w-12 md:h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft size={18} className="md:hidden" />
+                <ChevronLeft size={24} className="hidden md:block" />
+              </motion.button>
 
-          {/* Right arrow */}
-          <motion.button
-            onClick={goToNext}
-            whileHover={{ scale: 1.1, x: 4 }}
-            whileTap={{ scale: 0.95 }}
-            className="absolute right-6 md:right-10 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-            aria-label="Next slide"
-          >
-            <ChevronRight size={24} />
-          </motion.button>
-        </>
-      )}
+              <motion.button
+                onClick={goToNext}
+                whileHover={{ scale: 1.1, x: 4 }}
+                whileTap={{ scale: 0.95 }}
+                className="absolute right-3 md:right-10 top-1/2 -translate-y-1/2 z-20 w-9 h-9 md:w-12 md:h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                aria-label="Next slide"
+              >
+                <ChevronRight size={18} className="md:hidden" />
+                <ChevronRight size={24} className="hidden md:block" />
+              </motion.button>
+            </>
+          )}
 
       {/* Dot indicators */}
       {totalSlides > 1 && (

@@ -19,6 +19,70 @@ const galleryImageSchema = new mongoose.Schema(
   }
 );
 
+const whoWeAreSchema = new mongoose.Schema(
+  {
+    title:            { type: String, default: '', maxLength: 200 },
+    body:             { type: String, default: '' },
+    background_image: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
+const missionSchema = new mongoose.Schema(
+  {
+    title: { type: String, default: '', maxLength: 200 },
+    body:  { type: String, default: '' },
+  },
+  { _id: false }
+);
+
+const visionSchema = new mongoose.Schema(
+  {
+    title: { type: String, default: '', maxLength: 200 },
+    body:  { type: String, default: '' },
+  },
+  { _id: false }
+);
+
+const valueItemSchema = new mongoose.Schema(
+  {
+    _id:         { type: String, default: uuidv4 },
+    icon:        { type: String, default: '' },
+    title:       { type: String, default: '', maxLength: 200 },
+    description: { type: String, default: '' },
+    sort_order:  { type: Number, default: 0 },
+  },
+  {
+    _id: true,
+    toJSON: {
+      transform: (doc, ret) => {
+        ret.id = ret._id;
+        delete ret._id;
+      },
+    },
+  }
+);
+
+const industryItemSchema = new mongoose.Schema(
+  {
+    _id:          { type: String, default: uuidv4 },
+    name:         { type: String, required: true, maxLength: 200 },
+    icon_url:     { type: String, default: '' },
+    description:  { type: String, default: '' },
+    sort_order:   { type: Number, default: 0 },
+    is_published: { type: Boolean, default: false },
+  },
+  {
+    _id: true,
+    toJSON: {
+      transform: (doc, ret) => {
+        ret.id = ret._id;
+        delete ret._id;
+      },
+    },
+  }
+);
+
 const teamMemberSchema = new mongoose.Schema(
   {
     _id: { type: String, default: uuidv4 },
@@ -26,6 +90,10 @@ const teamMemberSchema = new mongoose.Schema(
     designation: { type: String, default: '', maxLength: 200 },
     avatar_url: { type: String, default: '' },
     sort_order: { type: Number, default: 0 },
+    is_founder:       { type: Boolean, default: false },
+    bio:              { type: String, default: '' },
+    social_instagram: { type: String, default: '' },
+    social_linkedin:  { type: String, default: '' },
   },
   {
     _id: true,
@@ -67,6 +135,13 @@ const webAboutSchema = new mongoose.Schema(
 
     studio_gallery: [galleryImageSchema],
     studio_video_url: { type: String, default: '' },
+
+    who_we_are: { type: whoWeAreSchema, default: () => ({}) },
+    mission:    { type: missionSchema,  default: () => ({}) },
+    vision:     { type: visionSchema,   default: () => ({}) },
+
+    values:     [valueItemSchema],
+    industries: [industryItemSchema],
 
     team_members: [teamMemberSchema],
 

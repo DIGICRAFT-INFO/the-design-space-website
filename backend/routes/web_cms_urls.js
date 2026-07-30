@@ -37,6 +37,18 @@ router.route('/about/team/:memberId')
   .patch(controller.update_team_member)
   .delete(controller.delete_team_member);
 
+router.post('/about/values', controller.add_value);
+router.route('/about/values/:valueId')
+  .patch(controller.update_value)
+  .put(controller.update_value)
+  .delete(controller.delete_value);
+
+router.post('/about/industries', controller.add_industry);
+router.route('/about/industries/:industryId')
+  .patch(controller.update_industry)
+  .put(controller.update_industry)
+  .delete(controller.delete_industry);
+
 // ── Services (packages CRUD) ───────────────────────────────────────────────
 router.route('/services')
   .get(controller.list_services_admin)

@@ -179,63 +179,86 @@ export default function Navbar() {
         </motion.div>
       </motion.header>
 
-      {/* Mobile menu */}
+      {/* Mobile menu — compact dropdown panel */}
       <AnimatePresence>
         {menuOpen && (
-          <motion.div
-            initial={{ clipPath: "circle(0% at calc(100% - 40px) 38px)" }}
-            animate={{ clipPath: "circle(150% at calc(100% - 40px) 38px)" }}
-            exit={{ clipPath: "circle(0% at calc(100% - 40px) 38px)" }}
-            transition={{ duration: 0.7, ease: EASE }}
-            className="fixed inset-0 z-40 bg-[var(--ds-bg)] flex flex-col justify-center px-8 lg:hidden"
-          >
-            <nav className="flex flex-col gap-1">
-              {NAV_LINKS.map((link, i) => {
-                const active = pathname === link.href;
-                return (
-                  <motion.div
-                    key={link.href}
-                    initial={{ y: 50, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 30, opacity: 0 }}
-                    transition={{ duration: 0.6, ease: EASE, delay: 0.15 + i * 0.06 }}
-                    className="overflow-hidden"
-                  >
-                    <Link
-                      href={link.href}
-                      className={`group flex items-baseline gap-3 py-3 text-4xl sm:text-5xl font-semibold tracking-tight transition-colors ${
-                        active ? "text-[var(--ds-gold)]" : "text-[var(--ds-ink)]"
-                      }`}
-                      style={{ fontFamily: "var(--font-display)" }}
-                    >
-                      <span className="text-xs font-sans font-semibold tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
-                      <span className="group-hover:translate-x-2 transition-transform duration-300 inline-block">
-                        {link.label}
-                      </span>
-                    </Link>
-                  </motion.div>
-                );
-              })}
-            </nav>
-
+          <>
+            {/* Backdrop */}
             <motion.div
-              initial={{ y: 30, opacity: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm lg:hidden"
+              onClick={() => setMenuOpen(false)}
+            />
+
+            {/* Drawer panel — slides down from top under header */}
+            <motion.div
+              initial={{ y: -12, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 20, opacity: 0 }}
-              transition={{ duration: 0.6, ease: EASE, delay: 0.15 + NAV_LINKS.length * 0.06 }}
-              className="mt-10 flex items-center gap-4"
+              exit={{ y: -12, opacity: 0 }}
+              transition={{ duration: 0.3, ease: EASE }}
+              className={`fixed inset-x-0 z-40 lg:hidden bg-[var(--ds-bg)]/95 backdrop-blur-xl border-b border-[var(--ds-border)] shadow-xl ${
+                scrolled ? "top-[66px]" : "top-[76px]"
+              }`}
             >
-              <Link
-                href="/contact"
-                className="inline-flex items-center gap-2 px-6 py-3 border border-[var(--ds-ink)] text-[11px] tracking-[0.14em] uppercase font-semibold text-[var(--ds-ink)] rounded-full"
-              >
-                Enquire <ArrowUpRight size={14} />
-              </Link>
-              <ThemeToggle />
+              <div className="max-w-[1600px] mx-auto px-5 py-4">
+                {/* Nav links */}
+                <nav className="grid grid-cols-2 gap-1">
+                  {NAV_LINKS.map((link, i) => {
+                    const active = pathname === link.href;
+                    return (
+                      <motion.div
+                        key={link.href}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 4 }}
+                        transition={{ duration: 0.25, ease: EASE, delay: i * 0.04 }}
+                      >
+                        <Link
+                          href={link.href}
+                          className={`group flex items-center gap-2.5 px-3 py-3 rounded-xl text-[13px] font-semibold tracking-wide transition-all ${
+                            active
+                              ? "bg-[var(--ds-gold)]/10 text-[var(--ds-gold)]"
+                              : "text-[var(--ds-ink)] hover:bg-[var(--ds-ink)]/[0.05] hover:text-[var(--ds-gold)]"
+                          }`}
+                        >
+                          <span className={`text-[10px] font-bold tracking-widest tabular-nums ${active ? "opacity-60" : "opacity-30 group-hover:opacity-60"} transition-opacity`}>
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          <span>{link.label}</span>
+                          {active && (
+                            <motion.span
+                              layoutId="mobile-active-dot"
+                              className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--ds-gold)]"
+                            />
+                          )}
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </nav>
+
+                {/* Bottom row */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                  className="mt-3 pt-3 border-t border-[var(--ds-border)] flex items-center justify-between"
+                >
+                  <Link
+                    href="/contact"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--ds-gold)] text-white text-[11px] tracking-[0.12em] uppercase font-bold rounded-full hover:bg-[var(--ds-gold)]/90 transition-colors"
+                  >
+                    Enquire <ArrowUpRight size={13} />
+                  </Link>
+                  <ThemeToggle />
+                </motion.div>
+              </div>
             </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>

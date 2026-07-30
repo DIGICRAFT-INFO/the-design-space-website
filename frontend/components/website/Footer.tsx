@@ -24,16 +24,16 @@ export default function Footer({ settings }: { settings?: WebSettings | null }) 
 
   return (
     <footer className="bg-[var(--ds-bg-alt)] border-t border-[var(--ds-border)] text-[var(--ds-ink)]">
-      <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-16 grid grid-cols-1 md:grid-cols-5 gap-12">
-        <div className="md:col-span-2">
-          <div className="flex items-center gap-2 mb-5">
-            <img src="/TheDesignSpace_Navbarlogo.png" alt="The Design Space Logo" className="h-14 w-auto object-contain" />
+      <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-14 md:py-16 grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12">
+        <div className="col-span-2">
+          <div className="flex items-center gap-2 mb-4">
+            <img src="/TheDesignSpace_Navbarlogo.png" alt="The Design Space Logo" className="h-12 md:h-14 w-auto object-contain" />
           </div>
-          <p className="max-w-sm text-sm leading-relaxed text-[var(--ds-ink-soft)]">
+          <p className="max-w-xs text-sm leading-relaxed text-[var(--ds-ink-soft)]">
             {settings?.footer_text ||
               "Bespoke interior design for residences and commercial spaces that favour quiet, considered luxury over noise."}
           </p>
-          <div className="flex items-center gap-4 mt-6">
+          <div className="flex items-center gap-4 mt-5">
             {social?.instagram && (
               <a href={social.instagram} target="_blank" rel="noreferrer" aria-label="Instagram" className="hover:text-[var(--ds-gold)] transition-colors">
                 <FaInstagram size={16} />
@@ -52,9 +52,9 @@ export default function Footer({ settings }: { settings?: WebSettings | null }) 
           </div>
         </div>
 
-        <div>
-          <p className="text-[11px] tracking-[0.18em] uppercase text-[var(--ds-ink-soft)] mb-4">Navigate</p>
-          <ul className="space-y-2.5">
+        <div className="col-span-1">
+          <p className="text-[11px] tracking-[0.18em] uppercase text-[var(--ds-ink-soft)] mb-3 md:mb-4">Navigate</p>
+          <ul className="space-y-2">
             {NAV_LINKS.map((l) => (
               <li key={l.href}>
                 <Link href={l.href} className="text-sm hover:text-[var(--ds-gold)] transition-colors">
@@ -65,9 +65,9 @@ export default function Footer({ settings }: { settings?: WebSettings | null }) 
           </ul>
         </div>
 
-        <div>
-          <p className="text-[11px] tracking-[0.18em] uppercase text-[var(--ds-ink-soft)] mb-4">More</p>
-          <ul className="space-y-2.5">
+        <div className="col-span-1">
+          <p className="text-[11px] tracking-[0.18em] uppercase text-[var(--ds-ink-soft)] mb-3 md:mb-4">More</p>
+          <ul className="space-y-2">
             {MORE_LINKS.map((l) => (
               <li key={l.href}>
                 <Link href={l.href} className="text-sm hover:text-[var(--ds-gold)] transition-colors">
@@ -78,10 +78,10 @@ export default function Footer({ settings }: { settings?: WebSettings | null }) 
           </ul>
         </div>
 
-        <div>
-          <p className="text-[11px] tracking-[0.18em] uppercase text-[var(--ds-ink-soft)] mb-4">Studio</p>
-          <ul className="space-y-2.5 text-sm text-[var(--ds-ink-soft)]">
-            {contact?.office_address && <li>{contact.office_address}</li>}
+        <div className="col-span-2 md:col-span-1">
+          <p className="text-[11px] tracking-[0.18em] uppercase text-[var(--ds-ink-soft)] mb-3 md:mb-4">Studio</p>
+          <ul className="space-y-2 text-sm text-[var(--ds-ink-soft)]">
+            {contact?.office_address && <li className="leading-relaxed">{contact.office_address}</li>}
             {contact?.phone && (
               <li>
                 <a href={`tel:${contact.phone}`} className="hover:text-[var(--ds-gold)] transition-colors">
@@ -91,7 +91,7 @@ export default function Footer({ settings }: { settings?: WebSettings | null }) 
             )}
             {contact?.email && (
               <li>
-                <a href={`mailto:${contact.email}`} className="hover:text-[var(--ds-gold)] transition-colors">
+                <a href={`mailto:${contact.email}`} className="hover:text-[var(--ds-gold)] transition-colors break-all">
                   {contact.email}
                 </a>
               </li>
@@ -102,9 +102,9 @@ export default function Footer({ settings }: { settings?: WebSettings | null }) 
       </div>
 
       <div className="border-t border-[var(--ds-border)]">
-        <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] tracking-[0.08em] text-[var(--ds-ink-soft)]">
+        <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-4 md:py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] tracking-[0.08em] text-[var(--ds-ink-soft)]">
           <span>© {year} The Design Space. All rights reserved.</span>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4 md:gap-5">
             <Link href="/privacy-policy" className="hover:text-[var(--ds-gold)] transition-colors">Privacy Policy</Link>
             <Link href="/copyright" className="hover:text-[var(--ds-gold)] transition-colors">Copyright & Terms</Link>
           </div>
