@@ -25,16 +25,21 @@ const inAppNotificationSchema = new mongoose.Schema(
         'proposal_sent',
         'proposal_accepted',
         'proposal_rejected',
-        // Project (BUG FIX: was missing)
+        // Project
         'project_created',
         'project_status_changed',
-        // Master Service (BUG FIX: was missing)
+        // Master Service
         'service_created',
-        // Portfolio (BUG FIX: was missing)
+        // Portfolio
         'portfolio_created',
         // Enquiry
         'enquiry_received',
         'career_application_received',
+        // Access Control / RBAC
+        'user_created',
+        'access_granted',
+        'access_revoked',
+        'access_updated',
       ],
       required: true
     },

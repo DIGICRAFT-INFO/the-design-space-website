@@ -16,6 +16,7 @@ import {
   FileText,
   Receipt,
   ShieldCheck,
+  UserCircle,
 } from "lucide-react";
 import { TbLayoutDashboard } from "react-icons/tb";
 import { FcServices } from "react-icons/fc";
@@ -249,10 +250,66 @@ export default function DashboardLayout({
       } else {
         setUserAvatar(null);
       }
+      // Update page_access if present
+      if (Array.isArray(user.page_access)) {
+        setPageAccess(user.page_access);
+        try {
+          const stored = JSON.parse(localStorage.getItem("user") || "{}");
+          localStorage.setItem("user", JSON.stringify({ ...stored, ...user }));
+        } catch { /* ignore */ }
+      }
     };
     window.addEventListener("profile-updated", handleProfileUpdated);
     return () => window.removeEventListener("profile-updated", handleProfileUpdated);
   }, []);
+
+  // Real-time revocation: poll /rbac/my-access/ on mount + every route change
+  // If the server returns 401 (revoked) → clear storage → redirect to login
+  useEffect(() => {
+    if (!authChecked) return;
+    const token = localStorage.getItem("access") || localStorage.getItem("token");
+    if (!token) return;
+
+    const API = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api/v1";
+
+    async function checkAccess() {
+      try {
+        const res = await fetch(`${API}/rbac/my-access/`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("access") || localStorage.getItem("token")}` },
+        });
+        if (res.status === 401) {
+          localStorage.clear();
+          router.replace("/login");
+          return;
+        }
+        if (!res.ok) return; // network hiccup — don't log out
+        const data = await res.json();
+        // Sync page_access if it changed
+        if (Array.isArray(data.page_access)) {
+          const stored = localStorage.getItem("user");
+          const storedUser = stored ? JSON.parse(stored) : {};
+          const storedAccess = JSON.stringify(storedUser.page_access ?? []);
+          const freshAccess = JSON.stringify(data.page_access);
+          if (storedAccess !== freshAccess) {
+            const updated = { ...storedUser, page_access: data.page_access };
+            localStorage.setItem("user", JSON.stringify(updated));
+            setPageAccess(data.page_access);
+          }
+        }
+        // If user was revoked server-side (is_active false)
+        if (data.is_active === false) {
+          localStorage.clear();
+          router.replace("/login");
+        }
+      } catch { /* network error — do nothing */ }
+    }
+
+    checkAccess();
+    // Also poll every 30 seconds while tab is open
+    const interval = setInterval(checkAccess, 30000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, authChecked]);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -423,6 +480,19 @@ export default function DashboardLayout({
 
         {/* Bottom Section */}
         <div className="px-3 pb-5 border-t border-[#EDE8DF] pt-4 space-y-0.5">
+          {/* My Profile — all authenticated users */}
+          <Link
+            href="/dashboard/profile"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all ${
+              pathname === "/dashboard/profile"
+                ? "bg-[#FDF3E3] text-[#C8922A]"
+                : "text-[#6B6259] hover:bg-[#FAF8F5]"
+            }`}
+          >
+            <UserCircle size={16} className={pathname === "/dashboard/profile" ? "text-[#C8922A]" : "text-[#9A8F82]"} />
+            My Profile
+          </Link>
+
           {/* Access Control — owner only */}
           {isOwner && (
             <Link
@@ -476,7 +546,11 @@ export default function DashboardLayout({
           <div className="flex items-center gap-3 ml-auto">
             <NotificationBell isReady={authChecked} />
 
-            <div className="flex items-center gap-2 px-2.5 py-1.5 md:px-3 md:py-2 rounded-lg bg-[#FAF8F5] border border-[#EDE8DF]">
+            <Link
+              href="/dashboard/profile"
+              className="flex items-center gap-2 px-2.5 py-1.5 md:px-3 md:py-2 rounded-lg bg-[#FAF8F5] border border-[#EDE8DF] hover:border-[#C8922A] transition-colors"
+              title="My Profile"
+            >
               <div className="w-7 h-7 rounded-full bg-[#C8922A] flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
                 {userAvatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -498,7 +572,7 @@ export default function DashboardLayout({
                   {userRole}
                 </span>
               </div>
-            </div>
+            </Link>
           </div>
         </header>
 
