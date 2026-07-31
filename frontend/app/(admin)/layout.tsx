@@ -493,8 +493,8 @@ export default function DashboardLayout({
             My Profile
           </Link>
 
-          {/* Access Control — owner only */}
-          {isOwner && (
+          {/* Access Control — owner + manager */}
+          {(isOwner || userRole === "manager") && (
             <Link
               href="/dashboard/access-control"
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all ${
