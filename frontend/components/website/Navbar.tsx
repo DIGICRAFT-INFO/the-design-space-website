@@ -26,10 +26,8 @@ export default function Navbar() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(false);
 
-  // Detect dark mode by watching the html element's class
   useEffect(() => {
-    const check = () =>
-      setIsDark(document.documentElement.classList.contains("dark"));
+    const check = () => setIsDark(document.documentElement.classList.contains("dark"));
     check();
     const observer = new MutationObserver(check);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
@@ -92,9 +90,7 @@ export default function Navbar() {
               <img
                 src={isDark ? "/tds_white_logo.png" : "/TheDesignSpace_Navbarlogo.png"}
                 alt="The Design Space Logo"
-                className={`w-auto object-contain relative z-10 transition-all duration-300 h-12 md:h-14 ${
-                  isDark ? "scale-[2.2]" : ""
-                }`}
+                className="object-contain relative z-10 transition-all duration-300 h-12 md:h-14 w-[120px] md:w-[160px]"
               />
               <motion.span
                 aria-hidden

@@ -49,17 +49,17 @@ export default function CustomCursor() {
         y: springY,
         translateX: "-50%",
         translateY: "-50%",
-        mixBlendMode: "difference",
-        backgroundColor: "#FDFDFD",
+        backgroundColor: "var(--ds-gold)",
       }}
       animate={{
-        width: label ? 92 : 12,
-        height: label ? 92 : 12,
+        width: label ? 92 : 10,
+        height: label ? 92 : 10,
+        opacity: label ? 1 : 0.7,
       }}
       transition={{ type: "spring", damping: 22, stiffness: 260 }}
     >
       {label && (
-        <span className="text-[10px] tracking-[0.15em] uppercase text-black font-medium text-center px-2 leading-tight">
+        <span className="text-[10px] tracking-[0.15em] uppercase text-white font-medium text-center px-2 leading-tight">
           {label}
         </span>
       )}

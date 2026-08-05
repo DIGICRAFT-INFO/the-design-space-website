@@ -173,13 +173,14 @@ export default function DashboardLayout({
   );
 
   function canSee(href: string): boolean {
-    if (isOwner) return true; // owner sees everything
-    // If page_access is populated, use it; otherwise fall back to role checks
+    if (isOwner) return true;
+    // If page_access is populated use it; Dashboard always visible
     if (pageAccess.length > 0) {
+      if (href === "/dashboard") return true; // dashboard always visible to logged-in users
       const key = HREF_TO_KEY[href];
       return key ? pageAccess.includes(key) : true;
     }
-    return true; // no restrictions set → role-based defaults apply
+    return true;
   }
 
   useEffect(() => {
@@ -327,15 +328,25 @@ export default function DashboardLayout({
 
   // 2. Strict URL Security Check (Pre-render Gate) - Role-based path access
   const checkPathAccess = (): boolean => {
-    // Bug 7 fix: use startsWith instead of includes to prevent false-positive
-    // 403s on nested paths like /dashboard/web-cms/portfolio matching /portfolio.
+    // Owner always has full access
+    if (isOwner) return true;
 
-    // Settings: manager/owner/accountant only (not designer)
+    // Dashboard home always accessible
+    if (pathname === "/dashboard") return true;
+
+    // If page_access is set, use it to gate all paths
+    if (pageAccess.length > 0) {
+      const matchedKey = Object.entries(PAGE_KEY_MAP).find(([, href]) =>
+        pathname === href || pathname.startsWith(href + "/")
+      )?.[0];
+      if (matchedKey) return pageAccess.includes(matchedKey);
+      return true; // path not in map — allow (e.g. /dashboard/profile)
+    }
+
+    // No page_access set — fall back to role-based defaults
     if (pathname.startsWith("/dashboard/settings")) {
       return userRole === "owner" || userRole === "manager" || userRole === "accountant";
     }
-
-    // Quotations, Portfolio, Pending Users, Website CMS: manager/owner only
     if (
       pathname.startsWith("/dashboard/quotations") ||
       pathname.startsWith("/dashboard/portfolio") ||
@@ -344,16 +355,9 @@ export default function DashboardLayout({
     ) {
       return userRole === "owner" || userRole === "manager";
     }
-
-    // Invoices, Payments: admin (manager/owner) or accountant
     if (pathname.startsWith("/dashboard/invoices") || pathname.startsWith("/dashboard/payments")) {
-      return (
-        userRole === "owner" ||
-        userRole === "manager" ||
-        userRole === "accountant"
-      );
+      return userRole === "owner" || userRole === "manager" || userRole === "accountant";
     }
-
     return true;
   };
 
@@ -420,11 +424,16 @@ export default function DashboardLayout({
         {/* Navigation */}
         <nav className="flex-1 py-4 px-3 overflow-y-auto">
           {navItems.map((item) => {
-            // Check if current user role can see this item
-            if (item.roles && userRole && !item.roles.includes(userRole)) {
-              return null;
+            // Dashboard always visible to all logged-in users
+            if (item.href === "/dashboard") {
+              // still render
+            } else if (!isOwner && pageAccess.length > 0) {
+              // page_access set — use it
+              if (!canSee(item.href)) return null;
+            } else {
+              // no page_access — use role defaults
+              if (item.roles && userRole && !item.roles.includes(userRole)) return null;
             }
-            if (!canSee(item.href)) return null;
 
             const Icon = item.icon;
             const active = pathname === item.href;
@@ -448,34 +457,43 @@ export default function DashboardLayout({
             );
           })}
 
-          {(userRole === "owner" || userRole === "manager") && (
-            <>
-              <div className="mt-5 mb-2 px-3 flex items-center gap-2">
-                <span className="text-[10px] font-bold tracking-[0.12em] text-[#B0A69A] uppercase whitespace-nowrap">
-                  Website Interactive CMS
-                </span>
-                <span className="h-px flex-1 bg-[#EDE8DF]" />
-              </div>
-              {websiteCmsItems.map((item) => {
-                const Icon = item.icon;
-                const active = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-[13px] font-medium transition-all ${
-                      active
-                        ? "bg-[#FDF3E3] text-[#C8922A] font-semibold"
-                        : "text-[#6B6259] hover:bg-[#FAF8F5] hover:text-[#1C1C1C]"
-                    }`}
-                  >
-                    <Icon size={16} className={active ? "text-[#C8922A]" : "text-[#9A8F82]"} />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </>
-          )}
+          {/* Website CMS — show if owner/manager, OR if page_access includes any CMS item */}
+          {(() => {
+            const cmsItemsToShow = websiteCmsItems.filter((item) => {
+              if (isOwner) return true;
+              if (pageAccess.length > 0) return canSee(item.href);
+              return userRole === "owner" || userRole === "manager";
+            });
+            if (cmsItemsToShow.length === 0) return null;
+            return (
+              <>
+                <div className="mt-5 mb-2 px-3 flex items-center gap-2">
+                  <span className="text-[10px] font-bold tracking-[0.12em] text-[#B0A69A] uppercase whitespace-nowrap">
+                    Website Interactive CMS
+                  </span>
+                  <span className="h-px flex-1 bg-[#EDE8DF]" />
+                </div>
+                {cmsItemsToShow.map((item) => {
+                  const Icon = item.icon;
+                  const active = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-[13px] font-medium transition-all ${
+                        active
+                          ? "bg-[#FDF3E3] text-[#C8922A] font-semibold"
+                          : "text-[#6B6259] hover:bg-[#FAF8F5] hover:text-[#1C1C1C]"
+                      }`}
+                    >
+                      <Icon size={16} className={active ? "text-[#C8922A]" : "text-[#9A8F82]"} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </>
+            );
+          })()}
         </nav>
 
         {/* Bottom Section */}

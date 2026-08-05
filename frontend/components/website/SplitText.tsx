@@ -25,7 +25,7 @@ export default function SplitText({ text, as = "h2", className = "", delay = 0, 
       <span className="sr-only">{text}</span>
       <span aria-hidden="true" className="inline">
         {pieces.map((piece, i) => (
-          <span key={i} className="inline-block overflow-hidden align-top pb-[0.15em] -mb-[0.15em]">
+          <span key={i} className="inline-block overflow-hidden align-bottom pb-[0.2em] -mb-[0.2em]">
             <motion.span
               className="inline-block"
               initial={{ y: "110%" }}

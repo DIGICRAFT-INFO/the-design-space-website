@@ -259,6 +259,7 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState("User");
   const [isApproved, setIsApproved] = useState(true);
   const [userRole, setUserRole] = useState<string>("designer");
+  const [pageAccess, setPageAccess] = useState<string[]>([]);
 
   useEffect(() => {
     try {
@@ -267,13 +268,18 @@ export default function DashboardPage() {
         const userData = JSON.parse(u);
         setUserName(userData.full_name?.split(" ")[0] || "User");
         setUserRole(userData.role?.toLowerCase() || "designer");
-        // Check if user is inactive
-        if (userData.is_active === false) {
-          setIsApproved(false);
-        }
+        if (Array.isArray(userData.page_access)) setPageAccess(userData.page_access);
+        if (userData.is_active === false) setIsApproved(false);
       }
     } catch {}
   }, []);
+
+  // Helper: owner sees all, others check page_access
+  const hasAccess = (key: string) => {
+    if (userRole === "owner") return true;
+    if (pageAccess.length === 0) return true; // no restrictions set
+    return pageAccess.includes(key);
+  };
 
   // Auto-logout if account is revoked and redirect to login
   useEffect(() => {
@@ -468,7 +474,7 @@ export default function DashboardPage() {
             {greeting}, {userName} 👋
           </h1>
           <p className="text-[14px] text-[#9A8F82] mt-1 font-medium">
-            Here's the full picture of your business today.
+            {userRole === "owner" ? "Here's the full picture of your business today." : `Welcome back — here's your ${userRole} overview.`}
           </p>
         </div>
         <div className="flex items-start gap-3">
@@ -478,7 +484,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Alert Banner: overdue invoices ─────────────────────────────────── */}
-      {kpis.overdue_count > 0 && (
+      {hasAccess("invoices") && kpis.overdue_count > 0 && (
         <Link href="/dashboard/invoices">
           <div className="flex items-center gap-3 bg-[#FEF2F2] border border-[#FECACA] rounded-2xl px-5 py-3.5 cursor-pointer hover:border-[#EF4444] transition-colors group">
             <AlertTriangle size={18} className="text-[#EF4444] flex-shrink-0" />
@@ -492,25 +498,27 @@ export default function DashboardPage() {
       )}
 
       {/* ── KPI Cards Row 1: Financial ──────────────────────────────────────── */}
+      {(hasAccess("invoices") || hasAccess("payments")) && (
       <div>
         <p className="text-[10px] font-black text-[#9A8F82] uppercase tracking-widest mb-3">Financial Overview</p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Invoiced" value={fmtINR(kpis.total_invoiced)} icon={Receipt} color="#C8922A" bg="#FDF3E3" border="#F5E6C8" href="/dashboard/invoices" trend="up" sub="All time" />
-          <StatCard label="Collected" value={fmtINR(kpis.total_collected)} icon={CheckCircle2} color="#10B981" bg="#ECFDF5" border="#A7F3D0" href="/dashboard/payments" trend="up" sub={`${collectionRate}% collection rate`} />
-          <StatCard label="Outstanding" value={fmtINR(kpis.outstanding)} icon={Clock} color="#F59E0B" bg="#FFFBEB" border="#FDE68A" href="/dashboard/invoices" trend="neutral" sub="Across active invoices" />
-          <StatCard label="Overdue" value={`${kpis.overdue_count} inv.`} icon={AlertTriangle} color="#EF4444" bg="#FEF2F2" border="#FECACA" href="/dashboard/invoices" trend={kpis.overdue_count > 0 ? "down" : "neutral"} sub={kpis.overdue_count > 0 ? "Action required" : "All clear"} />
+          {hasAccess("invoices") && <StatCard label="Total Invoiced" value={fmtINR(kpis.total_invoiced)} icon={Receipt} color="#C8922A" bg="#FDF3E3" border="#F5E6C8" href="/dashboard/invoices" trend="up" sub="All time" />}
+          {hasAccess("payments") && <StatCard label="Collected" value={fmtINR(kpis.total_collected)} icon={CheckCircle2} color="#10B981" bg="#ECFDF5" border="#A7F3D0" href="/dashboard/payments" trend="up" sub={`${collectionRate}% collection rate`} />}
+          {hasAccess("invoices") && <StatCard label="Outstanding" value={fmtINR(kpis.outstanding)} icon={Clock} color="#F59E0B" bg="#FFFBEB" border="#FDE68A" href="/dashboard/invoices" trend="neutral" sub="Across active invoices" />}
+          {hasAccess("invoices") && <StatCard label="Overdue" value={`${kpis.overdue_count} inv.`} icon={AlertTriangle} color="#EF4444" bg="#FEF2F2" border="#FECACA" href="/dashboard/invoices" trend={kpis.overdue_count > 0 ? "down" : "neutral"} sub={kpis.overdue_count > 0 ? "Action required" : "All clear"} />}
         </div>
       </div>
+      )}
 
       {/* ── KPI Cards Row 2: Business ───────────────────────────────────────── */}
-      {userRole !== "accountant" && (
+      {userRole !== "accountant" && (hasAccess("clients") || hasAccess("projects") || hasAccess("quotations") || hasAccess("enquiries")) && (
         <div>
           <p className="text-[10px] font-black text-[#9A8F82] uppercase tracking-widest mb-3">Business Metrics</p>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Total Clients" value={kpis.total_clients} icon={Users} color="#8B5CF6" bg="#F5F3FF" border="#DDD6FE" href="/dashboard/clients" />
-            <StatCard label="Active Projects" value={kpis.active_projects} icon={Briefcase} color="#3B82F6" bg="#EFF6FF" border="#BFDBFE" href="/dashboard/projects" />
-            <StatCard label="Pending Quotations" value={kpis.pending_quotations} icon={FileText} color="#0D9488" bg="#F0FDFA" border="#99F6E4" href="/dashboard/quotations" />
-            <StatCard label="Enquiries" value={enquiries.length} icon={MessageSquare} color="#EC4899" bg="#FDF2F8" border="#FBCFE8" href="/dashboard/enquiry" />
+            {hasAccess("clients") && <StatCard label="Total Clients" value={kpis.total_clients} icon={Users} color="#8B5CF6" bg="#F5F3FF" border="#DDD6FE" href="/dashboard/clients" />}
+            {hasAccess("projects") && <StatCard label="Active Projects" value={kpis.active_projects} icon={Briefcase} color="#3B82F6" bg="#EFF6FF" border="#BFDBFE" href="/dashboard/projects" />}
+            {hasAccess("quotations") && <StatCard label="Pending Quotations" value={kpis.pending_quotations} icon={FileText} color="#0D9488" bg="#F0FDFA" border="#99F6E4" href="/dashboard/quotations" />}
+            {hasAccess("enquiries") && <StatCard label="Enquiries" value={enquiries.length} icon={MessageSquare} color="#EC4899" bg="#FDF2F8" border="#FBCFE8" href="/dashboard/enquiry" />}
           </div>
         </div>
       )}
@@ -593,10 +601,11 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Middle Row: Projects + Enquiries ───────────────────────────────── */}
-      {userRole !== "accountant" && (
+      {userRole !== "accountant" && (hasAccess("projects") || hasAccess("enquiries")) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {/* Projects */}
+        {hasAccess("projects") && (
         <div className="bg-white rounded-2xl border border-[#EDE8DF] p-6">
           <SectionHeader title="Projects" sub={`${projects.length} total`} href="/dashboard/projects" />
 
@@ -631,8 +640,10 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+        )}
 
         {/* Enquiries */}
+        {hasAccess("enquiries") && (
         <div className="bg-white rounded-2xl border border-[#EDE8DF] p-6">
           <SectionHeader title="Enquiries" sub={`${enquiries.length} total`} href="/dashboard/enquiry" />
 
@@ -667,14 +678,16 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+        )}
       </div>
       )}
 
       {/* ── Proposals + Quotations ──────────────────────────────────────────── */}
-      {userRole !== "accountant" && (
+      {userRole !== "accountant" && (hasAccess("proposals") || hasAccess("quotations")) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {/* Proposals */}
+        {hasAccess("proposals") && (
         <div className="bg-white rounded-2xl border border-[#EDE8DF] overflow-hidden">
           <div className="px-6 py-5 border-b border-[#EDE8DF]">
             <SectionHeader title="Proposals" sub="Latest sent & pending" href="/dashboard/proposals" />
@@ -704,8 +717,10 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* Quotations */}
+        {hasAccess("quotations") && (
         <div className="bg-white rounded-2xl border border-[#EDE8DF] overflow-hidden">
           <div className="px-6 py-5 border-b border-[#EDE8DF]">
             <SectionHeader title="Quotations" sub="Latest estimates" href="/dashboard/quotations" />
@@ -740,10 +755,12 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        )}
       </div>
       )}
 
       {/* ── Recent Invoices Table ───────────────────────────────────────────── */}
+      {hasAccess("invoices") && (
       <div className="bg-white rounded-2xl border border-[#EDE8DF] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-5 border-b border-[#EDE8DF]">
           <div>
@@ -800,11 +817,14 @@ export default function DashboardPage() {
           </table>
         )}
       </div>
+      )}
 
       {/* ── Payments + Quick Actions row ────────────────────────────────────── */}
+      {(hasAccess("payments") || hasAccess("invoices") || hasAccess("clients") || hasAccess("projects") || hasAccess("quotations") || hasAccess("proposals") || hasAccess("enquiries")) && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
         {/* Payment Summary */}
+        {hasAccess("payments") && (
         <div className="lg:col-span-2 bg-white rounded-2xl border border-[#EDE8DF] p-6">
           <SectionHeader title="Payment Tracker" sub="Invoice payment status" href="/dashboard/payments" />
           {payments.length === 0 ? (
@@ -844,19 +864,20 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        )}
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-2xl border border-[#EDE8DF] p-6">
+        {/* Quick Actions — only show items user has access to */}
+        <div className={`bg-white rounded-2xl border border-[#EDE8DF] p-6 ${!hasAccess("payments") ? "lg:col-span-3" : ""}`}>
           <h2 className="text-[15px] font-bold text-[#1C1C1C] mb-4">Quick Actions</h2>
           <div className="space-y-2.5">
             {[
-              { label: "New Invoice", href: "/dashboard/invoices/generate", icon: Receipt, color: "#C8922A", bg: "#FDF3E3" },
-              { label: "Add Client", href: "/dashboard/clients", icon: Users, color: "#8B5CF6", bg: "#F5F3FF" },
-              { label: "New Project", href: "/dashboard/projects", icon: FolderOpen, color: "#3B82F6", bg: "#EFF6FF" },
-              { label: "New Quotation", href: "/dashboard/quotations", icon: FileText, color: "#0D9488", bg: "#F0FDFA" },
-              { label: "New Proposal", href: "/dashboard/proposals", icon: Layers, color: "#EC4899", bg: "#FDF2F8" },
-              { label: "Log Enquiry", href: "/dashboard/enquiry", icon: MessageSquare, color: "#F59E0B", bg: "#FFFBEB" },
-            ].map((a) => (
+              { label: "New Invoice", href: "/dashboard/invoices/generate", icon: Receipt, color: "#C8922A", bg: "#FDF3E3", key: "invoices" },
+              { label: "Add Client", href: "/dashboard/clients", icon: Users, color: "#8B5CF6", bg: "#F5F3FF", key: "clients" },
+              { label: "New Project", href: "/dashboard/projects", icon: FolderOpen, color: "#3B82F6", bg: "#EFF6FF", key: "projects" },
+              { label: "New Quotation", href: "/dashboard/quotations", icon: FileText, color: "#0D9488", bg: "#F0FDFA", key: "quotations" },
+              { label: "New Proposal", href: "/dashboard/proposals", icon: Layers, color: "#EC4899", bg: "#FDF2F8", key: "proposals" },
+              { label: "Log Enquiry", href: "/dashboard/enquiry", icon: MessageSquare, color: "#F59E0B", bg: "#FFFBEB", key: "enquiries" },
+            ].filter((a) => hasAccess(a.key)).map((a) => (
               <Link key={a.label} href={a.href}>
                 <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#FAF8F5] transition-colors group cursor-pointer">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: a.bg }}>
@@ -870,6 +891,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      )}
 
     </div>
   );

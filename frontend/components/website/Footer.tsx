@@ -7,7 +7,7 @@ const NAV_LINKS = [
   { label: "About", href: "/about" },
   { label: "Services", href: "/services" },
   { label: "Portfolio", href: "/portfolio" },
-  { label: "Products", href: "/products" },
+  { label: "PROJECTS", href: "/products" },
   { label: "Contact", href: "/contact" },
 ];
 
@@ -27,7 +27,18 @@ export default function Footer({ settings }: { settings?: WebSettings | null }) 
       <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-14 md:py-16 grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12">
         <div className="col-span-2">
           <div className="flex items-center gap-2 mb-4">
-            <img src="/TheDesignSpace_Navbarlogo.png" alt="The Design Space Logo" className="h-12 md:h-14 w-auto object-contain" />
+            {/* Light theme logo */}
+            <img
+              src="/TheDesignSpace_Navbarlogo.png"
+              alt="The Design Space Logo"
+              className="block dark:hidden h-12 md:h-14 w-[120px] md:w-[160px] object-contain"
+            />
+            {/* Dark theme logo */}
+            <img
+              src="/tds_white_logo.png"
+              alt="The Design Space Logo"
+              className="hidden dark:block h-12 md:h-14 w-[120px] md:w-[160px] object-contain"
+            />
           </div>
           <p className="max-w-xs text-sm leading-relaxed text-[var(--ds-ink-soft)]">
             {settings?.footer_text ||

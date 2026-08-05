@@ -7,7 +7,7 @@ import MagneticButton from "@/components/website/MagneticButton";
 import HeroSlider from "@/components/website/home/HeroSlider";
 import ProcessSection from "@/components/website/home/ProcessSection";
 import AboutPreview from "@/components/website/home/AboutPreview";
-import ServicesQuickGrid from "@/components/website/home/ServicesQuickGrid";
+import ServicesList from "@/components/website/services/ServicesList";
 import ProductsCarousel from "@/components/website/home/ProductsCarousel";
 import BlogHighlights from "@/components/website/home/BlogHighlights";
 // import CareersBanner from "@/components/website/home/CareersBanner";
@@ -25,7 +25,7 @@ export async function generateMetadata() {
 export default async function HomePage() {
   const [home, featured, allServices, products, blogPosts, settings] = await Promise.all([
     getHome().catch(() => null),
-    getPortfolio(undefined, true).catch(() => []),
+    getPortfolio().catch(() => []),
     getServices().catch(() => []),
     getProducts().catch(() => []),
     getBlogPosts(undefined, 3).catch(() => []),
@@ -126,19 +126,44 @@ export default async function HomePage() {
         />
       )}
 
-      {/* ── Section C: Services Quick Grid ──────────────────────────────── */}
-      {isVisible("services_grid") && <ServicesQuickGrid packages={featuredServices} />}
+      {/* ── Section C: Services ──────────────────────────────────────── */}
+      {isVisible("services_grid") && allServices.length > 0 && (
+        <section className="bg-[var(--ds-bg-alt)] border-y border-[var(--ds-border)]">
+          <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-24 md:py-32">
+            <FadeIn className="mb-12 md:mb-16 flex items-end justify-between">
+              <div>
+                <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-3">What We Do</p>
+                <h2 className="text-3xl md:text-5xl font-light tracking-tight text-[var(--ds-ink)]" style={{ fontFamily: "var(--font-display)" }}>
+                  Design packages, built around you.
+                </h2>
+              </div>
+              <Link href="/services" className="hidden sm:inline-flex text-[11px] tracking-[0.14em] uppercase border-b border-[var(--ds-ink)] pb-1 hover:text-[var(--ds-gold)] hover:border-[var(--ds-gold)] transition-colors text-[var(--ds-ink)] shrink-0 ml-8">
+                View All Services
+              </Link>
+            </FadeIn>
+            <ServicesList packages={allServices} />
+            <FadeIn className="mt-14 text-center">
+              <Link
+                href="/services"
+                className="inline-flex items-center gap-2 px-8 py-3.5 border border-[var(--ds-ink)] text-[11px] tracking-[0.14em] uppercase font-semibold text-[var(--ds-ink)] hover:bg-[var(--ds-ink)] hover:text-[var(--ds-bg)] transition-colors rounded-full"
+              >
+                View All Services
+              </Link>
+            </FadeIn>
+          </div>
+        </section>
+      )}
 
       {/* ── Section D: Bento Grid Matrix (Portfolio) ────────────────────── */}
       {isVisible("bento_portfolio") && (
-      <section className="bg-[#F7F4EF] py-14 md:py-20">
+      <section className="bg-[var(--ds-bg-alt)] py-14 md:py-20">
         <div className="max-w-[1600px] mx-auto px-6 md:px-10">
           <FadeIn className="text-center mb-14">
             <span className="inline-block text-[11px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-4 px-4 py-1.5 bg-[var(--ds-gold)]/10 rounded-full">
               {(home?.grid_matrix?.mini_title || "Selected Architecture").replace(/^\d+\s*\/\s*/, "")}
             </span>
             <h2
-              className="text-3xl md:text-5xl font-light tracking-tight"
+              className="text-3xl md:text-5xl font-light tracking-tight text-[var(--ds-ink)]"
               style={{ fontFamily: "var(--font-display)" }}
             >
               A curated look at spaces we&rsquo;ve shaped.
@@ -163,11 +188,30 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <p className="text-[var(--ds-ink-soft)] text-sm">Featured projects will appear here once published.</p>
+          ) : featured.length > 0 ? (
+            /* ── Horizontal scroll carousel fallback ── */
+            <div className="overflow-x-auto pb-4 -mx-6 md:-mx-10 px-6 md:px-10 scrollbar-hide">
+              <div className="flex gap-5 w-max">
+                {featured.map((p) => (
+                  <Link
+                    key={p.id}
+                    href={`/portfolio`}
+                    className="w-[280px] md:w-[340px] shrink-0 group"
+                  >
+                    <div className="aspect-[4/3] rounded-xl overflow-hidden bg-[var(--ds-bg)] mb-3 shadow-sm">
+                      <img
+                        src={resolveMediaUrl(p.images?.[0]?.file_url) || "/logo.png"}
+                        alt={p.title}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                    </div>
+                    <p className="text-sm font-medium text-[var(--ds-ink)] truncate">{p.title}</p>
+                    <p className="text-xs text-[var(--ds-ink-soft)] uppercase tracking-wide mt-0.5">{p.project_type}</p>
+                  </Link>
+                ))}
+              </div>
             </div>
-          )}
+          ) : null}
 
           <FadeIn className="mt-12 text-center">
             <Link

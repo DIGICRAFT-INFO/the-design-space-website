@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3200",
     "build": "next build",
     "postbuild": "node scripts/copy-standalone-static.js",
     "start": "node server.js",

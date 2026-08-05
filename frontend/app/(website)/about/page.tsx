@@ -9,7 +9,6 @@ import WhoWeAreSection from "@/components/website/about/WhoWeAreSection";
 import MissionVisionSection from "@/components/website/about/MissionVisionSection";
 import ValuesSection from "@/components/website/about/ValuesSection";
 import IndustriesSection from "@/components/website/about/IndustriesSection";
-import FounderCard from "@/components/website/about/FounderCard";
 
 export async function generateMetadata() {
   const seo = resolveSeo(await getSeoEntries().catch(() => []), "/about", {
@@ -139,31 +138,48 @@ export default async function AboutPage() {
       {/* ── Industries (always rendered; empty-state when no published) ── */}
       <IndustriesSection industries={industries} />
 
-      {/* ── Founder hero card ────────────────────────────────────────── */}
-      {founder && <FounderCard founder={founder} />}
-
-      {/* ── Team grid (non-founders, or all if no founder set) ───────── */}
-      {(nonFounderTeam.length > 0 || (!founder && allTeam.length > 0)) && (
-        <section className="pb-14 md:pb-20">
+      {/* ── Founder + Team — combined compact section ─────────────────── */}
+      {allTeam.length > 0 && (
+        <section className="py-16 md:py-24 bg-[var(--ds-bg-alt)] border-t border-[var(--ds-border)]">
           <div className="max-w-[1600px] mx-auto px-6 md:px-10">
-            <FadeIn>
-              <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-3">The People</p>
-              <h2 className="text-3xl md:text-5xl font-light tracking-tight mb-12 md:mb-16" style={{ fontFamily: "var(--font-display)" }}>
-                {founder ? "The Team" : "An integrated design team."}
+            <FadeIn className="mb-10 md:mb-14">
+              <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-2">The People</p>
+              <h2 className="text-3xl md:text-4xl font-light tracking-tight text-[var(--ds-ink)]" style={{ fontFamily: "var(--font-display)" }}>
+                Meet the team.
               </h2>
             </FadeIn>
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-8">
-              {(founder ? nonFounderTeam : allTeam).map((member, i) => (
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 md:gap-7">
+              {allTeam.map((member, i) => (
                 <FadeIn key={member.id} delay={i * 0.05} className="group">
-                  <div className="aspect-[3/4] rounded-xl overflow-hidden bg-[var(--ds-bg-alt)] mb-3 md:mb-4">
+                  <div className="aspect-[3/4] rounded-xl overflow-hidden bg-[var(--ds-bg)] mb-3 relative">
                     <img
                       src={resolveMediaUrl(member.avatar_url) || "/logo.png"}
                       alt={member.name}
                       className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 scale-105 group-hover:scale-100"
                     />
+                    {member.is_founder && (
+                      <span className="absolute top-2 left-2 text-[9px] tracking-[0.15em] uppercase bg-[var(--ds-gold)] text-white px-2 py-0.5 rounded-full">
+                        Founder
+                      </span>
+                    )}
                   </div>
-                  <p className="text-sm md:text-base font-medium">{member.name}</p>
-                  <p className="text-xs md:text-sm text-[var(--ds-ink-soft)]">{member.designation}</p>
+                  <p className="text-sm font-medium text-[var(--ds-ink)]">{member.name}</p>
+                  <p className="text-xs text-[var(--ds-ink-soft)]">{member.designation}</p>
+                  {member.is_founder && (member.social_instagram || member.social_linkedin) && (
+                    <div className="flex gap-3 mt-1.5">
+                      {member.social_instagram && (
+                        <a href={member.social_instagram} target="_blank" rel="noreferrer" className="text-[var(--ds-ink-soft)] hover:text-[var(--ds-gold)] transition-colors">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+                        </a>
+                      )}
+                      {member.social_linkedin && (
+                        <a href={member.social_linkedin} target="_blank" rel="noreferrer" className="text-[var(--ds-ink-soft)] hover:text-[var(--ds-gold)] transition-colors">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </FadeIn>
               ))}
             </div>
