@@ -20,6 +20,7 @@ const webSettingsSchema = new mongoose.Schema(
       pinterest: { type: String, default: '' },
       linkedin: { type: String, default: '' },
       facebook: { type: String, default: '' },
+      youtube: { type: String, default: '' },
     },
 
     footer_text: { type: String, default: '' },

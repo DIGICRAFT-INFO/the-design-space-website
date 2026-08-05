@@ -160,7 +160,7 @@ export type WebSettings = {
     working_hours: string;
     map_embed_url: string;
   };
-  social_links: { instagram: string; pinterest: string; linkedin: string; facebook: string };
+  social_links: { instagram: string; pinterest: string; linkedin: string; facebook: string; youtube: string };
   footer_text: string;
   seo_default_title: string;
   seo_default_description: string;

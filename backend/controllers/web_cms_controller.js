@@ -654,7 +654,25 @@ exports.update_settings = async (req, res) => {
   try {
     const doc = await getOrCreateSettings();
     const { contact, social_links, footer_text, seo_default_title, seo_default_description, legal } = req.body;
-    if (contact) doc.contact = { ...doc.contact.toObject(), ...contact };
+    if (contact) {
+      // Auto-convert Google Maps short URL or share URL to embed URL
+      if (contact.map_embed_url) {
+        const url = contact.map_embed_url.trim();
+        // If it's already an embed URL, keep it
+        if (!url.includes('/maps/embed')) {
+          // Extract place from goo.gl short URL or maps.app.goo.gl or regular maps URL
+          // Use the iframe embed format with the provided URL as a fallback pb query
+          // Best approach: if user provides any google maps URL, convert to standard embed
+          const pbMatch = url.match(/!1m[^?]*/);
+          if (pbMatch) {
+            contact.map_embed_url = `https://www.google.com/maps/embed?pb=${pbMatch[0]}`;
+          }
+          // If it's a short URL (goo.gl / maps.app.goo.gl), keep as-is — browser will handle redirect
+          // The iframe will resolve it
+        }
+      }
+      doc.contact = { ...doc.contact.toObject(), ...contact };
+    }
     if (social_links) doc.social_links = { ...doc.social_links.toObject(), ...social_links };
     if (footer_text !== undefined) doc.footer_text = footer_text;
     if (seo_default_title !== undefined) doc.seo_default_title = seo_default_title;

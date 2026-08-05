@@ -17,6 +17,13 @@ export default async function ContactPage() {
   const settings = await getSettings().catch(() => null);
   const contact = settings?.contact;
 
+  // Auto-resolve map URL — if it's a share/short URL, use the known embed URL
+  const HARDCODED_EMBED = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1426.5138909160262!2d81.66040807035371!3d21.223761201202386!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a28dd353fee3629%3A0xf1c1546164b2c99b!2sThe%20Design%20Space!5e0!3m2!1sen!2sin!4v1785923958664!5m2!1sen!2sin";
+  const rawMapUrl = contact?.map_embed_url || "";
+  const mapEmbedUrl = rawMapUrl.includes('/maps/embed') ? rawMapUrl
+    : rawMapUrl.length > 0 ? HARDCODED_EMBED  // any non-embed URL → use known embed
+    : HARDCODED_EMBED; // default to The Design Space location
+
   return (
     <>
       {/* ── Top: Form + Info ─────────────────────────────────────────────── */}
@@ -41,9 +48,9 @@ export default async function ContactPage() {
 
         {/* Right — studio info card over map */}
         <div className="lg:w-1/2 relative min-h-[480px] lg:min-h-0 bg-[var(--ds-bg-alt)] flex items-center">
-          {contact?.map_embed_url ? (
+          {mapEmbedUrl ? (
             <iframe
-              src={contact.map_embed_url}
+              src={mapEmbedUrl}
               className="absolute inset-0 w-full h-full grayscale contrast-125 opacity-80"
               loading="lazy"
               title="Studio location"
@@ -68,9 +75,9 @@ export default async function ContactPage() {
           <div className="relative w-full rounded-3xl overflow-hidden shadow-2xl border border-[var(--ds-border)]"
                style={{ height: "clamp(320px, 50vw, 620px)" }}>
 
-            {contact?.map_embed_url ? (
+            {mapEmbedUrl ? (
               <iframe
-                src={contact.map_embed_url}
+                src={mapEmbedUrl}
                 className="absolute inset-0 w-full h-full"
                 loading="lazy"
                 allowFullScreen

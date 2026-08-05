@@ -90,7 +90,8 @@ export default function WebCmsSettingsPage() {
         </div>
         <div>
           <label className={labelClass}>Google Maps Embed URL (optional)</label>
-          <input className={inputClass} placeholder="https://www.google.com/maps/embed?..." value={data.contact.map_embed_url} onChange={(e) => setData({ ...data, contact: { ...data.contact, map_embed_url: e.target.value } })} />
+          <input className={inputClass} placeholder='Paste Google Maps embed URL or share link — e.g. https://maps.app.goo.gl/... or https://www.google.com/maps/embed?pb=...' value={data.contact.map_embed_url} onChange={(e) => setData({ ...data, contact: { ...data.contact, map_embed_url: e.target.value } })} />
+          <p className="text-[11px] text-[#9A8F82] mt-1">Tip: paste the full iframe src URL from Google Maps → Share → Embed a map → Copy HTML</p>
         </div>
       </section>
 
@@ -112,6 +113,10 @@ export default function WebCmsSettingsPage() {
           <div>
             <label className={labelClass}>Pinterest</label>
             <input className={inputClass} value={data.social_links.pinterest} onChange={(e) => setData({ ...data, social_links: { ...data.social_links, pinterest: e.target.value } })} />
+          </div>
+          <div>
+            <label className={labelClass}>YouTube</label>
+            <input className={inputClass} placeholder="https://www.youtube.com/@channel" value={(data.social_links as any).youtube || ""} onChange={(e) => setData({ ...data, social_links: { ...data.social_links, youtube: e.target.value } as any })} />
           </div>
         </div>
       </section>

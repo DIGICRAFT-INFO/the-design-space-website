@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FaInstagram, FaLinkedinIn, FaFacebookF } from "react-icons/fa";
+import { FaInstagram, FaLinkedinIn, FaFacebookF, FaYoutube } from "react-icons/fa";
 import type { WebSettings } from "@/services/websiteService";
 
 const NAV_LINKS = [
@@ -58,6 +58,11 @@ export default function Footer({ settings }: { settings?: WebSettings | null }) 
             {social?.facebook && (
               <a href={social.facebook} target="_blank" rel="noreferrer" aria-label="Facebook" className="hover:text-[var(--ds-gold)] transition-colors">
                 <FaFacebookF size={16} />
+              </a>
+            )}
+            {(social as any)?.youtube && (
+              <a href={(social as any).youtube} target="_blank" rel="noreferrer" aria-label="YouTube" className="hover:text-[var(--ds-gold)] transition-colors">
+                <FaYoutube size={16} />
               </a>
             )}
           </div>
