@@ -53,6 +53,7 @@ export default function RevealImage({
           viewport={{ once: true, margin: "-10% 0px" }}
           transition={{ duration: 1.4, ease: EASE, delay }}
           className={`w-full h-full object-cover ${imgClassName}`}
+          onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
         />
       </motion.div>
     </div>

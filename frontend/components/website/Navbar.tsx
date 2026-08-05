@@ -90,7 +90,11 @@ export default function Navbar() {
               <img
                 src={isDark ? "/tds_white_logo.png" : "/TheDesignSpace_Navbarlogo.png"}
                 alt="The Design Space Logo"
-                className="h-10 md:h-12 w-auto object-contain relative z-10 transition-all duration-300"
+                className={`object-contain relative z-10 transition-all duration-300 ${
+                  isDark
+                    ? "h-16 md:h-20 w-auto"
+                    : "h-12 md:h-14 w-auto max-w-[200px] md:max-w-[240px]"
+                }`}
               />
               <motion.span
                 aria-hidden

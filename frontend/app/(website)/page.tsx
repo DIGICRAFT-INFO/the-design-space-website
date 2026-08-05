@@ -51,11 +51,11 @@ export default async function HomePage() {
         .slice()
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((c) => ({ id: c.id, title: c.image_title, image: resolveMediaUrl(c.image_url), span: c.grid_span_class }))
-    : featured.slice(0, 4).map((p, i) => ({
+    : featured.slice(0, 3).map((p, i) => ({
         id: p.id,
         title: p.title,
         image: resolveMediaUrl(p.images?.[0]?.file_url),
-        span: ["lg:col-span-2 lg:row-span-2", "lg:col-span-1", "lg:col-span-1", "lg:col-span-2"][i] || "",
+        span: ["lg:col-span-1 lg:row-span-2", "lg:col-span-1", "lg:col-span-1"][i] || "",
       }));
 
   return (
@@ -171,9 +171,9 @@ export default async function HomePage() {
           </FadeIn>
 
           {gridCards.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 lg:h-[88vh]">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5">
               {gridCards.map((card, i) => (
-                <div key={card.id} className={`relative group aspect-[4/3] sm:aspect-[4/4] lg:aspect-auto rounded-xl overflow-hidden shadow-md ${card.span}`}>
+                <Link key={card.id} href="/portfolio" className={`relative group aspect-[3/4] rounded-xl overflow-hidden shadow-sm ${card.span}`}>
                   <RevealImage
                     src={card.image || "/logo.png"}
                     alt={card.title}
@@ -182,10 +182,10 @@ export default async function HomePage() {
                     className="absolute inset-0"
                     imgClassName="transition-transform duration-700 group-hover:scale-105"
                   />
-                  <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
                     <p className="text-white text-sm font-medium tracking-wide">{card.title}</p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           ) : featured.length > 0 ? (
