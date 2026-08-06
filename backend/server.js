@@ -132,6 +132,9 @@ app.use('/api/v1/settings', require('./routes/settings_urls'));
 // Static file serving for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Static file serving for public assets (portfolio images, etc.)
+app.use('/public', express.static(path.join(__dirname, 'public')));
+
 // Master Services
 app.use('/api/v1/services', require('./routes/master_service_urls'));
 
