@@ -13,6 +13,12 @@ const nextConfig = {
         pathname: "/uploads/**",
       },
       {
+        protocol: "http",
+        hostname: "localhost",
+        port: "10000",
+        pathname: "/uploads/**",
+      },
+      {
         protocol: "https",
         hostname: "thedesignspace-website-mix-13july26.onrender.com",
         pathname: "/uploads/**",
@@ -26,6 +32,11 @@ const nextConfig = {
         protocol: "https",
         hostname: "api.thedesignspace.in",
         pathname: "/uploads/**",
+      },
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        pathname: "/**",
       },
     ],
   },

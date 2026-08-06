@@ -45,6 +45,7 @@ export default function ZoomableImage({
           className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${imgClassName}`}
           draggable={false}
           loading="lazy"
+          onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
         />
         {/* Zoom hint overlay — shows on hover */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none" />

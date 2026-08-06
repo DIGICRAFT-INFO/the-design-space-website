@@ -13,6 +13,7 @@ import BlogHighlights from "@/components/website/home/BlogHighlights";
 // import CareersBanner from "@/components/website/home/CareersBanner";
 // import MapSection from "@/components/website/home/MapSection";
 import Link from "next/link";
+import FallbackImg from "@/components/website/FallbackImg";
 
 export async function generateMetadata() {
   const seo = resolveSeo(await getSeoEntries().catch(() => []), "/", {
@@ -46,15 +47,21 @@ export default async function HomePage() {
 
   // Use slider when CMS slides are configured, otherwise fall back to single hero
   const useSlider = heroSlides.length > 0;
-  const gridCards = home?.grid_matrix?.cards?.length
-    ? home.grid_matrix.cards
-        .slice()
-        .sort((a, b) => a.sort_order - b.sort_order)
-        .map((c) => ({ id: c.id, title: c.image_title, image: resolveMediaUrl(c.image_url), span: c.grid_span_class }))
+  // Build bento cards: prefer CMS-configured cards that have a valid image,
+  // fall back to the first 3 published portfolio items when no CMS cards have images.
+  const cmsBentoCards = (home?.grid_matrix?.cards ?? [])
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((c) => ({ id: c.id, title: c.image_title, image: resolveMediaUrl(c.image_url) || "", span: c.grid_span_class }));
+
+  const cmsBentoHasImages = cmsBentoCards.some((c) => !!c.image);
+
+  const gridCards = cmsBentoHasImages
+    ? cmsBentoCards
     : featured.slice(0, 3).map((p, i) => ({
         id: p.id,
         title: p.title,
-        image: resolveMediaUrl(p.images?.[0]?.file_url),
+        image: resolveMediaUrl(p.images?.[0]?.file_url) || "",
         span: ["lg:col-span-1 lg:row-span-2", "lg:col-span-1", "lg:col-span-1"][i] || "",
       }));
 
@@ -172,14 +179,13 @@ export default async function HomePage() {
 
           {gridCards.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5">
-              {gridCards.map((card, i) => (
+              {gridCards.filter((card) => !!card.image).map((card, i) => (
                 <Link key={card.id} href="/portfolio" className={`relative group aspect-[3/4] rounded-xl overflow-hidden shadow-sm ${card.span}`}>
-                  <img
-                    src={card.image || "/logo.png"}
+                  <FallbackImg
+                    src={card.image}
                     alt={card.title}
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     loading={i === 0 ? "eager" : "lazy"}
-                    onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
                   />
                   <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
                     <p className="text-white text-sm font-medium tracking-wide">{card.title}</p>
