@@ -23,6 +23,7 @@ export default function WhoWeAreSection({ data }: Props) {
             src={resolveMediaUrl(data.background_image)}
             alt=""
             className="w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
           <div className="absolute inset-0 bg-[var(--ds-bg)]/85" />
         </motion.div>
