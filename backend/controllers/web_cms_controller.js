@@ -1,6 +1,5 @@
 const path = require('path');
 const fs = require('fs');
-const multer = require('multer');
 
 const WebHome = require('../models/web_home');
 const WebAbout = require('../models/web_about');
@@ -9,66 +8,38 @@ const WebProduct = require('../models/web_product');
 const WebSettings = require('../models/web_settings');
 const WebPortfolioCategory = require('../models/web_portfolio_category');
 
-// ── Upload dir setup (served statically from /uploads, same convention as
-//    the rest of the backend — kept as one predictable folder for Hostinger
-//    FTP deploys: uploads/website/images, uploads/website/videos) ───────────
-const imagesDir = path.join(__dirname, '..', 'uploads', 'website', 'images');
-const videosDir = path.join(__dirname, '..', 'uploads', 'website', 'videos');
-[imagesDir, videosDir].forEach((d) => {
-  if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-});
+// ── Cloudinary upload helpers ─────────────────────────────────────────────────
+const { uploadImage: cloudinaryUploadImage, uploadVideo: cloudinaryUploadVideo, safeDelete } = require('../lib/cloudinary');
 
-function safeUnlink(relativePath) {
-  try {
-    if (!relativePath) return;
-    const full = path.join(__dirname, '..', relativePath);
-    if (fs.existsSync(full)) fs.unlinkSync(full);
-  } catch (err) {
-    console.warn('safeUnlink failed:', err.message);
+exports.uploadImage = cloudinaryUploadImage;
+exports.uploadVideo = cloudinaryUploadVideo;
+
+function safeUnlink(fileUrl) {
+  // For Cloudinary URLs, delete from cloud; for legacy local paths, delete from disk
+  if (!fileUrl) return;
+  if (fileUrl.startsWith('http')) {
+    safeDelete(fileUrl).catch(() => {});
+  } else {
+    try {
+      const full = path.join(__dirname, '..', fileUrl);
+      if (fs.existsSync(full)) fs.unlinkSync(full);
+    } catch (err) {
+      console.warn('safeUnlink failed:', err.message);
+    }
   }
 }
 
-const imageStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, imagesDir),
-  filename: (req, file, cb) => {
-    const sanitized = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    cb(null, `${Date.now()}-${sanitized}`);
-  },
-});
-exports.uploadImage = multer({
-  storage: imageStorage,
-  limits: { fileSize: 20 * 1024 * 1024, files: 1 },
-  fileFilter: (req, file, cb) => {
-    if (/image\/(jpeg|png|webp|avif)/.test(file.mimetype)) return cb(null, true);
-    cb(new Error('Only image files (jpeg, png, webp, avif) are allowed.'));
-  },
-});
-
-const videoStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, videosDir),
-  filename: (req, file, cb) => {
-    const sanitized = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    cb(null, `${Date.now()}-${sanitized}`);
-  },
-});
-exports.uploadVideo = multer({
-  storage: videoStorage,
-  limits: { fileSize: 150 * 1024 * 1024, files: 1 },
-  fileFilter: (req, file, cb) => {
-    if (/video\/(mp4|webm)/.test(file.mimetype)) return cb(null, true);
-    cb(new Error('Only mp4/webm video files are allowed.'));
-  },
-});
-
-// Wraps a multer .single(field) middleware so file-type/size-limit errors
-// come back as 400s (multer's fileFilter `cb(new Error(...))` otherwise falls
-// through to the generic 500 handler, since it never sets `err.status`).
 exports.handleUpload = require('../middleware/handleUpload');
-// CMS forms (hero poster, bento card image, team avatar, product photo, etc.)
+
+// POST /api/v1/web-cms/upload/image
 exports.upload_image = (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image uploaded.' });
+  // Cloudinary: req.file.path is the secure_url; local: build path from filename
+  const file_url = req.file.path || req.file.secure_url ||
+    (req.file.filename ? `/uploads/website/images/${req.file.filename}` : null);
+  if (!file_url) return res.status(500).json({ error: 'Upload failed — no URL returned.' });
   res.status(201).json({
-    file_url: `/uploads/website/images/${req.file.filename}`,
+    file_url,
     original_filename: req.file.originalname,
     file_size: req.file.size,
   });
@@ -77,8 +48,11 @@ exports.upload_image = (req, res) => {
 // POST /api/v1/web-cms/upload/video
 exports.upload_video = (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No video uploaded.' });
+  const file_url = req.file.path || req.file.secure_url ||
+    (req.file.filename ? `/uploads/website/videos/${req.file.filename}` : null);
+  if (!file_url) return res.status(500).json({ error: 'Upload failed — no URL returned.' });
   res.status(201).json({
-    file_url: `/uploads/website/videos/${req.file.filename}`,
+    file_url,
     original_filename: req.file.originalname,
     file_size: req.file.size,
   });

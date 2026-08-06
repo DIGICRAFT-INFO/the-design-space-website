@@ -174,13 +174,12 @@ export default async function HomePage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5">
               {gridCards.map((card, i) => (
                 <Link key={card.id} href="/portfolio" className={`relative group aspect-[3/4] rounded-xl overflow-hidden shadow-sm ${card.span}`}>
-                  <RevealImage
+                  <img
                     src={card.image || "/logo.png"}
                     alt={card.title}
-                    delay={i * 0.08}
-                    cursorLabel="View"
-                    className="absolute inset-0"
-                    imgClassName="transition-transform duration-700 group-hover:scale-105"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    loading={i === 0 ? "eager" : "lazy"}
+                    onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
                   />
                   <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
                     <p className="text-white text-sm font-medium tracking-wide">{card.title}</p>

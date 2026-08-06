@@ -6,53 +6,42 @@ const pdfEngine = require('../services/pdf_engine_service');
 const emailService = require('../services/email_service');
 const whatsappService = require('../services/whatsapp_service');
 const { createNotification, deleteNotificationsByReference } = require('../services/in_app_notification_service');
+const { uploadImage: cloudinaryUploadImage, safeDelete } = require('../lib/cloudinary');
 
-// ── Upload dir setup ──────────────────────────────────────────────────────────
-const uploadsDir = path.join(__dirname, '..', 'uploads', 'portfolio');
-const docsDir    = path.join(__dirname, '..', 'uploads', 'portfolio_docs');
-[uploadsDir, docsDir].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
+// ── Image upload via Cloudinary (persistent, survives redeploy) ──────────────
+exports.upload = cloudinaryUploadImage;
 
-// ── Image upload (20MB, images only) ─────────────────────────────────────────
-const imageStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
-  filename:    (req, file, cb) => {
-    const sanitized = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    cb(null, `${Date.now()}-${sanitized}`);
-  }
-});
-exports.upload = multer({
-  storage: imageStorage,
-  limits: { fileSize: 20 * 1024 * 1024, files: 20 },
-  fileFilter: (req, file, cb) => {
-    if (/image\/(jpeg|png|webp|avif)/.test(file.mimetype)) return cb(null, true);
-    cb(new Error('Only image files (jpeg, png, webp, avif) are allowed.'));
-  }
-});
+// ── PDF/doc upload — disk storage (local, not on Cloudinary) ─────────────────
+const docsDir = path.join(__dirname, '..', 'uploads', 'portfolio_docs');
+if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir, { recursive: true });
 
-// ── PDF upload (25MB) ─────────────────────────────────────────────────────────
-const docStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, docsDir),
-  filename:    (req, file, cb) => {
-    const sanitized = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    cb(null, `${Date.now()}-${sanitized}`);
-  }
-});
 exports.uploadDocs = multer({
-  storage: docStorage,
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, docsDir),
+    filename: (req, file, cb) => {
+      const sanitized = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      cb(null, `${Date.now()}-${sanitized}`);
+    },
+  }),
   limits: { fileSize: 25 * 1024 * 1024, files: 10 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/pdf') return cb(null, true);
     cb(new Error('Only PDF files are allowed.'));
-  }
+  },
 });
 
-// ── Helper: safe disk delete ──────────────────────────────────────────────────
-function safeUnlink(relativePath) {
-  try {
-    const full = path.join(__dirname, '..', relativePath);
-    if (fs.existsSync(full)) fs.unlinkSync(full);
-  } catch (err) {
-    console.warn('safeUnlink failed:', err.message);
+// ── Helper: safe delete (Cloudinary URL or local path) ───────────────────────
+function safeUnlink(fileUrl) {
+  if (!fileUrl) return;
+  if (fileUrl.startsWith('http')) {
+    safeDelete(fileUrl).catch(() => {});
+  } else {
+    try {
+      const full = path.join(__dirname, '..', fileUrl);
+      if (fs.existsSync(full)) fs.unlinkSync(full);
+    } catch (err) {
+      console.warn('safeUnlink failed:', err.message);
+    }
   }
 }
 
@@ -194,7 +183,8 @@ exports.upload_images = async (req, res) => {
     const startOrder = portfolio.images.length;
 
     const newImages = req.files.map((file, idx) => ({
-      file_url:          `/uploads/portfolio/${file.filename}`,
+      file_url: file.path || file.secure_url ||
+        (file.filename ? `/uploads/portfolio/${file.filename}` : ''),
       caption:           captions[idx] || '',
       file_size:         file.size,
       original_filename: file.originalname,
