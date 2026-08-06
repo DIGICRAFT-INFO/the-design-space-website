@@ -12,8 +12,6 @@ router.route('/')
 
 // Image routes
 router.post('/:id/images/', is_authenticated, is_manager_or_above, handleUpload(controller.upload.array('files', 20)), controller.upload_images);
-// Add image by external URL (no file upload needed)
-router.post('/:id/images/url/', is_authenticated, is_manager_or_above, controller.add_image_by_url);
 // BUG FIX: Added PATCH for caption updates
 router.patch('/:id/images/:imageId/', is_authenticated, is_manager_or_above, controller.update_image_caption);
 router.delete('/:id/images/:imageId/', is_authenticated, is_manager_or_above, controller.delete_image);
