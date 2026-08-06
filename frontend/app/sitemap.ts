@@ -6,10 +6,14 @@ const SITE_URL = "https://thedesignspace.in";
 const STATIC_ROUTES = ["", "/about", "/services", "/portfolio", "/products", "/blog", "/careers", "/contact", "/sitemap", "/privacy-policy", "/copyright"];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [portfolio, blogPosts] = await Promise.all([
+  // Use Promise.allSettled to handle timeout/failures gracefully
+  const [portfolioResult, blogResult] = await Promise.allSettled([
     getPortfolio().catch(() => []),
     getBlogPosts().catch(() => []),
   ]);
+
+  const portfolio = portfolioResult.status === "fulfilled" ? portfolioResult.value : [];
+  const blogPosts = blogResult.status === "fulfilled" ? blogResult.value : [];
 
   const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((route) => ({
     url: `${SITE_URL}${route}`,

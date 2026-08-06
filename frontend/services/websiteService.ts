@@ -214,10 +214,20 @@ export type WebSeoEntry = {
 
 // ─── Fetch helpers ──────────────────────────────────────────────────────────
 
-async function getJSON<T>(url: string): Promise<T> {
-  const res = await fetch(url, { next: { revalidate: 60 } });
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-  return res.json() as Promise<T>;
+async function getJSON<T>(url: string, timeoutMs: number = 30000): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(url, { 
+      next: { revalidate: 60 },
+      signal: controller.signal 
+    });
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+    return res.json() as Promise<T>;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export const getHome = () => getJSON<WebHome>(`${PUBLIC_URL}/home`);
