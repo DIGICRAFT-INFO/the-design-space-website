@@ -239,6 +239,33 @@ exports.delete_image = async (req, res) => {
   }
 };
 
+// ── POST /:id/images/url  — add image by external URL ────────────────────────
+exports.add_image_by_url = async (req, res) => {
+  try {
+    const portfolio = await Portfolio.findById(req.params.id);
+    if (!portfolio) return res.status(404).json({ error: 'Portfolio not found.' });
+
+    const { image_url, caption } = req.body;
+    if (!image_url || typeof image_url !== 'string' || !image_url.startsWith('http')) {
+      return res.status(400).json({ error: 'A valid http/https image_url is required.' });
+    }
+
+    const startOrder = portfolio.images.length;
+    portfolio.images.push({
+      file_url:          image_url.trim(),
+      caption:           caption || '',
+      file_size:         0,
+      original_filename: image_url.trim().split('/').pop() || 'external',
+      sort_order:        startOrder,
+    });
+
+    await portfolio.save();
+    res.status(201).json(portfolio);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 // ── POST /:id/documents  ──────────────────────────────────────────────────────
 exports.upload_documents = async (req, res) => {
   try {
@@ -351,6 +378,7 @@ function toPublicPortfolio(p) {
     title: obj.title,
     description: obj.description,
     project_type: obj.project_type,
+    project_type_label: obj.project_type_label || '',
     custom_categories: obj.custom_categories || [],
     is_featured: obj.is_featured,
     sort_order: obj.sort_order,
@@ -366,12 +394,8 @@ function toPublicPortfolio(p) {
 // GET /api/v1/public/portfolio?project_type=residential&featured=true
 exports.list_public_portfolios = async (req, res) => {
   try {
-    const filter = {};
-    // Only filter by published if explicitly requesting published only
-    // Otherwise show all items so the website always has content
-    if (req.query.published_only === 'true') {
-      filter.status = 'published';
-    }
+    // Always filter by published status for public endpoint
+    const filter = { status: 'published' };
     if (req.query.project_type && req.query.project_type !== 'all') {
       filter.project_type = req.query.project_type;
     }

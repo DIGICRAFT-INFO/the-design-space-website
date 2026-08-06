@@ -304,3 +304,23 @@ export async function sendPortfolio(
   }
   return res.json();
 }
+
+// ─── POST: Add image by URL ────────────────────────────────────────────────────
+
+export async function addPortfolioImageByUrl(
+  id: string,
+  imageUrl: string,
+  caption?: string,
+): Promise<Portfolio> {
+  const res = await fetch(`${PORTFOLIO_URL}${id}/images/url/`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ image_url: imageUrl, caption: caption || "" }),
+  });
+  handleUnauthorized(res.status);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw err;
+  }
+  return res.json() as Promise<Portfolio>;
+}

@@ -9,7 +9,7 @@ import {
 import {
   getAllPortfolios, createPortfolio, deletePortfolio, uploadPortfolioImages,
   deletePortfolioImage, uploadPortfolioDocuments, deletePortfolioDocument,
-  downloadPortfolioPDF, sendPortfolio, resolveImageUrl,
+  downloadPortfolioPDF, sendPortfolio, resolveImageUrl, addPortfolioImageByUrl,
   type Portfolio, type PortfolioCategory,
 } from "@/services/portfoliService";
 import { getProjects, type Project } from "@/services/projectService";
@@ -132,6 +132,14 @@ export default function PortfolioPage() {
               onDeletePortfolio={() => handleDelete(pf.id)}
               onDownload={() => downloadPortfolioPDF(pf.id, pf.title)}
               onSend={() => setSendModalFor(pf)}
+              onAddImageUrl={async (url) => {
+                try {
+                  await addPortfolioImageByUrl(pf.id, url);
+                  load();
+                } catch {
+                  alert("Could not add image from that URL. Please check the URL and try again.");
+                }
+              }}
             />
           ))}
         </div>
@@ -171,7 +179,7 @@ export default function PortfolioPage() {
 
 function PortfolioCard({
   portfolio, expanded, uploading, uploadingDoc, onToggle, onUpload, onDeleteImage,
-  onUploadDoc, onDeleteDoc, onDeletePortfolio, onDownload, onSend,
+  onUploadDoc, onDeleteDoc, onDeletePortfolio, onDownload, onSend, onAddImageUrl,
 }: {
   portfolio: Portfolio;
   expanded: boolean;
@@ -185,11 +193,14 @@ function PortfolioCard({
   onDeletePortfolio: () => void;
   onDownload: () => void;
   onSend: () => void;
+  onAddImageUrl: (url: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [docDragOver, setDocDragOver] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+  const [urlAdding, setUrlAdding] = useState(false);
   const cover = portfolio.images?.[0];
   const projectName = typeof portfolio.project === "object" ? portfolio.project?.name : undefined;
   const docCount = portfolio.documents?.length || 0;
@@ -203,10 +214,18 @@ function PortfolioCard({
       >
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={resolveImageUrl(cover.file_url)} alt={portfolio.title} className="w-full h-full object-cover" />
-        ) : (
-          <ImageIcon className="w-8 h-8 text-[#D8D0C2]" />
-        )}
+          <img
+            src={resolveImageUrl(cover.file_url)}
+            alt={portfolio.title}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+              (e.target as HTMLImageElement).parentElement?.querySelector(".fallback-icon")?.classList.remove("hidden");
+            }}
+          />
+        ) : null}
+        {(!cover) && <ImageIcon className="w-8 h-8 text-[#D8D0C2]" />}
+        <ImageIcon className="fallback-icon hidden w-8 h-8 text-[#D8D0C2]" />
         <span className="absolute top-2 left-2 bg-black/55 text-white text-[10px] font-semibold px-2 py-1 rounded">
           {portfolio.images?.length || 0} photo{portfolio.images?.length !== 1 ? "s" : ""}
         </span>
@@ -304,12 +323,52 @@ function PortfolioCard({
               />
             </div>
 
+            {/* ── Add by URL (optional) ── */}
+            <div className="mt-2 flex gap-2">
+              <input
+                type="url"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                placeholder="Or paste image URL (optional)..."
+                className="flex-1 px-3 py-2 text-[12px] border border-[#EDE8DF] rounded-lg outline-none focus:border-[#C8922A] bg-white"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && urlInput.trim()) {
+                    setUrlAdding(true);
+                    onAddImageUrl(urlInput.trim());
+                    setUrlInput("");
+                    setTimeout(() => setUrlAdding(false), 1000);
+                  }
+                }}
+              />
+              <button
+                disabled={!urlInput.trim() || urlAdding}
+                onClick={() => {
+                  if (!urlInput.trim()) return;
+                  setUrlAdding(true);
+                  onAddImageUrl(urlInput.trim());
+                  setUrlInput("");
+                  setTimeout(() => setUrlAdding(false), 1000);
+                }}
+                className="px-3 py-2 bg-[#C8922A] hover:bg-[#B07A20] disabled:opacity-40 text-white text-[12px] font-semibold rounded-lg transition-colors flex items-center gap-1"
+              >
+                {urlAdding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                Add
+              </button>
+            </div>
+
             {portfolio.images?.length > 0 && (
               <div className="grid grid-cols-3 gap-2 mt-3">
                 {portfolio.images.map((img) => (
                   <div key={img.id} className="relative group">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={resolveImageUrl(img.file_url)} alt={img.caption || ""} className="w-full h-20 object-cover rounded-md border border-[#EDE8DF]" />
+                    <img
+                      src={resolveImageUrl(img.file_url)}
+                      alt={img.caption || ""}
+                      className="w-full h-20 object-cover rounded-md border border-[#EDE8DF] bg-[#F5F2ED]"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/logo.png";
+                      }}
+                    />
                     <button
                       onClick={(e) => { e.stopPropagation(); onDeleteImage(img.id); }}
                       className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors shadow-sm"
