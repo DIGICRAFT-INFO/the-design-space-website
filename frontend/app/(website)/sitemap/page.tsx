@@ -3,6 +3,9 @@ import { getPortfolio, getBlogPosts, getProducts, getOpenJobs } from "@/services
 import SplitText from "@/components/website/SplitText";
 import FadeIn from "@/components/website/FadeIn";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = { title: "Sitemap — The Design Space" };
 
 export default async function SitemapPage() {

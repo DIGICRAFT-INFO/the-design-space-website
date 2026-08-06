@@ -5,6 +5,9 @@ import SplitText from "@/components/website/SplitText";
 import RevealImage from "@/components/website/RevealImage";
 import FadeIn from "@/components/website/FadeIn";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function PortfolioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const project = await getPortfolioItem(id).catch(() => null);

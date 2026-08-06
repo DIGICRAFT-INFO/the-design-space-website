@@ -2,6 +2,9 @@ import { getProducts, getSeoEntries, resolveSeo } from "@/services/websiteServic
 import SplitText from "@/components/website/SplitText";
 import ProductsGrid from "@/components/website/products/ProductsGrid";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata() {
   const seo = resolveSeo(await getSeoEntries().catch(() => []), "/products", {
     title: "Products — The Design Space",

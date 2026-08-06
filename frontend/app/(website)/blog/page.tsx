@@ -2,6 +2,9 @@ import { getBlogPosts, getSeoEntries, resolveSeo } from "@/services/websiteServi
 import SplitText from "@/components/website/SplitText";
 import BlogGrid from "@/components/website/blog/BlogGrid";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata() {
   const seo = resolveSeo(await getSeoEntries().catch(() => []), "/blog", {
     title: "Journal — The Design Space",

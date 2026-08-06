@@ -2,6 +2,9 @@ import ReactMarkdown from "react-markdown";
 import { getSettings } from "@/services/websiteService";
 import SplitText from "@/components/website/SplitText";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = { title: "Privacy Policy — The Design Space" };
 
 export default async function PrivacyPolicyPage() {

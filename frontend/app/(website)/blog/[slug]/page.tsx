@@ -6,6 +6,9 @@ import { resolveMediaUrl } from "@/lib/media";
 import SplitText from "@/components/website/SplitText";
 import FadeIn from "@/components/website/FadeIn";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const post = await getBlogPost(slug).catch(() => null);

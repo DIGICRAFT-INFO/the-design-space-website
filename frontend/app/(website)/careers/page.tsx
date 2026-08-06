@@ -3,6 +3,9 @@ import SplitText from "@/components/website/SplitText";
 import FadeIn from "@/components/website/FadeIn";
 import CareersBoard from "@/components/website/careers/CareersBoard";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata() {
   const seo = resolveSeo(await getSeoEntries().catch(() => []), "/careers", {
     title: "Careers — The Design Space",

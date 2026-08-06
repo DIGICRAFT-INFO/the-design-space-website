@@ -15,6 +15,9 @@ import BlogHighlights from "@/components/website/home/BlogHighlights";
 import Link from "next/link";
 import FallbackImg from "@/components/website/FallbackImg";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata() {
   const seo = resolveSeo(await getSeoEntries().catch(() => []), "/", {
     title: "The Design Space — Luxury Interior Design",

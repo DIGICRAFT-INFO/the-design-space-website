@@ -5,6 +5,9 @@ import FadeIn from "@/components/website/FadeIn";
 import ContactForm from "@/components/website/contact/ContactForm";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata() {
   const seo = resolveSeo(await getSeoEntries().catch(() => []), "/contact", {
     title: "Contact — The Design Space",

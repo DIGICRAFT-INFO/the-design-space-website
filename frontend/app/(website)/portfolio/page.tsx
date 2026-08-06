@@ -2,6 +2,9 @@ import { getPortfolio, getPortfolioCategories, getSeoEntries, resolveSeo } from 
 import SplitText from "@/components/website/SplitText";
 import PortfolioGrid from "@/components/website/portfolio/PortfolioGrid";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata() {
   const seo = resolveSeo(await getSeoEntries().catch(() => []), "/portfolio", {
     title: "Portfolio — The Design Space",

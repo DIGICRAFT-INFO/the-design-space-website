@@ -4,6 +4,9 @@ import SplitText from "@/components/website/SplitText";
 import RevealImage from "@/components/website/RevealImage";
 import FadeIn from "@/components/website/FadeIn";
 import HeroSlider from "@/components/website/home/HeroSlider";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 import ServicesMarquee from "@/components/website/about/ServicesMarquee";
 import WhoWeAreSection from "@/components/website/about/WhoWeAreSection";
 import MissionVisionSection from "@/components/website/about/MissionVisionSection";

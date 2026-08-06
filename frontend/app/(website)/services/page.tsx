@@ -4,6 +4,9 @@ import FadeIn from "@/components/website/FadeIn";
 import MagneticButton from "@/components/website/MagneticButton";
 import ServicesList from "@/components/website/services/ServicesList";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata() {
   const seo = resolveSeo(await getSeoEntries().catch(() => []), "/services", {
     title: "Services — The Design Space",
