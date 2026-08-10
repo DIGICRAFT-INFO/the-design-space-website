@@ -1,12 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Transition } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import SplitText from "@/components/website/SplitText";
 import FadeIn from "@/components/website/FadeIn";
 import MagneticButton from "@/components/website/MagneticButton";
 import type { HeroSlide } from "@/services/websiteService";
+
+// Typed easing tuple — Framer Motion requires [number,number,number,number], not number[]
+const EASE: [number, number, number, number] = [0.4, 0, 0.2, 1];
+
+const slideTransition: Transition = { duration: 0.9, ease: EASE };
+const contentTransitionIn: Transition = { duration: 0.55, delay: 0.35, ease: EASE };
+const contentTransitionOut: Transition = { duration: 0.3, ease: EASE };
 
 type Props = {
   slides: HeroSlide[];
@@ -85,11 +92,11 @@ export default function HeroSlider({ slides, autoPlayInterval = 5000 }: Props) {
     }),
     center: {
       x: "0%",
-      transition: { duration: 0.9, ease: [0.4, 0, 0.2, 1] },
+      transition: slideTransition,
     },
     exit: (dir: number) => ({
       x: dir > 0 ? "-100%" : "100%",
-      transition: { duration: 0.9, ease: [0.4, 0, 0.2, 1] },
+      transition: slideTransition,
     }),
   };
 
@@ -98,12 +105,12 @@ export default function HeroSlider({ slides, autoPlayInterval = 5000 }: Props) {
     center: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.55, delay: 0.35, ease: [0.4, 0, 0.2, 1] },
+      transition: contentTransitionIn,
     },
     exit: {
       opacity: 0,
       y: -16,
-      transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
+      transition: contentTransitionOut,
     },
   };
 
