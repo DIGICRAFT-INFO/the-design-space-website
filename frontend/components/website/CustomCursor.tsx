@@ -7,9 +7,10 @@ import { motion, useMotionValue, useSpring } from "framer-motion";
  *  the cursor expand and show that label while hovering it. */
 export default function CustomCursor() {
   const [enabled, setEnabled] = useState(false);
+  const [visible, setVisible] = useState(false); // tracks whether mouse has moved at least once
   const [label, setLabel] = useState<string | null>(null);
-  const x = useMotionValue(-100);
-  const y = useMotionValue(-100);
+  const x = useMotionValue(-200);
+  const y = useMotionValue(-200);
   const springX = useSpring(x, { damping: 28, stiffness: 320, mass: 0.4 });
   const springY = useSpring(y, { damping: 28, stiffness: 320, mass: 0.4 });
   const rootRef = useRef<HTMLDivElement>(null);
@@ -25,6 +26,7 @@ export default function CustomCursor() {
     const move = (e: MouseEvent) => {
       x.set(e.clientX);
       y.set(e.clientY);
+      if (!visible) setVisible(true);
 
       const target = (e.target as HTMLElement)?.closest("[data-cursor]") as HTMLElement | null;
       setLabel(target?.getAttribute("data-cursor") || null);
@@ -54,7 +56,8 @@ export default function CustomCursor() {
       animate={{
         width: label ? 92 : 10,
         height: label ? 92 : 10,
-        opacity: label ? 1 : 0.7,
+        // Only show cursor after mouse has moved — prevents stray dot on page load/scroll
+        opacity: !visible ? 0 : label ? 1 : 0.7,
       }}
       transition={{ type: "spring", damping: 22, stiffness: 260 }}
     >

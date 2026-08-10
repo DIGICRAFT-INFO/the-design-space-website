@@ -36,7 +36,7 @@ export default async function CareersPage() {
         </div>
       </section>
 
-      <section className="pb-28 md:pb-40">
+      <section className="pb-16 md:pb-24">
         <div className="max-w-3xl mx-auto px-6 md:px-10">
           <CareersBoard jobs={jobs} />
         </div>

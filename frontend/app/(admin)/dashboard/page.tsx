@@ -465,19 +465,19 @@ export default function DashboardPage() {
   const overdueInvoices = payments.filter((p: any) => p.status === "overdue");
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-5 md:space-y-6 pb-8">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-[26px] font-extrabold text-[#1C1C1C] tracking-tight">
+          <h1 className="text-[22px] md:text-[26px] font-extrabold text-[#1C1C1C] tracking-tight">
             {greeting}, {userName} 👋
           </h1>
-          <p className="text-[14px] text-[#9A8F82] mt-1 font-medium">
+          <p className="text-[13px] md:text-[14px] text-[#9A8F82] mt-1 font-medium">
             {userRole === "owner" ? "Here's the full picture of your business today." : `Welcome back — here's your ${userRole} overview.`}
           </p>
         </div>
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-2 md:gap-3 sm:shrink-0">
           <WeatherWidget />
           <DateCalendarWidget />
         </div>

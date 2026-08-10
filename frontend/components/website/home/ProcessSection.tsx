@@ -25,9 +25,9 @@ export default function ProcessSection({ miniTitle, steps, image }: ProcessSecti
 
   return (
     <section className="bg-[var(--ds-bg-alt)] border-y border-[var(--ds-border)]">
-      <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-24 md:py-36">
+      <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-14 md:py-20">
         <FadeIn>
-          <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-12">{miniTitle}</p>
+          <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-8 md:mb-12">{miniTitle}</p>
         </FadeIn>
 
         <div className="flex flex-col lg:flex-row gap-10 lg:gap-20">

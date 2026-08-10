@@ -288,23 +288,23 @@ const fetchEnquiries = useCallback(async () => {
   };
 
   return (
-    <div className="p-8 bg-[#FAF8F5] min-h-screen font-sans text-[#1C1C1C]">
+    <div className="p-4 md:p-8 bg-[#FAF8F5] min-h-screen font-sans text-[#1C1C1C]">
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col gap-3 mb-6 md:mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#1C1C1C]">Enquiries</h1>
-          <p className="text-[14px] text-[#9A8F82] mt-1 font-medium">Track and manage incoming client enquiries</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-[#1C1C1C]">Enquiries</h1>
+          <p className="text-[13px] md:text-[14px] text-[#9A8F82] mt-1 font-medium">Track and manage incoming client enquiries</p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <div className="relative flex-1 min-w-[140px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A8F82]" size={16} />
             <input
               type="text"
-              placeholder="Search by name, mobile, address..."
+              placeholder="Search by name, mobile..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2.5 bg-white border border-[#EDE8DF] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C8922A]/20 focus:border-[#C8922A] w-72 transition-all"
+              className="pl-10 pr-4 py-2.5 bg-white border border-[#EDE8DF] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C8922A]/20 focus:border-[#C8922A] w-full transition-all"
             />
           </div>
           <div className="relative">
@@ -324,27 +324,27 @@ const fetchEnquiries = useCallback(async () => {
           {canModify && (
             <button
               onClick={openCreate}
-              className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[14px] font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95"
+              className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[13px] md:text-[14px] font-bold px-4 md:px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 whitespace-nowrap"
             >
-              <Plus size={18} /> Add Enquiry
+              <Plus size={16} /> Add Enquiry
             </button>
           )}
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-[#EDE8DF] shadow-sm overflow-visible">
-        <table className="w-full border-collapse">
+      <div className="bg-white rounded-2xl border border-[#EDE8DF] shadow-sm overflow-x-auto">
+        <table className="w-full border-collapse min-w-[680px]">
           <thead>
             <tr className="bg-[#FAF8F5] border-b border-[#EDE8DF]">
-              <th className="px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Client Name</th>
-              <th className="px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Mobile</th>
-              <th className="px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Address</th>
-              <th className="px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Date & Time</th>
-              <th className="px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Status</th>
-              <th className="px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Notes</th>
+              <th className="px-4 md:px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Client Name</th>
+              <th className="px-4 md:px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Mobile</th>
+              <th className="hidden md:table-cell px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Address</th>
+              <th className="hidden sm:table-cell px-4 md:px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Date & Time</th>
+              <th className="px-4 md:px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Status</th>
+              <th className="hidden lg:table-cell px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Notes</th>
               {canModify && (
-                <th className="px-6 py-4 text-right text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Actions</th>
+                <th className="px-4 md:px-6 py-4 text-right text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Actions</th>
               )}
             </tr>
           </thead>

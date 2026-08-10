@@ -760,7 +760,7 @@ export default function ProposalsPage() {
     "Selected Client";
 
   return (
-    <div className="min-h-screen bg-[#FCFBF9] p-6 md:p-10 text-[#1C1C1C]">
+    <div className="min-h-screen bg-[#FCFBF9] p-4 md:p-6 lg:p-10 text-[#1C1C1C]">
       {/* Nested quick add modals */}
       {showAddClient && (
         <QuickAddClientModal
@@ -779,18 +779,18 @@ export default function ProposalsPage() {
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-end mb-10">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6 md:mb-10">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter">Proposals</h1>
-          <p className="text-[#9A8F82] font-medium">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tighter">Proposals</h1>
+          <p className="text-[#9A8F82] font-medium text-sm md:text-base">
             Create and manage client proposals
           </p>
         </div>
         <button
           onClick={openNew}
-          className="bg-[#C8922A] hover:bg-[#B07A20] text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2"
+          className="bg-[#C8922A] hover:bg-[#B07A20] text-white px-5 md:px-6 py-2.5 md:py-3 rounded-2xl font-bold flex items-center gap-2 text-sm md:text-base self-start sm:self-auto whitespace-nowrap"
         >
-          <Plus size={20} strokeWidth={3} /> New Proposal
+          <Plus size={18} strokeWidth={3} /> New Proposal
         </button>
       </div>
 
@@ -813,14 +813,14 @@ export default function ProposalsPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left min-w-[560px]">
             <thead>
               <tr className="bg-[#FAF8F5] border-b border-[#EDE8DF] text-[11px] font-black text-[#9A8F82] uppercase tracking-[2px]">
-                <th className="px-8 py-5">Document</th>
-                <th className="px-8 py-5">Client / Project</th>
-                <th className="px-8 py-5">Status</th>
-                <th className="px-8 py-5">Valid Until</th>
-                <th className="px-8 py-5 text-right">Actions</th>
+                <th className="px-5 md:px-8 py-5">Document</th>
+                <th className="px-5 md:px-8 py-5">Client / Project</th>
+                <th className="px-5 md:px-8 py-5">Status</th>
+                <th className="hidden sm:table-cell px-5 md:px-8 py-5">Valid Until</th>
+                <th className="px-5 md:px-8 py-5 text-right">Actions</th>
               </tr>
             </thead>
 

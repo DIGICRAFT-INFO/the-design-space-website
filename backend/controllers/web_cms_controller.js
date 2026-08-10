@@ -168,14 +168,112 @@ exports.update_about = async (req, res) => {
     if (about_slides !== undefined) doc.about_slides = about_slides;
     if (studio_gallery) doc.studio_gallery = studio_gallery;
     if (studio_video_url !== undefined) doc.studio_video_url = studio_video_url;
-    if (who_we_are) doc.who_we_are = { ...doc.who_we_are.toObject(), ...who_we_are };
-    if (mission) doc.mission = { ...doc.mission.toObject(), ...mission };
-    if (vision) doc.vision = { ...doc.vision.toObject(), ...vision };
+    if (who_we_are) {
+      // Preserve existing slider_images unless explicitly sent
+      const existing = doc.who_we_are.toObject ? doc.who_we_are.toObject() : doc.who_we_are;
+      doc.who_we_are = { ...existing, ...who_we_are };
+    }
+    if (mission) {
+      const existing = doc.mission.toObject ? doc.mission.toObject() : doc.mission;
+      doc.mission = { ...existing, ...mission };
+    }
+    if (vision) {
+      const existing = doc.vision.toObject ? doc.vision.toObject() : doc.vision;
+      doc.vision = { ...existing, ...vision };
+    }
     doc.updated_by = req.user ? req.user._id : null;
     await doc.save();
     res.json(doc);
   } catch (error) {
     console.error('❌ update_about error:', error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// ── Section Slider Image CRUD ─────────────────────────────────────────────
+// Shared logic: section = 'who_we_are' | 'mission' | 'vision'
+
+const VALID_SECTIONS = ['who_we_are', 'mission', 'vision'];
+
+function validateSection(section) {
+  return VALID_SECTIONS.includes(section);
+}
+
+// POST /about/sections/:section/images  — add one image to slider
+exports.add_section_image = async (req, res) => {
+  const { section } = req.params;
+  if (!validateSection(section)) return res.status(400).json({ error: 'Invalid section.' });
+  try {
+    const doc = await getOrCreateAbout();
+    const { image_url, alt_text, sort_order } = req.body;
+    if (!image_url) return res.status(400).json({ error: 'image_url is required.' });
+    doc[section].slider_images.push({
+      image_url,
+      alt_text: alt_text || '',
+      sort_order: sort_order !== undefined ? sort_order : doc[section].slider_images.length,
+    });
+    doc.markModified(section);
+    await doc.save();
+    res.status(201).json(doc);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// PATCH /about/sections/:section/images/:imageId  — update one image
+exports.update_section_image = async (req, res) => {
+  const { section, imageId } = req.params;
+  if (!validateSection(section)) return res.status(400).json({ error: 'Invalid section.' });
+  try {
+    const doc = await getOrCreateAbout();
+    const img = doc[section].slider_images.id(imageId);
+    if (!img) return res.status(404).json({ error: 'Image not found.' });
+    ['image_url', 'alt_text', 'sort_order'].forEach((f) => {
+      if (req.body[f] !== undefined) img[f] = req.body[f];
+    });
+    doc.markModified(section);
+    await doc.save();
+    res.json(doc);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// DELETE /about/sections/:section/images/:imageId  — remove one image
+exports.delete_section_image = async (req, res) => {
+  const { section, imageId } = req.params;
+  if (!validateSection(section)) return res.status(400).json({ error: 'Invalid section.' });
+  try {
+    const doc = await getOrCreateAbout();
+    const img = doc[section].slider_images.id(imageId);
+    if (!img) return res.status(404).json({ error: 'Image not found.' });
+    safeUnlink(img.image_url);
+    doc[section].slider_images.pull({ _id: imageId });
+    doc.markModified(section);
+    await doc.save();
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// PUT /about/sections/:section/images — replace entire slider image array
+exports.replace_section_images = async (req, res) => {
+  const { section } = req.params;
+  if (!validateSection(section)) return res.status(400).json({ error: 'Invalid section.' });
+  try {
+    const doc = await getOrCreateAbout();
+    const { images } = req.body; // [{ image_url, alt_text, sort_order }]
+    if (!Array.isArray(images)) return res.status(400).json({ error: 'images array is required.' });
+    doc[section].slider_images = images.map((img, i) => ({
+      image_url: img.image_url || '',
+      alt_text: img.alt_text || '',
+      sort_order: img.sort_order !== undefined ? img.sort_order : i,
+    }));
+    doc.markModified(section);
+    await doc.save();
+    res.json(doc);
+  } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };

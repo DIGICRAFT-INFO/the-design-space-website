@@ -139,8 +139,8 @@ export default async function HomePage() {
       {/* ── Section C: Services ──────────────────────────────────────── */}
       {isVisible("services_grid") && allServices.length > 0 && (
         <section className="bg-[var(--ds-bg-alt)] border-y border-[var(--ds-border)]">
-          <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-24 md:py-32">
-            <FadeIn className="mb-12 md:mb-16 flex items-end justify-between">
+          <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-14 md:py-20">
+            <FadeIn className="mb-8 md:mb-12 flex items-end justify-between">
               <div>
                 <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-3">What We Do</p>
                 <h2 className="text-3xl md:text-5xl font-light tracking-tight text-[var(--ds-ink)]" style={{ fontFamily: "var(--font-display)" }}>
@@ -152,10 +152,10 @@ export default async function HomePage() {
               </Link>
             </FadeIn>
             <ServicesList packages={allServices} />
-            <FadeIn className="mt-14 text-center">
+            <FadeIn className="mt-8 md:mt-10 text-center">
               <Link
                 href="/services"
-                className="inline-flex items-center gap-2 px-8 py-3.5 border border-[var(--ds-ink)] text-[11px] tracking-[0.14em] uppercase font-semibold text-[var(--ds-ink)] hover:bg-[var(--ds-ink)] hover:text-[var(--ds-bg)] transition-colors rounded-full"
+                className="inline-flex items-center gap-2 px-7 py-3 border border-[var(--ds-ink)] text-[11px] tracking-[0.14em] uppercase font-semibold text-[var(--ds-ink)] hover:bg-[var(--ds-ink)] hover:text-[var(--ds-bg)] transition-all duration-300 rounded-full"
               >
                 View All Services
               </Link>
@@ -166,9 +166,9 @@ export default async function HomePage() {
 
       {/* ── Section D: Bento Grid Matrix (Portfolio) ────────────────────── */}
       {isVisible("bento_portfolio") && (
-      <section className="bg-[var(--ds-bg-alt)] py-14 md:py-20">
+      <section className="bg-[var(--ds-bg-alt)] py-10 md:py-14">
         <div className="max-w-[1600px] mx-auto px-6 md:px-10">
-          <FadeIn className="text-center mb-14">
+          <FadeIn className="text-center mb-8 md:mb-12">
             <span className="inline-block text-[11px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-4 px-4 py-1.5 bg-[var(--ds-gold)]/10 rounded-full">
               {(home?.grid_matrix?.mini_title || "Selected Architecture").replace(/^\d+\s*\/\s*/, "")}
             </span>

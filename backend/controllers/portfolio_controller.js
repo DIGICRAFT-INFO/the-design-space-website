@@ -386,6 +386,14 @@ function toPublicPortfolio(p) {
       .slice()
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
       .map((img) => ({ id: img._id || img.id, file_url: img.file_url, caption: img.caption })),
+    // Documents (PDFs) — exposed so the public portfolio detail page can show them
+    documents: (obj.documents || []).map((doc) => ({
+      id: doc._id || doc.id,
+      file_url: doc.file_url,
+      title: doc.title || doc.original_filename || 'Document',
+      file_size: doc.file_size,
+      original_filename: doc.original_filename,
+    })),
     created_at: obj.created_at,
   };
 }

@@ -228,7 +228,7 @@ export default function ProjectsPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [clientFilter, setClientFilter] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const emptyForm: Project = useMemo(
     () => ({
@@ -422,13 +422,23 @@ export default function ProjectsPage() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex min-h-screen bg-[#FBFAF7]">
+    <div className="flex min-h-screen bg-[#FBFAF7] relative">
+
+      {/* ── Mobile sidebar overlay backdrop ── */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/30 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* ── SIDEBAR ── */}
       <aside
-        className={`flex-shrink-0 transition-all duration-300 border-r border-[#EDE8DF] bg-white ${
-          sidebarOpen ? "w-[220px]" : "w-0 overflow-hidden"
-        }`}
+        className={`
+          flex-shrink-0 border-r border-[#EDE8DF] bg-white transition-all duration-300
+          fixed md:relative inset-y-0 left-0 z-40 md:z-auto
+          ${sidebarOpen ? "w-[220px] translate-x-0" : "w-0 -translate-x-full md:translate-x-0 md:w-0 overflow-hidden"}
+        `}
       >
         {/* Sidebar header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#EDE8DF]">

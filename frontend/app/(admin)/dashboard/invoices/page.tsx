@@ -746,9 +746,9 @@ export default function InvoicesPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-[24px] font-bold text-[#1C1C1C]">Invoices</h1>
+          <h1 className="text-[22px] md:text-[24px] font-bold text-[#1C1C1C]">Invoices</h1>
           <p className="text-[13px] text-[#9A8F82] mt-0.5">
             Track billing, payments & outstanding amounts
           </p>
@@ -762,7 +762,7 @@ export default function InvoicesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
         {[
           {
             label: "Total Invoiced",
@@ -841,8 +841,8 @@ export default function InvoicesPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-[#EDE8DF] overflow-hidden shadow-sm mb-5">
-        <table className="w-full text-left">
+      <div className="bg-white rounded-2xl border border-[#EDE8DF] overflow-x-auto shadow-sm mb-5">
+        <table className="w-full text-left min-w-[700px]">
           <thead className="bg-[#FAF8F5] border-b border-[#EDE8DF]">
             <tr>
               {[

@@ -33,9 +33,9 @@ export default async function AboutPage() {
   const nonFounderTeam = allTeam.filter((m) => !m.is_founder);
 
   // New sections data
-  const whoWeAre = about?.who_we_are ?? { title: "", body: "", background_image: "" };
-  const mission = about?.mission ?? { title: "", body: "" };
-  const vision = about?.vision ?? { title: "", body: "" };
+  const whoWeAre = about?.who_we_are ?? { title: "", body: "", background_image: "", slider_images: [] };
+  const mission = about?.mission ?? { title: "", body: "", slider_images: [] };
+  const vision = about?.vision ?? { title: "", body: "", slider_images: [] };
   const values = about?.values ?? [];
   const industries = about?.industries ?? [];
 

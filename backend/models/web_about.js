@@ -19,27 +19,52 @@ const galleryImageSchema = new mongoose.Schema(
   }
 );
 
+// ── Slider image sub-schema (shared across who_we_are, mission, vision) ──────
+const sliderImageSchema = new mongoose.Schema(
+  {
+    _id:        { type: String, default: uuidv4 },
+    image_url:  { type: String, required: true },
+    alt_text:   { type: String, default: '' },
+    sort_order: { type: Number, default: 0 },
+  },
+  {
+    _id: true,
+    toJSON: {
+      transform: (doc, ret) => {
+        ret.id = ret._id;
+        delete ret._id;
+      },
+    },
+  }
+);
+
 const whoWeAreSchema = new mongoose.Schema(
   {
     title:            { type: String, default: '', maxLength: 200 },
     body:             { type: String, default: '' },
     background_image: { type: String, default: '' },
+    // Horizontal image slider for the split-grid layout
+    slider_images:    { type: [sliderImageSchema], default: [] },
   },
   { _id: false }
 );
 
 const missionSchema = new mongoose.Schema(
   {
-    title: { type: String, default: '', maxLength: 200 },
-    body:  { type: String, default: '' },
+    title:         { type: String, default: '', maxLength: 200 },
+    body:          { type: String, default: '' },
+    // Horizontal image slider for the split-grid layout
+    slider_images: { type: [sliderImageSchema], default: [] },
   },
   { _id: false }
 );
 
 const visionSchema = new mongoose.Schema(
   {
-    title: { type: String, default: '', maxLength: 200 },
-    body:  { type: String, default: '' },
+    title:         { type: String, default: '', maxLength: 200 },
+    body:          { type: String, default: '' },
+    // Horizontal image slider for the split-grid layout
+    slider_images: { type: [sliderImageSchema], default: [] },
   },
   { _id: false }
 );

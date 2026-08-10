@@ -30,7 +30,7 @@ export default async function BlogPage() {
         </div>
       </section>
 
-      <section className="pb-28 md:pb-40">
+      <section className="pb-16 md:pb-24">
         <div className="max-w-[1600px] mx-auto px-6 md:px-10">
           <BlogGrid posts={posts} />
         </div>

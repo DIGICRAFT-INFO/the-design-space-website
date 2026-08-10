@@ -698,16 +698,16 @@ export default function QuotationsPage() {
       {showLibrary && <LibraryPicker items={lineLibrary} onSelect={handleLibrarySelect} onClose={() => { setShowLibrary(false); setLibraryTargetIdx(null); }}/>}
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col gap-3 mb-5 md:mb-6">
         <div>
-          <h1 className="text-[26px] font-bold text-[#1C1C1C]">Quotations</h1>
+          <h1 className="text-[22px] md:text-[26px] font-bold text-[#1C1C1C]">Quotations</h1>
           <p className="text-[13px] text-[#9A8F82]">{quotations.length} total · {quotations.filter(q=>q.status==="approved").length} approved</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <div className="relative flex-1 min-w-[130px]">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A8F82]"/>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-              className="pl-9 pr-4 py-2.5 bg-white border border-[#EDE8DF] rounded-xl text-[13px] outline-none focus:border-[#C8922A] w-52"/>
+              className="pl-9 pr-4 py-2.5 bg-white border border-[#EDE8DF] rounded-xl text-[13px] outline-none focus:border-[#C8922A] w-full"/>
           </div>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
             className="py-2.5 px-3 bg-white border border-[#EDE8DF] rounded-xl text-[13px] outline-none focus:border-[#C8922A]">
@@ -715,14 +715,14 @@ export default function QuotationsPage() {
             {Object.entries(STATUS_CFG).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
           <button onClick={openCreate}
-            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white font-bold px-5 py-2.5 rounded-xl text-[13px]">
+            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white font-bold px-4 md:px-5 py-2.5 rounded-xl text-[13px] whitespace-nowrap">
             <Plus size={16}/> New Quotation
           </button>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-[#EDE8DF] shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#EDE8DF] shadow-sm overflow-x-auto">
         {loading ? (
           <div className="py-20 flex items-center justify-center"><Loader2 size={28} className="animate-spin text-[#C8922A]"/></div>
         ) : filtered.length === 0 ? (
@@ -731,7 +731,7 @@ export default function QuotationsPage() {
             <p className="text-[13px] text-[#9A8F82] mt-1">Create your first quotation above</p>
           </div>
         ) : (
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse min-w-[640px]">
             <thead className="bg-[#FAF8F5] border-b border-[#EDE8DF]">
               <tr>
                 {["Quote #","Client","Project","Status","Amount","Date","Actions"].map(h => (

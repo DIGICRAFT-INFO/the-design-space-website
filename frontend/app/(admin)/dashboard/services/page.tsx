@@ -466,7 +466,7 @@ export default function ServicesPage() {
   const isModalOpen = modalMode !== null;
 
   return (
-    <div className="p-8 bg-[#FAF8F5] min-h-screen font-sans text-[#1C1C1C]">
+    <div className="p-4 md:p-8 bg-[#FAF8F5] min-h-screen font-sans text-[#1C1C1C]">
 
       {/* Permission error banner */}
       {permissionError && (
@@ -477,20 +477,20 @@ export default function ServicesPage() {
       )}
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col gap-3 mb-6 md:mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#1C1C1C]">Master Services</h1>
-          <p className="text-[14px] text-[#9A8F82] mt-1 font-medium">Manage your service catalog and offerings</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-[#1C1C1C]">Master Services</h1>
+          <p className="text-[13px] md:text-[14px] text-[#9A8F82] mt-1 font-medium">Manage your service catalog and offerings</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <div className="relative flex-1 min-w-[140px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A8F82]" size={16} />
             <input
               type="text"
               placeholder="Search services..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2.5 bg-white border border-[#EDE8DF] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C8922A]/20 focus:border-[#C8922A] w-64 transition-all"
+              className="pl-10 pr-4 py-2.5 bg-white border border-[#EDE8DF] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C8922A]/20 focus:border-[#C8922A] w-full transition-all"
             />
           </div>
           <div className="relative">
@@ -508,17 +508,17 @@ export default function ServicesPage() {
           {canModify && (
             <button
               onClick={openCreate}
-              className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[14px] font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95"
+              className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[13px] md:text-[14px] font-bold px-4 md:px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 whitespace-nowrap"
             >
-              <Plus size={18} /> Add Service
+              <Plus size={16} /> Add Service
             </button>
           )}
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-[#EDE8DF] shadow-sm overflow-visible">
-        <table className="w-full border-collapse">
+      <div className="bg-white rounded-2xl border border-[#EDE8DF] shadow-sm overflow-x-auto">
+        <table className="w-full border-collapse min-w-[600px]">
           <thead>
             <tr className="bg-[#FAF8F5] border-b border-[#EDE8DF]">
               <th className="px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">Name</th>

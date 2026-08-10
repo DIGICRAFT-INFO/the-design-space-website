@@ -60,6 +60,13 @@ export type WebHome = {
   };
 };
 
+export type SliderImage = {
+  id: string;
+  image_url: string;
+  alt_text: string;
+  sort_order: number;
+};
+
 export type ValueItem = {
   id: string;
   icon: string;
@@ -101,9 +108,9 @@ export type WebAbout = {
   studio_gallery: { id: string; file_url: string; caption: string; sort_order: number }[];
   studio_video_url: string;
   team_members: TeamMember[];
-  who_we_are: { title: string; body: string; background_image: string };
-  mission: { title: string; body: string };
-  vision: { title: string; body: string };
+  who_we_are: { title: string; body: string; background_image: string; slider_images: SliderImage[] };
+  mission: { title: string; body: string; slider_images: SliderImage[] };
+  vision: { title: string; body: string; slider_images: SliderImage[] };
   values: ValueItem[];
   industries: IndustryItem[];
 };
@@ -148,6 +155,7 @@ export type PublicPortfolioItem = {
   sort_order: number;
   metrics: { location: string; area_sqft: number | null; scope_duration: string };
   images: { id: string; file_url: string; caption: string }[];
+  documents: { id: string; file_url: string; title: string; file_size: number; original_filename: string }[];
   created_at: string;
 };
 

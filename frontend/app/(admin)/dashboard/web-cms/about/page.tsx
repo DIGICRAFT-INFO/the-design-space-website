@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, Plus, Trash2, Save, Images, GripVertical } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Loader2, Plus, Trash2, Save, Images, GripVertical, ImageIcon } from "lucide-react";
 import {
   getAboutAdmin,
   updateAboutAdmin,
@@ -14,11 +14,16 @@ import {
   addIndustry,
   updateIndustry,
   deleteIndustry,
+  addSectionImage,
+  deleteSectionImage,
+  replaceSectionImages,
+  uploadWebsiteImage,
 } from "@/services/webCmsService";
-import type { WebAbout, TeamMember, HeroSlide, ValueItem, IndustryItem } from "@/services/websiteService";
+import type { WebAbout, TeamMember, HeroSlide, ValueItem, IndustryItem, SliderImage } from "@/services/websiteService";
 import MediaUploadField from "@/components/webcms/MediaUploadField";
 import Toast, { type ToastState } from "@/components/webcms/Toast";
 import { getErrorMessage } from "@/lib/errors";
+import { resolveMediaUrl } from "@/lib/media";
 
 const inputClass =
   "w-full px-3.5 py-2.5 rounded-lg border border-[#EDE8DF] bg-white text-[13px] focus:outline-none focus:border-[#C8922A]";
@@ -27,6 +32,161 @@ const labelClass = "text-[12px] font-semibold text-[#6B6259] mb-1.5 block";
 let uid = 0;
 const nextId = () => `new-${Date.now()}-${uid++}`;
 
+type AboutSection = "who_we_are" | "mission" | "vision";
+
+// ── Reusable slider image manager sub-component ──────────────────────────────
+function SliderImageManager({
+  section,
+  images,
+  onUpdate,
+  onError,
+}: {
+  section: AboutSection;
+  images: SliderImage[];
+  onUpdate: (updated: WebAbout) => void;
+  onError: (msg: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const sorted = [...images].sort((a, b) => a.sort_order - b.sort_order);
+
+  async function handleFiles(files: FileList) {
+    setUploading(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const { file_url } = await uploadWebsiteImage(files[i]);
+        const updated = await addSectionImage(section, {
+          image_url: file_url,
+          alt_text: "",
+          sort_order: images.length + i,
+        });
+        onUpdate(updated);
+      }
+    } catch (e) {
+      onError(getErrorMessage(e, "Upload failed"));
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  async function handleDelete(imageId: string) {
+    if (!confirm("Remove this image from the slider?")) return;
+    try {
+      await deleteSectionImage(section, imageId);
+      // Re-fetch to get updated data (delete returns 204)
+      const { getAboutAdmin } = await import("@/services/webCmsService");
+      const updated = await getAboutAdmin();
+      onUpdate(updated);
+    } catch (e) {
+      onError(getErrorMessage(e));
+    }
+  }
+
+  async function handleReorder(imageId: string, dir: 1 | -1) {
+    const arr = [...sorted];
+    const idx = arr.findIndex((img) => img.id === imageId);
+    const next = idx + dir;
+    if (next < 0 || next >= arr.length) return;
+    [arr[idx], arr[next]] = [arr[next], arr[idx]];
+    const reordered = arr.map((img, i) => ({ ...img, sort_order: i }));
+    try {
+      const updated = await replaceSectionImages(section, reordered);
+      onUpdate(updated);
+    } catch (e) {
+      onError(getErrorMessage(e));
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className={labelClass} style={{ margin: 0 }}>Slider Images <span className="text-[#9A8F82] font-normal">(4:3 · auto-play on website)</span></p>
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-1.5 text-[12px] font-semibold text-[#C8922A] hover:text-[#B07A20] disabled:opacity-50"
+        >
+          {uploading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+          {uploading ? "Uploading…" : "Add Images"}
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif"
+          multiple
+          className="hidden"
+          onChange={(e) => { if (e.target.files?.length) handleFiles(e.target.files); }}
+        />
+      </div>
+
+      {sorted.length === 0 ? (
+        <div
+          className="border-2 border-dashed border-[#EDE8DF] rounded-xl py-7 flex flex-col items-center gap-2 text-[#9A8F82] cursor-pointer hover:border-[#C8922A] transition-colors"
+          onClick={() => inputRef.current?.click()}
+        >
+          <ImageIcon size={22} className="opacity-40" />
+          <p className="text-[11px] font-medium">No slider images yet — click to upload</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {sorted.map((img, idx) => (
+            <div key={img.id} className="relative group rounded-xl overflow-hidden border border-[#EDE8DF] bg-[#FAFAF9]">
+              {/* 4:3 preview */}
+              <div className="w-full" style={{ aspectRatio: "4/3", position: "relative" }}>
+                <img
+                  src={resolveMediaUrl(img.image_url)}
+                  alt={img.alt_text || `Slide ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
+                />
+              </div>
+              {/* Controls overlay */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                <button
+                  onClick={() => handleReorder(img.id, -1)}
+                  disabled={idx === 0}
+                  title="Move left"
+                  className="w-7 h-7 rounded-full bg-white/90 text-[#2B2620] flex items-center justify-center disabled:opacity-30 hover:bg-white text-[10px] font-bold"
+                >←</button>
+                <button
+                  onClick={() => handleDelete(img.id)}
+                  title="Remove"
+                  className="w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600"
+                >
+                  <Trash2 size={11} />
+                </button>
+                <button
+                  onClick={() => handleReorder(img.id, 1)}
+                  disabled={idx === sorted.length - 1}
+                  title="Move right"
+                  className="w-7 h-7 rounded-full bg-white/90 text-[#2B2620] flex items-center justify-center disabled:opacity-30 hover:bg-white text-[10px] font-bold"
+                >→</button>
+              </div>
+              {/* Slide index badge */}
+              <span className="absolute bottom-1.5 left-1.5 text-[9px] font-bold bg-black/50 text-white px-1.5 py-0.5 rounded-full">
+                {idx + 1}
+              </span>
+            </div>
+          ))}
+          {/* Add more tile */}
+          <div
+            className="border-2 border-dashed border-[#EDE8DF] rounded-xl flex flex-col items-center justify-center gap-1 text-[#9A8F82] cursor-pointer hover:border-[#C8922A] hover:text-[#C8922A] transition-colors"
+            style={{ aspectRatio: "4/3" }}
+            onClick={() => inputRef.current?.click()}
+          >
+            <Plus size={16} />
+            <span className="text-[10px] font-semibold">Add</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main page component ───────────────────────────────────────────────────────
 export default function WebCmsAboutPage() {
   const [data, setData] = useState<WebAbout | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,8 +194,10 @@ export default function WebCmsAboutPage() {
   const [toast, setToast] = useState<ToastState>(null);
   const [savingMemberId, setSavingMemberId] = useState<string | null>(null);
 
-  // Singleton section draft states
-  const [whoWeAreDraft, setWhoWeAreDraft] = useState({ title: "", body: "", background_image: "" });
+  // Singleton section draft states — now include slider_images passthrough
+  const [whoWeAreDraft, setWhoWeAreDraft] = useState({
+    title: "", body: "", background_image: "",
+  });
   const [missionDraft, setMissionDraft] = useState({ title: "", body: "" });
   const [visionDraft, setVisionDraft] = useState({ title: "", body: "" });
   const [savingSection, setSavingSection] = useState<string | null>(null);
@@ -45,14 +207,22 @@ export default function WebCmsAboutPage() {
     getAboutAdmin()
       .then((d) => {
         setData(d);
-        setWhoWeAreDraft(d.who_we_are ?? { title: "", body: "", background_image: "" });
-        setMissionDraft(d.mission ?? { title: "", body: "" });
-        setVisionDraft(d.vision ?? { title: "", body: "" });
+        setWhoWeAreDraft({
+          title: d.who_we_are?.title ?? "",
+          body: d.who_we_are?.body ?? "",
+          background_image: d.who_we_are?.background_image ?? "",
+        });
+        setMissionDraft({ title: d.mission?.title ?? "", body: d.mission?.body ?? "" });
+        setVisionDraft({ title: d.vision?.title ?? "", body: d.vision?.body ?? "" });
       })
       .catch((e) => setToast({ message: getErrorMessage(e), type: "error" }))
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
+
+  const showError = useCallback((msg: string) => {
+    setToast({ message: msg, type: "error" });
+  }, []);
 
   async function handleSave() {
     if (!data) return;
@@ -73,12 +243,12 @@ export default function WebCmsAboutPage() {
     }
   }
 
-  async function saveSingletonSection(section: "who_we_are" | "mission" | "vision", body: object) {
+  async function saveSingletonSection(section: AboutSection, body: object) {
     setSavingSection(section);
     try {
       const updated = await updateAboutAdmin({ [section]: body });
       setData(updated);
-      setToast({ message: "Saved", type: "success" });
+      setToast({ message: "Section saved", type: "success" });
     } catch (e) {
       setToast({ message: getErrorMessage(e, "Save failed"), type: "error" });
     } finally {
@@ -88,22 +258,28 @@ export default function WebCmsAboutPage() {
 
   // Gallery helpers
   function addGalleryImage() {
-    setData((d) => (d ? { ...d, studio_gallery: [...d.studio_gallery, { id: nextId(), file_url: "", caption: "", sort_order: d.studio_gallery.length }] } : d));
+    setData((d) => d ? { ...d, studio_gallery: [...d.studio_gallery, { id: nextId(), file_url: "", caption: "", sort_order: d.studio_gallery.length }] } : d);
   }
   function updateGalleryImage(id: string, url: string) {
-    setData((d) => (d ? { ...d, studio_gallery: d.studio_gallery.map((g) => (g.id === id ? { ...g, file_url: url } : g)) } : d));
+    setData((d) => d ? { ...d, studio_gallery: d.studio_gallery.map((g) => g.id === id ? { ...g, file_url: url } : g) } : d);
   }
   function removeGalleryImage(id: string) {
-    setData((d) => (d ? { ...d, studio_gallery: d.studio_gallery.filter((g) => g.id !== id) } : d));
+    setData((d) => d ? { ...d, studio_gallery: d.studio_gallery.filter((g) => g.id !== id) } : d);
   }
 
-  // Slide helpers
+  // Hero slide helpers
   const slides = data?.about_slides ?? [];
   function updateSlide(id: string, patch: Partial<HeroSlide>) {
-    setData((d) => d ? { ...d, about_slides: (d.about_slides ?? []).map((s) => (s.id === id ? { ...s, ...patch } : s)) } : d);
+    setData((d) => d ? { ...d, about_slides: (d.about_slides ?? []).map((s) => s.id === id ? { ...s, ...patch } : s) } : d);
   }
   function addSlide() {
-    setData((d) => d ? { ...d, about_slides: [...(d.about_slides ?? []), { id: nextId(), mini_title: "THE DESIGN SPACE", main_title: "", subtitle: "", cta_label: "Our Story", cta_link: "/about", image_url: "", sort_order: (d.about_slides ?? []).length }] } : d);
+    setData((d) => d ? {
+      ...d, about_slides: [...(d.about_slides ?? []), {
+        id: nextId(), mini_title: "THE DESIGN SPACE", main_title: "",
+        subtitle: "", cta_label: "Our Story", cta_link: "/about",
+        image_url: "", sort_order: (d.about_slides ?? []).length,
+      }],
+    } : d);
   }
   function removeSlide(id: string) {
     setData((d) => d ? { ...d, about_slides: (d.about_slides ?? []).filter((s) => s.id !== id) } : d);
@@ -122,10 +298,8 @@ export default function WebCmsAboutPage() {
 
   // Values helpers
   async function handleAddValue() {
-    try {
-      const updated = await addValue({ icon: "✦", title: "New Value", description: "" });
-      setData(updated);
-    } catch (e) { setToast({ message: getErrorMessage(e), type: "error" }); }
+    try { const updated = await addValue({ icon: "✦", title: "New Value", description: "" }); setData(updated); }
+    catch (e) { setToast({ message: getErrorMessage(e), type: "error" }); }
   }
   async function handleValueBlur(item: ValueItem, field: keyof ValueItem) {
     try { await updateValue(item.id, { [field]: item[field] }); }
@@ -133,10 +307,8 @@ export default function WebCmsAboutPage() {
   }
   async function handleDeleteValue(id: string) {
     if (!confirm("Delete this value?")) return;
-    try {
-      await deleteValue(id);
-      setData((d) => d ? { ...d, values: d.values.filter((v) => v.id !== id) } : d);
-    } catch (e) { setToast({ message: getErrorMessage(e), type: "error" }); }
+    try { await deleteValue(id); setData((d) => d ? { ...d, values: d.values.filter((v) => v.id !== id) } : d); }
+    catch (e) { setToast({ message: getErrorMessage(e), type: "error" }); }
   }
   function patchValue(id: string, patch: Partial<ValueItem>) {
     setData((d) => d ? { ...d, values: d.values.map((v) => v.id === id ? { ...v, ...patch } : v) } : d);
@@ -144,10 +316,8 @@ export default function WebCmsAboutPage() {
 
   // Industries helpers
   async function handleAddIndustry() {
-    try {
-      const updated = await addIndustry({ name: "New Industry", is_published: false });
-      setData(updated);
-    } catch (e) { setToast({ message: getErrorMessage(e), type: "error" }); }
+    try { const updated = await addIndustry({ name: "New Industry", is_published: false }); setData(updated); }
+    catch (e) { setToast({ message: getErrorMessage(e), type: "error" }); }
   }
   async function handleIndustryBlur(item: IndustryItem, field: keyof IndustryItem) {
     try { await updateIndustry(item.id, { [field]: item[field] }); }
@@ -161,10 +331,8 @@ export default function WebCmsAboutPage() {
   }
   async function handleDeleteIndustry(id: string) {
     if (!confirm("Delete this industry?")) return;
-    try {
-      await deleteIndustry(id);
-      setData((d) => d ? { ...d, industries: d.industries.filter((ind) => ind.id !== id) } : d);
-    } catch (e) { setToast({ message: getErrorMessage(e), type: "error" }); }
+    try { await deleteIndustry(id); setData((d) => d ? { ...d, industries: d.industries.filter((ind) => ind.id !== id) } : d); }
+    catch (e) { setToast({ message: getErrorMessage(e), type: "error" }); }
   }
   function patchIndustry(id: string, patch: Partial<IndustryItem>) {
     setData((d) => d ? { ...d, industries: d.industries.map((ind) => ind.id === id ? { ...ind, ...patch } : ind) } : d);
@@ -178,7 +346,7 @@ export default function WebCmsAboutPage() {
     } catch (e) { setToast({ message: getErrorMessage(e), type: "error" }); }
   }
   function handleMemberField(memberId: string, patch: Partial<TeamMember>) {
-    setData((d) => d ? { ...d, team_members: d.team_members.map((m) => (m.id === memberId ? { ...m, ...patch } : m)) } : d);
+    setData((d) => d ? { ...d, team_members: d.team_members.map((m) => m.id === memberId ? { ...m, ...patch } : m) } : d);
   }
   async function handleMemberBlur(memberId: string) {
     const member = data?.team_members.find((m) => m.id === memberId);
@@ -191,10 +359,8 @@ export default function WebCmsAboutPage() {
   }
   async function handleRemoveMember(memberId: string) {
     if (!confirm("Remove this team member?")) return;
-    try {
-      await deleteTeamMember(memberId);
-      setData((d) => (d ? { ...d, team_members: d.team_members.filter((m) => m.id !== memberId) } : d));
-    } catch (e) { setToast({ message: getErrorMessage(e), type: "error" }); }
+    try { await deleteTeamMember(memberId); setData((d) => d ? { ...d, team_members: d.team_members.filter((m) => m.id !== memberId) } : d); }
+    catch (e) { setToast({ message: getErrorMessage(e), type: "error" }); }
   }
 
   if (loading || !data) {
@@ -207,6 +373,7 @@ export default function WebCmsAboutPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto pb-24">
+      {/* ── Page header ─────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-[#2B2620]">Website CMS — About</h1>
@@ -221,7 +388,7 @@ export default function WebCmsAboutPage() {
         </button>
       </div>
 
-      {/* ── Narrative ──────────────────────────────────────────────────── */}
+      {/* ── Narrative ──────────────────────────────────────────────── */}
       <section className="bg-white border border-[#EDE8DF] rounded-2xl p-5 mb-6">
         <h2 className="text-[14px] font-bold text-[#2B2620] mb-4">Our Philosophy / Story</h2>
         <div className="mb-4">
@@ -246,7 +413,7 @@ export default function WebCmsAboutPage() {
           onChange={(url) => setData({ ...data, narrative: { ...data.narrative, hero_image: url } })} />
       </section>
 
-      {/* ── About Slides ───────────────────────────────────────────────── */}
+      {/* ── About Hero Slides ──────────────────────────────────────── */}
       <section className="bg-white border border-[#EDE8DF] rounded-2xl p-5 mb-6">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
@@ -301,7 +468,7 @@ export default function WebCmsAboutPage() {
         )}
       </section>
 
-      {/* ── Studio Gallery ─────────────────────────────────────────────── */}
+      {/* ── Studio Gallery ────────────────────────────────────────── */}
       <section className="bg-white border border-[#EDE8DF] rounded-2xl p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[14px] font-bold text-[#2B2620]">The Studio Gallery</h2>
@@ -318,47 +485,112 @@ export default function WebCmsAboutPage() {
         </div>
       </section>
 
-      {/* ── Who We Are ─────────────────────────────────────────────────── */}
+      {/* ── Who We Are ──────────────────────────────────────────────── */}
       <section className="bg-white border border-[#EDE8DF] rounded-2xl p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[14px] font-bold text-[#2B2620]">Who We Are</h2>
-          <button onClick={() => saveSingletonSection("who_we_are", whoWeAreDraft)} disabled={savingSection === "who_we_are"}
-            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[12px] font-semibold px-3 py-2 rounded-lg disabled:opacity-60">
-            {savingSection === "who_we_are" ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save
+          <div>
+            <h2 className="text-[14px] font-bold text-[#2B2620]">Who We Are</h2>
+            <p className="text-[11px] text-[#9A8F82]">50/50 split layout — text left, image slider right</p>
+          </div>
+          <button
+            onClick={() => saveSingletonSection("who_we_are", whoWeAreDraft)}
+            disabled={savingSection === "who_we_are"}
+            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[12px] font-semibold px-3 py-2 rounded-lg disabled:opacity-60"
+          >
+            {savingSection === "who_we_are" ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save Text
           </button>
         </div>
-        <div className="mb-3"><label className={labelClass}>Title</label><input className={inputClass} value={whoWeAreDraft.title} onChange={(e) => setWhoWeAreDraft({ ...whoWeAreDraft, title: e.target.value })} /></div>
-        <div className="mb-3"><label className={labelClass}>Body</label><textarea rows={4} className={inputClass} value={whoWeAreDraft.body} onChange={(e) => setWhoWeAreDraft({ ...whoWeAreDraft, body: e.target.value })} /></div>
-        <MediaUploadField label="Background Image (optional — parallax)" kind="image" aspect="aspect-video" value={whoWeAreDraft.background_image} onChange={(url) => setWhoWeAreDraft({ ...whoWeAreDraft, background_image: url })} />
+        <div className="mb-3">
+          <label className={labelClass}>Section Title</label>
+          <input className={inputClass} value={whoWeAreDraft.title} placeholder="A Collective of Visionaries & Artisans"
+            onChange={(e) => setWhoWeAreDraft({ ...whoWeAreDraft, title: e.target.value })} />
+        </div>
+        <div className="mb-4">
+          <label className={labelClass}>Body Description</label>
+          <textarea rows={4} className={inputClass} value={whoWeAreDraft.body}
+            onChange={(e) => setWhoWeAreDraft({ ...whoWeAreDraft, body: e.target.value })} />
+        </div>
+        <MediaUploadField label="Background Image (optional — parallax effect)" kind="image" aspect="aspect-video"
+          value={whoWeAreDraft.background_image}
+          onChange={(url) => setWhoWeAreDraft({ ...whoWeAreDraft, background_image: url })} />
+        {/* Slider images */}
+        <SliderImageManager
+          section="who_we_are"
+          images={data.who_we_are?.slider_images ?? []}
+          onUpdate={(updated) => setData(updated)}
+          onError={showError}
+        />
       </section>
 
-      {/* ── Our Mission ────────────────────────────────────────────────── */}
+      {/* ── Our Mission ─────────────────────────────────────────────── */}
       <section className="bg-white border border-[#EDE8DF] rounded-2xl p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[14px] font-bold text-[#2B2620]">Our Mission</h2>
-          <button onClick={() => saveSingletonSection("mission", missionDraft)} disabled={savingSection === "mission"}
-            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[12px] font-semibold px-3 py-2 rounded-lg disabled:opacity-60">
-            {savingSection === "mission" ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save
+          <div>
+            <h2 className="text-[14px] font-bold text-[#2B2620]">Our Mission</h2>
+            <p className="text-[11px] text-[#9A8F82]">50/50 split layout — text left, image slider right</p>
+          </div>
+          <button
+            onClick={() => saveSingletonSection("mission", missionDraft)}
+            disabled={savingSection === "mission"}
+            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[12px] font-semibold px-3 py-2 rounded-lg disabled:opacity-60"
+          >
+            {savingSection === "mission" ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save Text
           </button>
         </div>
-        <div className="mb-3"><label className={labelClass}>Title</label><input className={inputClass} value={missionDraft.title} onChange={(e) => setMissionDraft({ ...missionDraft, title: e.target.value })} /></div>
-        <div><label className={labelClass}>Body</label><textarea rows={4} className={inputClass} value={missionDraft.body} onChange={(e) => setMissionDraft({ ...missionDraft, body: e.target.value })} /></div>
+        <div className="mb-3">
+          <label className={labelClass}>Section Title</label>
+          <input className={inputClass} value={missionDraft.title} placeholder="Design That Serves Life"
+            onChange={(e) => setMissionDraft({ ...missionDraft, title: e.target.value })} />
+        </div>
+        <div className="mb-4">
+          <label className={labelClass}>Body Description</label>
+          <textarea rows={4} className={inputClass} value={missionDraft.body}
+            onChange={(e) => setMissionDraft({ ...missionDraft, body: e.target.value })} />
+        </div>
+        {/* Slider images */}
+        <SliderImageManager
+          section="mission"
+          images={data.mission?.slider_images ?? []}
+          onUpdate={(updated) => setData(updated)}
+          onError={showError}
+        />
       </section>
 
-      {/* ── Our Vision ─────────────────────────────────────────────────── */}
+      {/* ── Our Vision ──────────────────────────────────────────────── */}
       <section className="bg-white border border-[#EDE8DF] rounded-2xl p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[14px] font-bold text-[#2B2620]">Our Vision</h2>
-          <button onClick={() => saveSingletonSection("vision", visionDraft)} disabled={savingSection === "vision"}
-            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[12px] font-semibold px-3 py-2 rounded-lg disabled:opacity-60">
-            {savingSection === "vision" ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save
+          <div>
+            <h2 className="text-[14px] font-bold text-[#2B2620]">Our Vision</h2>
+            <p className="text-[11px] text-[#9A8F82]">50/50 zigzag layout — image slider left, text right</p>
+          </div>
+          <button
+            onClick={() => saveSingletonSection("vision", visionDraft)}
+            disabled={savingSection === "vision"}
+            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[12px] font-semibold px-3 py-2 rounded-lg disabled:opacity-60"
+          >
+            {savingSection === "vision" ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save Text
           </button>
         </div>
-        <div className="mb-3"><label className={labelClass}>Title</label><input className={inputClass} value={visionDraft.title} onChange={(e) => setVisionDraft({ ...visionDraft, title: e.target.value })} /></div>
-        <div><label className={labelClass}>Body</label><textarea rows={4} className={inputClass} value={visionDraft.body} onChange={(e) => setVisionDraft({ ...visionDraft, body: e.target.value })} /></div>
+        <div className="mb-3">
+          <label className={labelClass}>Section Title</label>
+          <input className={inputClass} value={visionDraft.title} placeholder="A Future Where Beauty and Function Are Inseparable"
+            onChange={(e) => setVisionDraft({ ...visionDraft, title: e.target.value })} />
+        </div>
+        <div className="mb-4">
+          <label className={labelClass}>Body Description</label>
+          <textarea rows={4} className={inputClass} value={visionDraft.body}
+            onChange={(e) => setVisionDraft({ ...visionDraft, body: e.target.value })} />
+        </div>
+        {/* Slider images */}
+        <SliderImageManager
+          section="vision"
+          images={data.vision?.slider_images ?? []}
+          onUpdate={(updated) => setData(updated)}
+          onError={showError}
+        />
       </section>
 
-      {/* ── What We Stand For (Values) ─────────────────────────────────── */}
+      {/* ── What We Stand For (Values) ──────────────────────────────── */}
       <section className="bg-white border border-[#EDE8DF] rounded-2xl p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[14px] font-bold text-[#2B2620]">What We Stand For</h2>
@@ -371,14 +603,17 @@ export default function WebCmsAboutPage() {
             {(data.values ?? []).map((item) => (
               <div key={item.id} className="border border-[#EDE8DF] rounded-xl p-4 bg-[#FAFAF9]">
                 <div className="grid grid-cols-[60px_1fr] gap-3 mb-3">
-                  <div><label className={labelClass}>Icon</label>
+                  <div>
+                    <label className={labelClass}>Icon</label>
                     <input className={inputClass} value={item.icon} onChange={(e) => patchValue(item.id, { icon: e.target.value })} onBlur={() => handleValueBlur(item, "icon")} />
                   </div>
-                  <div><label className={labelClass}>Title</label>
+                  <div>
+                    <label className={labelClass}>Title</label>
                     <input className={inputClass} value={item.title} onChange={(e) => patchValue(item.id, { title: e.target.value })} onBlur={() => handleValueBlur(item, "title")} />
                   </div>
                 </div>
-                <div className="mb-2"><label className={labelClass}>Description</label>
+                <div className="mb-2">
+                  <label className={labelClass}>Description</label>
                   <textarea rows={2} className={inputClass} value={item.description} onChange={(e) => patchValue(item.id, { description: e.target.value })} onBlur={() => handleValueBlur(item, "description")} />
                 </div>
                 <button onClick={() => handleDeleteValue(item.id)} className="flex items-center gap-1.5 text-[11px] text-red-500 hover:bg-red-50 rounded-lg px-2 py-1 mt-1"><Trash2 size={12} /> Delete</button>
@@ -388,7 +623,7 @@ export default function WebCmsAboutPage() {
         )}
       </section>
 
-      {/* ── Industries ─────────────────────────────────────────────────── */}
+      {/* ── Industries ───────────────────────────────────────────────── */}
       <section className="bg-white border border-[#EDE8DF] rounded-2xl p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -404,10 +639,12 @@ export default function WebCmsAboutPage() {
             {(data.industries ?? []).map((item) => (
               <div key={item.id} className="border border-[#EDE8DF] rounded-xl p-4 bg-[#FAFAF9]">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                  <div><label className={labelClass}>Name</label>
+                  <div>
+                    <label className={labelClass}>Name</label>
                     <input className={inputClass} value={item.name} onChange={(e) => patchIndustry(item.id, { name: e.target.value })} onBlur={() => handleIndustryBlur(item, "name")} />
                   </div>
-                  <div><label className={labelClass}>Description</label>
+                  <div>
+                    <label className={labelClass}>Description</label>
                     <input className={inputClass} value={item.description} onChange={(e) => patchIndustry(item.id, { description: e.target.value })} onBlur={() => handleIndustryBlur(item, "description")} />
                   </div>
                 </div>
@@ -429,7 +666,7 @@ export default function WebCmsAboutPage() {
         )}
       </section>
 
-      {/* ── Team ───────────────────────────────────────────────────────── */}
+      {/* ── Integrated Team ──────────────────────────────────────────── */}
       <section className="bg-white border border-[#EDE8DF] rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -441,7 +678,6 @@ export default function WebCmsAboutPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {data.team_members.map((member) => (
             <div key={member.id} className={`border rounded-xl p-4 ${member.is_founder ? "border-[#C8922A] bg-[#FDF8F0]" : "border-[#EDE8DF]"}`}>
-              {/* Founder badge */}
               {member.is_founder && (
                 <div className="flex items-center gap-2 mb-3">
                   <span className="bg-[#C8922A] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full tracking-wide">FOUNDER</span>
@@ -459,7 +695,6 @@ export default function WebCmsAboutPage() {
                 onChange={(e) => handleMemberField(member.id, { social_instagram: e.target.value })} onBlur={() => handleMemberBlur(member.id)} />
               <input className={`${inputClass} mt-2`} placeholder="LinkedIn URL (optional)" value={member.social_linkedin ?? ""}
                 onChange={(e) => handleMemberField(member.id, { social_linkedin: e.target.value })} onBlur={() => handleMemberBlur(member.id)} />
-              {/* Founder toggle + delete */}
               <div className="flex items-center justify-between mt-3">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input type="checkbox" className="accent-[#C8922A] w-4 h-4" checked={!!member.is_founder}

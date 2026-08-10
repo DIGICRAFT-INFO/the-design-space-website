@@ -15,16 +15,15 @@ export default function AboutPreview({
   image?: string;
 }) {
   return (
-    <section className="max-w-[1600px] mx-auto px-6 md:px-10 py-24 md:py-32">
+    <section className="max-w-[1600px] mx-auto px-6 md:px-10 py-14 md:py-20">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20 items-center">
         <RevealImage
           src={resolveMediaUrl(image) || "/logo.png"}
-          alt="The Design Space studio"
+          alt="The Design Space"
           className="aspect-[4/5] rounded-sm order-2 lg:order-1"
-          cursorLabel="Our Studio"
         />
         <FadeIn className="order-1 lg:order-2">
-          <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-4">Studio</p>
+          <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-4">About Us</p>
           <h2 className="text-3xl md:text-5xl font-light tracking-tight mb-6" style={{ fontFamily: "var(--font-display)" }}>
             {title}
           </h2>

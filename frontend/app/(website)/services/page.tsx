@@ -38,7 +38,7 @@ export default async function ServicesPage() {
         </div>
       </section>
 
-      <section className="pb-28 md:pb-40">
+      <section className="pb-16 md:pb-24">
         <div className="max-w-[1600px] mx-auto px-6 md:px-10">
           <ServicesList packages={packages} />
         </div>
@@ -46,7 +46,7 @@ export default async function ServicesPage() {
 
       {/* Consultation CTA */}
       <section className="bg-[var(--ds-ink)] text-[var(--ds-bg)]">
-        <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-24 md:py-32 text-center">
+        <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-14 md:py-20 text-center">
           <SplitText
             text="Book an Elite Consultation Space"
             as="h2"

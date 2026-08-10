@@ -49,6 +49,13 @@ router.route('/about/industries/:industryId')
   .put(controller.update_industry)
   .delete(controller.delete_industry);
 
+// ── About — Section Slider Images (who_we_are / mission / vision) ──────────
+router.post('/about/sections/:section/images', controller.add_section_image);
+router.put('/about/sections/:section/images', controller.replace_section_images);
+router.route('/about/sections/:section/images/:imageId')
+  .patch(controller.update_section_image)
+  .delete(controller.delete_section_image);
+
 // ── Services (packages CRUD) ───────────────────────────────────────────────
 router.route('/services')
   .get(controller.list_services_admin)

@@ -258,33 +258,33 @@ export default function PaymentsPage() {
   }
 
   return (
-    <div className="p-6" onClick={() => setReminderMenu(null)}>
+    <div className="p-4 md:p-6" onClick={() => setReminderMenu(null)}>
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 md:mb-6">
         <div>
-          <h1 className="text-[22px] font-bold text-[#1C1C1C]">
+          <h1 className="text-[20px] md:text-[22px] font-bold text-[#1C1C1C]">
             Payment Tracker
           </h1>
-          <p className="text-[13px] text-[#9A8F82] mt-0.5">
+          <p className="text-[12px] md:text-[13px] text-[#9A8F82] mt-0.5">
             All invoices · payment collection · reminders
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
           <button
             onClick={() => { setShowSummary(v => !v); }}
-            className={`flex items-center gap-2 border text-[13px] font-medium px-4 py-2.5 rounded-lg transition-colors ${showSummary ? "bg-[#FDF3E3] border-[#C8922A] text-[#C8922A]" : "bg-white border-[#EDE8DF] text-[#6B6259] hover:bg-[#FAF8F5]"}`}
+            className={`flex items-center gap-2 border text-[12px] md:text-[13px] font-medium px-3 md:px-4 py-2 md:py-2.5 rounded-lg transition-colors ${showSummary ? "bg-[#FDF3E3] border-[#C8922A] text-[#C8922A]" : "bg-white border-[#EDE8DF] text-[#6B6259] hover:bg-[#FAF8F5]"}`}
           >
-            <Banknote size={14} /> Payment Summary
+            <Banknote size={14} /> Summary
           </button>
           <button
             onClick={() => exportCSV(filtered)}
-            className="flex items-center gap-2 bg-white border border-[#EDE8DF] text-[#6B6259] text-[13px] font-medium px-4 py-2.5 rounded-lg hover:bg-[#FAF8F5] transition-colors"
+            className="flex items-center gap-2 bg-white border border-[#EDE8DF] text-[#6B6259] text-[12px] md:text-[13px] font-medium px-3 md:px-4 py-2 md:py-2.5 rounded-lg hover:bg-[#FAF8F5] transition-colors"
           >
-            <Download size={14} /> Export CSV
+            <Download size={14} /> Export
           </button>
           <button
             onClick={() => openRecordModal()}
-            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[13px] font-semibold px-4 py-2.5 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[12px] md:text-[13px] font-semibold px-3 md:px-4 py-2 md:py-2.5 rounded-lg transition-colors whitespace-nowrap"
           >
             <Plus size={15} /> Record Payment
           </button>

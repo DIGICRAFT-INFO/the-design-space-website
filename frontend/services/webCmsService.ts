@@ -8,6 +8,7 @@ import type {
   TeamMember,
   ValueItem,
   IndustryItem,
+  SliderImage,
   WebBlogPost,
   WebCareerJob,
   WebPortfolioCategory,
@@ -128,6 +129,22 @@ export const updateIndustry = (id: string, data: Partial<IndustryItem>) =>
   req<WebAbout>(`${CMS_URL}/about/industries/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 export const deleteIndustry = (id: string) =>
   req<void>(`${CMS_URL}/about/industries/${id}`, { method: "DELETE" });
+
+// ─── About — Section Slider Images (who_we_are | mission | vision) ──────────
+
+type AboutSection = "who_we_are" | "mission" | "vision";
+
+export const addSectionImage = (section: AboutSection, data: Partial<SliderImage>) =>
+  req<WebAbout>(`${CMS_URL}/about/sections/${section}/images`, { method: "POST", body: JSON.stringify(data) });
+
+export const updateSectionImage = (section: AboutSection, imageId: string, data: Partial<SliderImage>) =>
+  req<WebAbout>(`${CMS_URL}/about/sections/${section}/images/${imageId}`, { method: "PATCH", body: JSON.stringify(data) });
+
+export const deleteSectionImage = (section: AboutSection, imageId: string) =>
+  req<void>(`${CMS_URL}/about/sections/${section}/images/${imageId}`, { method: "DELETE" });
+
+export const replaceSectionImages = (section: AboutSection, images: Partial<SliderImage>[]) =>
+  req<WebAbout>(`${CMS_URL}/about/sections/${section}/images`, { method: "PUT", body: JSON.stringify({ images }) });
 
 // ─── Services (packages) ───────────────────────────────────────────────────
 

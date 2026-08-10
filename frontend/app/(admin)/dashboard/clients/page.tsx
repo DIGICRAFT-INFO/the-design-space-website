@@ -243,7 +243,7 @@ export default function ClientsPage() {
   });
 
   return (
-    <div className="p-8 bg-[#FAF8F5] min-h-screen font-sans text-[#1C1C1C]">
+    <div className="p-4 md:p-8 bg-[#FAF8F5] min-h-screen font-sans text-[#1C1C1C]">
       {/* Upper Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -254,8 +254,8 @@ export default function ClientsPage() {
             Manage your portfolio and client relationships efficiently
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-0">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A8F82]"
               size={16}
@@ -265,7 +265,7 @@ export default function ClientsPage() {
               placeholder="Search clients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2.5 bg-white border border-[#EDE8DF] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C8922A]/20 focus:border-[#C8922A] w-64 transition-all"
+              className="pl-10 pr-4 py-2.5 bg-white border border-[#EDE8DF] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C8922A]/20 focus:border-[#C8922A] w-full sm:w-64 transition-all"
             />
           </div>
           <button
@@ -273,7 +273,7 @@ export default function ClientsPage() {
               closeModal();
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[14px] font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95"
+            className="flex items-center gap-2 bg-[#C8922A] hover:bg-[#B07A20] text-white text-[14px] font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 whitespace-nowrap"
           >
             <UserPlus size={18} /> Add Client
           </button>
@@ -281,7 +281,7 @@ export default function ClientsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-8">
         <div className="bg-white p-5 rounded-2xl border border-[#EDE8DF] shadow-sm">
           <p className="text-[#9A8F82] text-xs font-bold uppercase tracking-wider">
             Total Clients
@@ -318,18 +318,18 @@ export default function ClientsPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-2xl border border-[#EDE8DF] shadow-sm ">
-        <div className="">
+      <div className="bg-white rounded-2xl border border-[#EDE8DF] shadow-sm">
+        <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-[#FAF8F5] border-b border-[#EDE8DF]">
                 <th className="px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">
                   Client Profile
                 </th>
-                <th className="px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">
+                <th className="hidden sm:table-cell px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">
                   Contact Details
                 </th>
-                <th className="px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">
+                <th className="hidden md:table-cell px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">
                   Engagement
                 </th>
                 <th className="px-6 py-4 text-left text-[11px] font-black text-[#9A8F82] uppercase tracking-[0.1em]">
@@ -452,7 +452,7 @@ export default function ClientsPage() {
                         </div>
                       </Link>
                     </td>
-                    <td className="px-6 py-5">
+                    <td className="hidden sm:table-cell px-6 py-5">
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2 text-[12px] text-[#6B6259] font-medium">
                           <div className="p-1 bg-[#FAF8F5] rounded">
