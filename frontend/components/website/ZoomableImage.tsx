@@ -34,7 +34,7 @@ export default function ZoomableImage({
   return (
     <>
       <div
-        className={`relative overflow-hidden cursor-zoom-in group ${className}`}
+        className={`relative overflow-hidden group ${className}`}
         onDoubleClick={() => setOpen(true)}
         title="Double-click to view fullscreen"
       >

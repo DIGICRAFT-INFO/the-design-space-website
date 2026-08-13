@@ -15,7 +15,7 @@ function ValueCard({ item, index }: { item: ValueItem; index: number }) {
       <motion.div
         whileHover={{ y: -6, scale: 1.02 }}
         transition={{ duration: 0.4, ease: EASE }}
-        className="group p-7 md:p-8 rounded-2xl border border-[var(--ds-border)] bg-[var(--ds-bg)] hover:border-[var(--ds-gold)] hover:shadow-[0_8px_40px_rgba(200,146,42,0.10)] transition-all duration-500 cursor-default"
+        className="group p-7 md:p-8 rounded-2xl border border-[var(--ds-border)] bg-[var(--ds-bg)] hover:border-[var(--ds-gold)] hover:shadow-[0_8px_40px_rgba(200,146,42,0.10)] transition-all duration-500"
       >
         {item.icon && (
           <span className="block text-3xl md:text-4xl mb-5 group-hover:scale-110 transition-transform duration-300 inline-block">

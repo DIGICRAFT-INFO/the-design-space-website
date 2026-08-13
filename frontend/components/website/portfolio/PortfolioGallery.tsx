@@ -39,7 +39,7 @@ export default function PortfolioGallery({ images, projectTitle }: Props) {
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.6, delay: (i % 4) * 0.06, ease: [0.16, 1, 0.3, 1] }}
             onClick={() => setLightboxIndex(i)}
-            className={`relative overflow-hidden rounded-sm cursor-pointer group ${
+            className={`relative overflow-hidden rounded-sm group ${
               i % 3 === 0 ? "md:col-span-2 aspect-video" : "aspect-[4/5]"
             }`}
           >

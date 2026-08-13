@@ -260,7 +260,7 @@ export default function ServiceInquiryModal({ serviceName, serviceId, onClose }:
                     onDragLeave={() => setDragging(false)}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
-                    className={`relative cursor-pointer rounded-xl border-2 border-dashed transition-colors px-4 py-6 flex flex-col items-center gap-2 ${
+                    className={`relative rounded-xl border-2 border-dashed transition-colors px-4 py-6 flex flex-col items-center gap-2 ${
                       dragging
                         ? "border-[var(--ds-gold)] bg-[var(--ds-gold)]/5"
                         : "border-[var(--ds-border)] hover:border-[var(--ds-gold)]/50 hover:bg-[var(--ds-gold)]/3"

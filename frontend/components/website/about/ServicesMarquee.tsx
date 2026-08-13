@@ -78,7 +78,7 @@ export default function ServicesMarquee({ services }: Props) {
             <Link
               key={`${service.id}-${idx}`}
               href="/services"
-              className={`group flex-shrink-0 w-[280px] md:w-[320px] rounded-2xl p-6 border border-white/5 hover:border-[#C8922A]/40 transition-all duration-300 cursor-pointer ${TIER_BG[service.tier_classification] || "bg-[#F5F5F5]"}`}
+              className={`group flex-shrink-0 w-[280px] md:w-[320px] rounded-2xl p-6 border border-white/5 hover:border-[#C8922A]/40 transition-all duration-300 ${TIER_BG[service.tier_classification] || "bg-[#F5F5F5]"}`}
             >
               {/* Dot + tier */}
               <div className="flex items-center gap-2 mb-4">
