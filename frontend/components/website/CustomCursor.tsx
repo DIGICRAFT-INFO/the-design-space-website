@@ -1,71 +1,134 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
- * Next-gen cursor — no framer-motion dependency, pure canvas + DOM.
+ * Premium 3D-metallic arrow cursor — brand gold/champagne face, dark bronze
+ * bevelled edge. Matches the 3D arrow aesthetic in the reference image but
+ * uses The Design Space palette.
  *
- *  ① Sharp gold crosshair-dot  — snaps to pointer (rAF, zero lag)
- *  ② Elastic trailing ring     — spring physics, lags behind beautifully
- *  ③ Ghost trail               — 8 fading echo-dots follow the ring
- *  ④ Particle burst            — 10 gold sparks on every click
- *  ⑤ Label bubble              — expands on [data-cursor] elements
- *  ⑥ Morphs on hover           — ring squishes into a pill on interactive
- *  ⑦ Breath pulse              — idle ring pulses slowly
- *  ⑧ Touch / reduced-motion    — fully disabled, native cursor restored
+ *  ① 3D metallic SVG arrow  — drawn on canvas, snaps to pointer (rAF)
+ *  ② Soft trailing glow     — faint gold halo that lags behind (spring)
+ *  ③ Particle burst          — gold + copper sparks on click
+ *  ④ Press squish            — arrow scales + rotates slightly on mousedown
+ *  ⑤ Label bubble            — elegant pill expands on [data-cursor] targets
+ *  ⑥ Hover shimmer ring      — thin ring orbits arrow on interactive elements
+ *  ⑦ Touch / reduced-motion  — disabled, native cursor restored
  */
 
 interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number; // 0→1
-  decay: number;
-  size: number;
+  x: number; y: number;
+  vx: number; vy: number;
+  life: number; decay: number;
+  size: number; hue: number;
 }
 
-const GOLD = "#C8922A";
-const GOLD_LIGHT = "rgba(200,146,42,";
-const TRAIL_LEN = 10;
+// ─── Arrow shape (standard pointer arrow, in local coords) ────────────────
+// tip at (0,0), scaled to ~28px height
+const ARROW_PATH: [number, number][] = [
+  [0, 0],
+  [0, 22],
+  [5.5, 16.5],
+  [10, 26],
+  [13, 25],
+  [8.5, 15],
+  [15, 15],
+];
+
+// Brand palette
+const GOLD_HEX   = "#C8922A";   // warm champagne gold face (slightly brighter for canvas)
+const BRONZE_HEX = "#3A2810";   // dark bronze edge / shadow
+const COPPER_HEX = "#8B5E3C";   // mid copper for bevel
+
+function drawArrow(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  scale: number,
+  rotation: number,
+  alpha: number,
+) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  ctx.scale(scale, scale);
+
+  // ── Shadow ──────────────────────────────────────────────────────────────
+  ctx.shadowColor  = "rgba(0,0,0,0.45)";
+  ctx.shadowBlur   = 14;
+  ctx.shadowOffsetX = 3;
+  ctx.shadowOffsetY = 5;
+
+  // ── Build the arrow path ─────────────────────────────────────────────
+  const buildPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(ARROW_PATH[0][0], ARROW_PATH[0][1]);
+    for (let i = 1; i < ARROW_PATH.length; i++) {
+      ctx.lineTo(ARROW_PATH[i][0], ARROW_PATH[i][1]);
+    }
+    ctx.closePath();
+  };
+
+  // ── Dark bronze base (thick stroke = 3D bevel depth) ────────────────
+  buildPath();
+  ctx.lineJoin   = "round";
+  ctx.lineWidth  = 4.5;
+  ctx.strokeStyle = BRONZE_HEX;
+  ctx.stroke();
+
+  // ── Copper mid-bevel ────────────────────────────────────────────────
+  buildPath();
+  ctx.lineWidth   = 2.5;
+  ctx.strokeStyle = COPPER_HEX;
+  ctx.stroke();
+
+  // ── Gold face fill — radial gradient for 3D convex sheen ────────────
+  const grad = ctx.createRadialGradient(4, 4, 0, 7, 7, 22);
+  grad.addColorStop(0.00, "#F0D080");   // highlight specular
+  grad.addColorStop(0.18, "#E8C060");   // bright face
+  grad.addColorStop(0.50, GOLD_HEX);    // brand gold mid
+  grad.addColorStop(0.80, "#9A6A1A");   // shadow edge
+  grad.addColorStop(1.00, "#5A3C08");   // deep bronze shadow
+
+  ctx.shadowColor  = "transparent";
+  ctx.shadowBlur   = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+
+  buildPath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // ── Thin top-highlight edge line ─────────────────────────────────────
+  buildPath();
+  ctx.lineWidth   = 0.8;
+  ctx.strokeStyle = "rgba(255,240,180,0.65)";
+  ctx.stroke();
+
+  ctx.restore();
+}
 
 export default function CustomCursor() {
   const [enabled, setEnabled] = useState(false);
   const canvasRef  = useRef<HTMLCanvasElement>(null);
-  const dotRef     = useRef<HTMLDivElement>(null);
   const labelRef   = useRef<HTMLDivElement>(null);
 
-  // ── live state in refs (no re-renders in hot path) ───────────────────────
-  const mouse      = useRef({ x: -300, y: -300 });
-  const ring       = useRef({ x: -300, y: -300 });
-  const trail      = useRef<{ x: number; y: number }[]>([]);
-  const particles  = useRef<Particle[]>([]);
-  const visible    = useRef(false);
-  const pressing   = useRef(false);
-  const hovering   = useRef(false);   // over interactive element
-  const labelText  = useRef<string | null>(null);
-  const idleTick   = useRef(0);
-  const rafId      = useRef<number>(0);
+  const mouse    = useRef({ x: -300, y: -300 });
+  const glow     = useRef({ x: -300, y: -300 });
+  const glowVx   = useRef(0);
+  const glowVy   = useRef(0);
+  const visible  = useRef(false);
+  const pressing = useRef(false);
+  const hovering = useRef(false);
+  const labelTxt = useRef<string | null>(null);
+  const particles= useRef<Particle[]>([]);
+  const tick     = useRef(0);
+  const rafId    = useRef(0);
 
-  // ── spring config ─────────────────────────────────────────────────────────
-  const vx = useRef(0);
-  const vy = useRef(0);
-
-  const spawnParticles = useCallback((x: number, y: number) => {
-    const count = 12;
-    for (let i = 0; i < count; i++) {
-      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
-      const speed = 2.5 + Math.random() * 3.5;
-      particles.current.push({
-        x, y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 1,
-        decay: 0.04 + Math.random() * 0.04,
-        size: 2 + Math.random() * 3,
-      });
-    }
-  }, []);
+  // Arrow animation state
+  const arrowScale = useRef(1);
+  const arrowRot   = useRef(0);
 
   useEffect(() => {
     const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
@@ -75,38 +138,43 @@ export default function CustomCursor() {
     setEnabled(true);
     document.body.classList.add("ds-cursor-enabled");
 
-    // ── canvas fill viewport ─────────────────────────────────────────────
     const canvas = canvasRef.current!;
-    const resize = () => {
-      canvas.width  = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     resize();
     window.addEventListener("resize", resize);
 
-    // ── event listeners ───────────────────────────────────────────────────
-    const onMove = (e: MouseEvent) => {
-      mouse.current = { x: e.clientX, y: e.clientY };
-      if (!visible.current) visible.current = true;
-      idleTick.current = 0;
-
-      // label detection
-      const t = (e.target as HTMLElement)?.closest("[data-cursor]") as HTMLElement | null;
-      labelText.current = t?.getAttribute("data-cursor") ?? null;
-
-      // interactive detection
-      hovering.current = !!(e.target as HTMLElement)?.closest(
-        "a, button, [role='button'], input, textarea, select, label"
-      );
-
-      // update dot immediately
-      if (dotRef.current) {
-        dotRef.current.style.transform =
-          `translate(${e.clientX - 4}px, ${e.clientY - 4}px)`;
+    const spawnParticles = (x: number, y: number) => {
+      for (let i = 0; i < 14; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1.8 + Math.random() * 3.8;
+        // alternate gold and copper sparks
+        particles.current.push({
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1,
+          life: 1,
+          decay: 0.035 + Math.random() * 0.045,
+          size: 1.5 + Math.random() * 3,
+          hue: Math.random() > 0.5 ? 38 : 22, // gold vs copper hue
+        });
       }
     };
 
-    const onDown  = () => { pressing.current = true;  spawnParticles(mouse.current.x, mouse.current.y); };
+    const onMove = (e: MouseEvent) => {
+      mouse.current = { x: e.clientX, y: e.clientY };
+      if (!visible.current) visible.current = true;
+
+      const t = (e.target as HTMLElement)?.closest("[data-cursor]") as HTMLElement | null;
+      labelTxt.current = t?.getAttribute("data-cursor") ?? null;
+      hovering.current = !!(e.target as HTMLElement)?.closest(
+        "a, button, [role='button'], input, textarea, select, label"
+      );
+    };
+
+    const onDown = () => {
+      pressing.current = true;
+      spawnParticles(mouse.current.x + 2, mouse.current.y + 4);
+    };
     const onUp    = () => { pressing.current = false; };
     const onLeave = () => { visible.current = false; };
     const onEnter = () => { visible.current = true; };
@@ -117,108 +185,95 @@ export default function CustomCursor() {
     document.documentElement.addEventListener("mouseleave", onLeave);
     document.documentElement.addEventListener("mouseenter", onEnter);
 
-    // ── animation loop ────────────────────────────────────────────────────
     const ctx = canvas.getContext("2d")!;
 
     const loop = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      idleTick.current++;
+      tick.current++;
+
+      if (!visible.current) { rafId.current = requestAnimationFrame(loop); return; }
 
       const mx = mouse.current.x;
       const my = mouse.current.y;
-      const rx = ring.current.x;
-      const ry = ring.current.y;
 
-      if (!visible.current) {
-        rafId.current = requestAnimationFrame(loop);
-        return;
-      }
+      // ── Spring glow follows mouse ──────────────────────────────────────
+      const stiff = 0.11, damp = 0.70;
+      glowVx.current += (mx - glow.current.x) * stiff;
+      glowVy.current += (my - glow.current.y) * stiff;
+      glowVx.current *= damp;
+      glowVy.current *= damp;
+      glow.current.x += glowVx.current;
+      glow.current.y += glowVy.current;
 
-      // ── spring physics for ring ─────────────────────────────────────
-      const stiffness = 0.14;
-      const damping   = 0.72;
-      vx.current += (mx - rx) * stiffness;
-      vy.current += (my - ry) * stiffness;
-      vx.current *= damping;
-      vy.current *= damping;
-      ring.current.x += vx.current;
-      ring.current.y += vy.current;
+      // ── Trailing glow halo ─────────────────────────────────────────────
+      const glowR = pressing.current ? 18 : hovering.current ? 30 : 22;
+      const grad = ctx.createRadialGradient(
+        glow.current.x, glow.current.y, 0,
+        glow.current.x, glow.current.y, glowR * 2.2
+      );
+      grad.addColorStop(0,    "rgba(200,146,42,0.22)");
+      grad.addColorStop(0.45, "rgba(200,146,42,0.08)");
+      grad.addColorStop(1,    "rgba(200,146,42,0)");
+      ctx.beginPath();
+      ctx.arc(glow.current.x, glow.current.y, glowR * 2.2, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
 
-      // ── trail ────────────────────────────────────────────────────────
-      trail.current.push({ x: ring.current.x, y: ring.current.y });
-      if (trail.current.length > TRAIL_LEN) trail.current.shift();
-
-      // draw trail
-      for (let i = 0; i < trail.current.length; i++) {
-        const t = i / trail.current.length;          // 0→1
-        const alpha = t * 0.25;
-        const r = 3 + t * 6;
+      // ── Hover shimmer ring ─────────────────────────────────────────────
+      if (hovering.current && !labelTxt.current) {
+        const orbitR  = 24;
+        const orbitAlpha = 0.35 + Math.sin(tick.current * 0.05) * 0.12;
         ctx.beginPath();
-        ctx.arc(trail.current[i].x, trail.current[i].y, r, 0, Math.PI * 2);
-        ctx.fillStyle = GOLD_LIGHT + alpha + ")";
+        ctx.arc(mx + 7, my + 8, orbitR, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(200,146,42,${orbitAlpha})`;
+        ctx.lineWidth   = 1;
+        ctx.stroke();
+
+        // small rotating dot on ring
+        const dotAngle = tick.current * 0.04;
+        const dotX = mx + 7 + Math.cos(dotAngle) * orbitR;
+        const dotY = my + 8 + Math.sin(dotAngle) * orbitR;
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, 2, 0, Math.PI * 2);
+        ctx.fillStyle = GOLD_HEX;
         ctx.fill();
       }
 
-      // ── idle breath pulse ────────────────────────────────────────────
-      const breath  = 1 + Math.sin(idleTick.current * 0.025) * 0.08;
+      // ── Arrow animation ────────────────────────────────────────────────
+      const targetScale = pressing.current ? 0.78 : hovering.current ? 0.92 : 1.0;
+      const targetRot   = pressing.current ? 0.12 : 0;
+      arrowScale.current += (targetScale - arrowScale.current) * 0.18;
+      arrowRot.current   += (targetRot   - arrowRot.current)   * 0.18;
 
-      // ── ring ─────────────────────────────────────────────────────────
-      const hasLabel  = !!labelText.current;
-      const baseR     = hasLabel ? 44 : hovering.current ? 22 : 18;
-      const targetR   = baseR * breath * (pressing.current ? 0.78 : 1);
-      const scaleX    = hovering.current && !hasLabel ? 1.45 : 1;   // pill squish
+      drawArrow(ctx, mx, my, arrowScale.current, arrowRot.current, 1.0);
 
-      ctx.save();
-      ctx.translate(ring.current.x, ring.current.y);
-      ctx.scale(scaleX, 1);
-
-      if (hasLabel) {
-        // solid fill pill
-        ctx.beginPath();
-        ctx.arc(0, 0, targetR, 0, Math.PI * 2);
-        ctx.fillStyle = GOLD;
-        ctx.globalAlpha = 0.92;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      } else {
-        // hollow ring — double stroke for depth
-        ctx.beginPath();
-        ctx.arc(0, 0, targetR, 0, Math.PI * 2);
-        ctx.strokeStyle = GOLD_LIGHT + "0.6)";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(0, 0, targetR - 2, 0, Math.PI * 2);
-        ctx.strokeStyle = GOLD_LIGHT + "0.25)";
-        ctx.lineWidth = 3;
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      // ── particles ────────────────────────────────────────────────────
+      // ── Particles ─────────────────────────────────────────────────────
       particles.current = particles.current.filter(p => p.life > 0);
       for (const p of particles.current) {
-        p.x  += p.vx;
-        p.y  += p.vy;
-        p.vy += 0.12;   // gravity
-        p.vx *= 0.93;
+        p.x   += p.vx;
+        p.y   += p.vy;
+        p.vy  += 0.15;
+        p.vx  *= 0.91;
         p.life -= p.decay;
 
+        const r = p.size * p.life;
+        const pg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2);
+        pg.addColorStop(0,   `hsla(${p.hue},75%,65%,${p.life * 0.9})`);
+        pg.addColorStop(0.5, `hsla(${p.hue},65%,45%,${p.life * 0.5})`);
+        pg.addColorStop(1,   `hsla(${p.hue},55%,30%,0)`);
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-        ctx.fillStyle = GOLD_LIGHT + (p.life * 0.9) + ")";
+        ctx.arc(p.x, p.y, r * 2, 0, Math.PI * 2);
+        ctx.fillStyle = pg;
         ctx.fill();
       }
 
-      // ── label on ring ────────────────────────────────────────────────
+      // ── Label bubble ───────────────────────────────────────────────────
       if (labelRef.current) {
-        const lbl = labelText.current;
-        if (lbl) {
-          labelRef.current.textContent = lbl;
-          labelRef.current.style.opacity   = "1";
+        if (labelTxt.current) {
+          labelRef.current.textContent = labelTxt.current;
+          labelRef.current.style.opacity = "1";
           labelRef.current.style.transform =
-            `translate(${ring.current.x}px, ${ring.current.y}px) translate(-50%, -50%)`;
+            `translate(${mx + 22}px, ${my - 6}px)`;
         } else {
           labelRef.current.style.opacity = "0";
         }
@@ -246,41 +301,31 @@ export default function CustomCursor() {
 
   return (
     <>
-      {/* Full-viewport canvas — trail, ring, particles */}
+      {/* Full-viewport canvas */}
       <canvas
         ref={canvasRef}
-        className="pointer-events-none fixed inset-0 z-[9997]"
-        style={{ mixBlendMode: "normal" }}
+        className="pointer-events-none fixed inset-0 z-[9998]"
       />
 
-      {/* Sharp dot — updated directly via style, no React re-render */}
-      <div
-        ref={dotRef}
-        className="pointer-events-none fixed top-0 left-0 z-[9999] rounded-full"
-        style={{
-          width: 8,
-          height: 8,
-          backgroundColor: GOLD,
-          boxShadow: `0 0 6px 1px ${GOLD}88`,
-          willChange: "transform",
-          transform: "translate(-300px, -300px)",
-        }}
-      />
-
-      {/* Label text — positioned via style in the loop */}
+      {/* Label pill — positioned via JS in loop */}
       <div
         ref={labelRef}
-        className="pointer-events-none fixed top-0 left-0 z-[9998] select-none"
+        className="pointer-events-none fixed top-0 left-0 z-[9999] select-none"
         style={{
-          fontSize: 10,
+          background: GOLD_HEX,
+          color: "#fff",
+          fontSize: 9.5,
           letterSpacing: "0.18em",
           textTransform: "uppercase",
-          color: "#fff",
-          fontWeight: 600,
+          fontWeight: 700,
+          padding: "4px 10px",
+          borderRadius: 99,
+          boxShadow: `0 2px 12px rgba(200,146,42,0.45)`,
           opacity: 0,
           transition: "opacity 0.15s",
           willChange: "transform, opacity",
           whiteSpace: "nowrap",
+          border: `1px solid ${BRONZE_HEX}44`,
         }}
       />
     </>
