@@ -34,6 +34,7 @@ export default function WebCmsSettingsPage() {
         footer_text: data.footer_text,
         seo_default_title: data.seo_default_title,
         seo_default_description: data.seo_default_description,
+        nav_products_label: data.nav_products_label,
       });
       setData(updated);
       setToast({ message: "Settings updated", type: "success" });
@@ -118,6 +119,23 @@ export default function WebCmsSettingsPage() {
             <label className={labelClass}>YouTube</label>
             <input className={inputClass} placeholder="https://www.youtube.com/@channel" value={(data.social_links as any).youtube || ""} onChange={(e) => setData({ ...data, social_links: { ...data.social_links, youtube: e.target.value } as any })} />
           </div>
+        </div>
+      </section>
+
+      <section className="bg-white border border-[#EDE8DF] rounded-2xl p-5 mb-6">
+        <h2 className="text-[14px] font-bold text-[#2B2620] mb-1">Navbar — Designs / Products Link</h2>
+        <p className="text-[11px] text-[#9A8F82] mb-4">
+          Enter a label to show the Designs page in the navbar (e.g. "Designs", "Products", "Furniture").
+          Leave blank to hide it from navbar and footer.
+        </p>
+        <div>
+          <label className={labelClass}>Navbar Label</label>
+          <input
+            className={inputClass}
+            placeholder='e.g. "Designs" or "Products" — leave blank to hide'
+            value={data.nav_products_label || ""}
+            onChange={(e) => setData({ ...data, nav_products_label: e.target.value })}
+          />
         </div>
       </section>
 

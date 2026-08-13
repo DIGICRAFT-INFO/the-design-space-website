@@ -2,15 +2,6 @@ import Link from "next/link";
 import { FaInstagram, FaLinkedinIn, FaFacebookF, FaYoutube } from "react-icons/fa";
 import type { WebSettings } from "@/services/websiteService";
 
-const NAV_LINKS = [
-  { label: "Home", href: "/" },
-  { label: "About", href: "/about" },
-  { label: "Services", href: "/services" },
-  { label: "Portfolio", href: "/portfolio" },
-  { label: "PROJECTS", href: "/products" },
-  { label: "Contact", href: "/contact" },
-];
-
 const MORE_LINKS = [
   { label: "Journal", href: "/blog" },
   { label: "Careers", href: "/careers" },
@@ -21,6 +12,16 @@ export default function Footer({ settings }: { settings?: WebSettings | null }) 
   const contact = settings?.contact;
   const social = settings?.social_links;
   const year = new Date().getFullYear();
+  const productsLabel = settings?.nav_products_label;
+
+  const NAV_LINKS = [
+    { label: "Home", href: "/" },
+    { label: "About", href: "/about" },
+    { label: "Services", href: "/services" },
+    { label: "Portfolio", href: "/portfolio" },
+    ...(productsLabel ? [{ label: productsLabel, href: "/products" }] : []),
+    { label: "Contact", href: "/contact" },
+  ];
 
   return (
     <footer className="bg-[var(--ds-bg-alt)] border-t border-[var(--ds-border)] text-[var(--ds-ink)]">

@@ -8,18 +8,25 @@ import { Menu, X, ArrowUpRight } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import MagneticButton from "./MagneticButton";
 
-const NAV_LINKS = [
+const BASE_NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "About", href: "/about" },
   { label: "Services", href: "/services" },
   { label: "Portfolio", href: "/portfolio" },
-  { label: "PROJECTS", href: "/products" },
   { label: "Journal", href: "/blog" },
 ];
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-export default function Navbar() {
+export default function Navbar({ productsNavLabel }: { productsNavLabel?: string }) {
+  // Build nav links — insert Designs/Products link only when label is set
+  const NAV_LINKS = productsNavLabel
+    ? [
+        ...BASE_NAV_LINKS.slice(0, 4),
+        { label: productsNavLabel, href: "/products" },
+        ...BASE_NAV_LINKS.slice(4),
+      ]
+    : BASE_NAV_LINKS;
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);

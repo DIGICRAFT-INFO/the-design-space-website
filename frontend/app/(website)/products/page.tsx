@@ -7,8 +7,8 @@ export const revalidate = 0;
 
 export async function generateMetadata() {
   const seo = resolveSeo(await getSeoEntries().catch(() => []), "/products", {
-    title: "Products — The Design Space",
-    description: "Bespoke artifacts and custom furniture, from seating to lighting to kitchen modules.",
+    title: "Designs — The Design Space",
+    description: "Bespoke design artifacts, custom furniture, and curated interior objects.",
   });
   return { title: seo.title, description: seo.description, keywords: seo.keywords };
 }
@@ -22,7 +22,7 @@ export default async function ProductsPage() {
         <div className="max-w-[1600px] mx-auto px-6 md:px-10">
           <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-5">Curated Objects</p>
           <SplitText
-            text="Bespoke Artifacts & Custom Furniture"
+            text="Bespoke Designs & Custom Furniture"
             as="h1"
             className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-light tracking-tight max-w-3xl"
             style={{ fontFamily: "var(--font-display)" }}

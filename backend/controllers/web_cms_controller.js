@@ -761,6 +761,7 @@ exports.update_settings = async (req, res) => {
     if (footer_text !== undefined) doc.footer_text = footer_text;
     if (seo_default_title !== undefined) doc.seo_default_title = seo_default_title;
     if (seo_default_description !== undefined) doc.seo_default_description = seo_default_description;
+    if (req.body.nav_products_label !== undefined) doc.nav_products_label = req.body.nav_products_label;
     if (legal) doc.legal = { ...doc.legal.toObject(), ...legal };
     doc.updated_by = req.user ? req.user._id : null;
     await doc.save();

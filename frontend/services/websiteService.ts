@@ -173,6 +173,7 @@ export type WebSettings = {
   footer_text: string;
   seo_default_title: string;
   seo_default_description: string;
+  nav_products_label: string; // empty = hide products link in navbar
   legal: { privacy_policy: string; copyright_terms: string };
 };
 

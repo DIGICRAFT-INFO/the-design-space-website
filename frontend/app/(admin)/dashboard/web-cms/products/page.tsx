@@ -98,8 +98,8 @@ export default function WebCmsProductsPage() {
     <div className="p-6 max-w-5xl mx-auto pb-24">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-[#2B2620]">Website CMS — Products</h1>
-          <p className="text-[13px] text-[#9A8F82]">Bespoke furnishings catalog shown on the public Products page</p>
+          <h1 className="text-xl font-bold text-[#2B2620]">Website CMS — Designs</h1>
+          <p className="text-[13px] text-[#9A8F82]">Bespoke designs catalog shown on the public Designs page</p>
         </div>
         <button
           onClick={handleCreate}

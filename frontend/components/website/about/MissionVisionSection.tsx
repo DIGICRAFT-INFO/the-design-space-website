@@ -21,7 +21,7 @@ export default function MissionVisionSection({ data, variant }: Props) {
   const images = data.slider_images ?? [];
 
   const eyebrow = isMission ? "Our Mission" : "Our Vision";
-  const bgColor = isMission ? "#FCFBF9" : "#F5F3EF";
+  const bgColor = isMission ? "var(--ds-bg)" : "var(--ds-bg-alt)";
 
   // Mission:  [Text | Image]   — textFirst = true
   // Vision:   [Image | Text]   — textFirst = false  (zigzag)
@@ -41,18 +41,16 @@ export default function MissionVisionSection({ data, variant }: Props) {
       <SplitText
         text={data.title}
         as="h2"
-        className="text-3xl sm:text-4xl md:text-5xl lg:text-[3rem] font-light leading-[1.15] tracking-tight mb-6"
+        className="text-3xl sm:text-4xl md:text-5xl lg:text-[3rem] font-light leading-[1.15] tracking-tight mb-6 text-[var(--ds-ink)]"
         style={{
           fontFamily: "var(--font-display)",
-          color: "#1A1A1A",
         }}
       />
 
       <FadeIn delay={0.35}>
         <p
-          className="text-base md:text-lg leading-relaxed max-w-xl"
+          className="text-base md:text-lg leading-relaxed max-w-xl text-[var(--ds-ink-soft)]"
           style={{
-            color: "#555555",
             // ── Hyphenation fix: removes broken "func- tionality" style splits ──
             hyphens: "none",
             WebkitHyphens: "none",

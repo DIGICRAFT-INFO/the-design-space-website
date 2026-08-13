@@ -30,7 +30,7 @@ export default async function WebsiteLayout({ children }: { children: React.Reac
       >
         <SmoothScroll>
           <CustomCursor />
-          <Navbar />
+          <Navbar productsNavLabel={settings?.nav_products_label || ""} />
           <main>{children}</main>
           <Footer settings={settings} />
         </SmoothScroll>

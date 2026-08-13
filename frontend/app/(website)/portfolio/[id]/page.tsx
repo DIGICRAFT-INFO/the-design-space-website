@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import { getPortfolioItem } from "@/services/websiteService";
 import { resolveMediaUrl } from "@/lib/media";
 import SplitText from "@/components/website/SplitText";
-import RevealImage from "@/components/website/RevealImage";
 import FadeIn from "@/components/website/FadeIn";
+import PortfolioGallery from "@/components/website/portfolio/PortfolioGallery";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,10 +14,13 @@ export default async function PortfolioDetailPage({ params }: { params: Promise<
 
   if (!project) notFound();
 
-  const [hero, ...rest] = (project.images || []).map((img) => ({
+  const allImages = (project.images || []).map((img) => ({
     ...img,
     file_url: resolveMediaUrl(img.file_url),
   }));
+
+  const [hero, ...rest] = allImages;
+
   const docs = (project.documents || []).map((doc) => ({
     ...doc,
     file_url: resolveMediaUrl(doc.file_url),
@@ -77,7 +80,6 @@ export default async function PortfolioDetailPage({ params }: { params: Promise<
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 p-3 rounded-lg border border-[var(--ds-border)] hover:border-[var(--ds-gold)] hover:bg-[var(--ds-gold)]/5 transition-colors group"
                       >
-                        {/* PDF icon */}
                         <span className="shrink-0 w-9 h-9 rounded-md bg-red-50 border border-red-100 flex items-center justify-center">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-red-500">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -96,7 +98,6 @@ export default async function PortfolioDetailPage({ params }: { params: Promise<
                             </p>
                           )}
                         </div>
-                        {/* Download arrow */}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--ds-ink-soft)] group-hover:text-[var(--ds-gold)] shrink-0 transition-colors">
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                           <polyline points="7 10 12 15 17 10" />
@@ -122,20 +123,16 @@ export default async function PortfolioDetailPage({ params }: { params: Promise<
         </div>
       </section>
 
-      {/* ── Gallery ─────────────────────────────────────────────────────── */}
+      {/* ── Gallery — single click opens lightbox ───────────────────────── */}
       {rest.length > 0 && (
         <section className="max-w-[1600px] mx-auto px-6 md:px-10 pb-16 md:pb-24">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-            {rest.map((img, i) => (
-              <RevealImage
-                key={img.id}
-                src={img.file_url}
-                alt={img.caption || project.title}
-                delay={(i % 4) * 0.06}
-                className={`rounded-sm ${i % 3 === 0 ? "md:col-span-2 aspect-video" : "aspect-[4/5]"}`}
-              />
-            ))}
+          <div className="flex items-center justify-between mb-5">
+            <p className="text-[11px] tracking-[0.22em] uppercase text-[var(--ds-ink-soft)]">
+              Gallery · {rest.length} photo{rest.length !== 1 ? "s" : ""}
+            </p>
+            <p className="text-[11px] text-[var(--ds-ink-soft)] italic">Click any image to view fullscreen</p>
           </div>
+          <PortfolioGallery images={rest} projectTitle={project.title} />
         </section>
       )}
     </>

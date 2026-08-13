@@ -27,6 +27,10 @@ const webSettingsSchema = new mongoose.Schema(
     seo_default_title: { type: String, default: 'The Design Space — Luxury Interior Design' },
     seo_default_description: { type: String, default: '' },
 
+    // Navbar visibility — if nav_products_label is non-empty, the Products/Designs
+    // link appears in the navbar with this label. If blank, the link is hidden.
+    nav_products_label: { type: String, default: '' },
+
     legal: {
       privacy_policy: {
         type: String,

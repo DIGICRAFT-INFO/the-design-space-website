@@ -135,6 +135,16 @@ export default function ImageLightbox({ images, initialIndex = 0, onClose }: Pro
                 style={{ maxHeight: "calc(100vh - 8rem)", maxWidth: "calc(100vw - 6rem)" }}
                 draggable={false}
               />
+              {/* Close button visible when zoomed */}
+              {zoomed && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onClose(); }}
+                  className="absolute top-3 right-3 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white border border-white/20 shadow-xl transition-colors"
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
+              )}
             </motion.div>
           </AnimatePresence>
         </div>

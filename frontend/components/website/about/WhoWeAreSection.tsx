@@ -33,19 +33,16 @@ export default function WhoWeAreSection({ data }: Props) {
             <SplitText
               text={data.title || "A Collective of Visionaries & Artisans"}
               as="h2"
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-light leading-[1.15] tracking-tight mb-6"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-light leading-[1.15] tracking-tight mb-6 text-[var(--ds-ink)]"
               style={{
                 fontFamily: "var(--font-display)",
-                color: "#1A1A1A",
               }}
             />
 
             <FadeIn delay={0.35}>
               <p
-                className="text-base md:text-lg leading-relaxed max-w-xl"
+                className="text-base md:text-lg leading-relaxed max-w-xl text-[var(--ds-ink-soft)]"
                 style={{
-                  color: "#555555",
-                  // Critical: kill browser hyphenation that causes "func- tionality" breaks
                   hyphens: "none",
                   WebkitHyphens: "none",
                   MozHyphens: "none",
