@@ -53,7 +53,7 @@ export default async function SitemapPage() {
 
   return (
     <>
-      <section className="pt-40 md:pt-48 pb-16 md:pb-20">
+      <section className="page-hero-pt pb-16 md:pb-20">
         <div className="max-w-[1600px] mx-auto px-6 md:px-10">
           <SplitText
             text="Sitemap"
@@ -64,7 +64,7 @@ export default async function SitemapPage() {
         </div>
       </section>
 
-      <section className="pb-28 md:pb-40">
+      <section className="pb-16 md:pb-24">
         <div className="max-w-[1600px] mx-auto px-6 md:px-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {sections.map((section, i) => (
             <FadeIn key={section.title} delay={i * 0.05}>

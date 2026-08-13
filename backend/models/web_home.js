@@ -9,6 +9,7 @@ const bentoCardSchema = new mongoose.Schema(
     _id: { type: String, default: uuidv4 },
     image_title: { type: String, default: '', maxLength: 200 },
     image_url: { type: String, default: '' },
+    portfolio_id: { type: String, default: '' }, // links to Portfolio item _id
     grid_span_class: { type: String, default: 'col-span-1 row-span-1' },
     sort_order: { type: Number, default: 0 },
   },

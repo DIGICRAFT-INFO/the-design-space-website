@@ -6,6 +6,7 @@ const enquiryController = require('../controllers/enquiry_controller');
 const blogController = require('../controllers/web_blog_controller');
 const careerController = require('../controllers/web_career_controller');
 const seoController = require('../controllers/web_seo_controller');
+const serviceInquiryController = require('../controllers/service_inquiry_controller');
 const handleUpload = require('../middleware/handleUpload');
 
 // Content reads — no auth, published-only data
@@ -30,5 +31,12 @@ router.post('/careers/apply', handleUpload(careerController.uploadResume.single(
 
 // Contact form → straight into the CRM Enquiries module
 router.post('/enquiry', enquiryController.create_public_enquiry);
+
+// Service inquiry with file attachments
+router.post(
+  '/service-inquiry',
+  handleUpload(serviceInquiryController.attachmentUpload.array('attachments', 10)),
+  serviceInquiryController.create_inquiry
+);
 
 module.exports = router;

@@ -25,17 +25,42 @@ export default async function AboutPage() {
   const about = await getAbout().catch(() => null);
   const services = await getServices().catch(() => []);
   const narrative = about?.narrative;
-  const gallery = about?.studio_gallery || [];
+  const gallery = (about?.studio_gallery || []).map((img) => ({
+    ...img,
+    file_url: resolveMediaUrl(img.file_url),
+  }));
 
-  // Sort all team members
-  const allTeam = (about?.team_members || []).slice().sort((a, b) => a.sort_order - b.sort_order);
+  // Sort all team members — resolve avatar URLs server-side
+  const allTeam = (about?.team_members || [])
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((m) => ({ ...m, avatar_url: resolveMediaUrl(m.avatar_url) }));
   const founder = allTeam.find((m) => m.is_founder) ?? null;
   const nonFounderTeam = allTeam.filter((m) => !m.is_founder);
 
-  // New sections data
-  const whoWeAre = about?.who_we_are ?? { title: "", body: "", background_image: "", slider_images: [] };
-  const mission = about?.mission ?? { title: "", body: "", slider_images: [] };
-  const vision = about?.vision ?? { title: "", body: "", slider_images: [] };
+  // New sections data — resolve all image URLs server-side before passing to client components
+  const whoWeAre = {
+    ...(about?.who_we_are ?? { title: "", body: "", background_image: "", slider_images: [] }),
+    background_image: resolveMediaUrl(about?.who_we_are?.background_image),
+    slider_images: (about?.who_we_are?.slider_images ?? []).map((img) => ({
+      ...img,
+      image_url: resolveMediaUrl(img.image_url),
+    })),
+  };
+  const mission = {
+    ...(about?.mission ?? { title: "", body: "", slider_images: [] }),
+    slider_images: (about?.mission?.slider_images ?? []).map((img) => ({
+      ...img,
+      image_url: resolveMediaUrl(img.image_url),
+    })),
+  };
+  const vision = {
+    ...(about?.vision ?? { title: "", body: "", slider_images: [] }),
+    slider_images: (about?.vision?.slider_images ?? []).map((img) => ({
+      ...img,
+      image_url: resolveMediaUrl(img.image_url),
+    })),
+  };
   const values = about?.values ?? [];
   const industries = about?.industries ?? [];
 
@@ -53,7 +78,7 @@ export default async function AboutPage() {
       {useSlider ? (
         <HeroSlider slides={aboutSlides} autoPlayInterval={5500} />
       ) : (
-        <section className="pt-40 md:pt-48 pb-0">
+        <section className="page-hero-pt pb-0">
           <div className="max-w-[1600px] mx-auto px-6 md:px-10">
             <SplitText
               text={narrative?.philosophy_title || "Crafting Quiet Luxury"}
@@ -115,7 +140,7 @@ export default async function AboutPage() {
               {gallery.map((img, i) => (
                 <RevealImage
                   key={img.id}
-                  src={resolveMediaUrl(img.file_url)}
+                  src={img.file_url}
                   alt={img.caption || "Studio"}
                   delay={i * 0.06}
                   className="aspect-square rounded-xl"
@@ -157,7 +182,7 @@ export default async function AboutPage() {
                 <FadeIn key={member.id} delay={i * 0.05} className="group">
                   <div className="aspect-[3/4] rounded-xl overflow-hidden bg-[var(--ds-bg)] mb-3 relative">
                     <img
-                      src={resolveMediaUrl(member.avatar_url) || "/logo.png"}
+                      src={member.avatar_url || "/logo.png"}
                       alt={member.name}
                       className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 scale-105 group-hover:scale-100"
                     />

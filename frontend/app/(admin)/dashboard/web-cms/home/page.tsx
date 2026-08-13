@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Loader2, Plus, Trash2, Save, Images, GripVertical } from "lucide-react";
 import { getHomeAdmin, updateHomeAdmin } from "@/services/webCmsService";
-import type { WebHome, BentoCard, ProcessStep, HeroSlide } from "@/services/websiteService";
+import { getPortfolio } from "@/services/websiteService";
+import type { WebHome, BentoCard, ProcessStep, HeroSlide, PublicPortfolioItem } from "@/services/websiteService";
 import MediaUploadField from "@/components/webcms/MediaUploadField";
 import Toast, { type ToastState } from "@/components/webcms/Toast";
 import { getErrorMessage } from "@/lib/errors";
@@ -24,13 +25,20 @@ const nextId = () => `new-${Date.now()}-${uid++}`;
 
 export default function WebCmsHomePage() {
   const [data, setData] = useState<WebHome | null>(null);
+  const [portfolioItems, setPortfolioItems] = useState<PublicPortfolioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
 
   useEffect(() => {
-    getHomeAdmin()
-      .then(setData)
+    Promise.all([
+      getHomeAdmin(),
+      getPortfolio().catch(() => [] as PublicPortfolioItem[]),
+    ])
+      .then(([homeData, items]) => {
+        setData(homeData);
+        setPortfolioItems(items);
+      })
       .catch((e) => setToast({ message: getErrorMessage(e), type: "error" }))
       .finally(() => setLoading(false));
   }, []);
@@ -82,7 +90,7 @@ export default function WebCmsHomePage() {
               ...d.grid_matrix,
               cards: [
                 ...d.grid_matrix.cards,
-                { id: nextId(), image_title: "", image_url: "", grid_span_class: SPAN_OPTIONS[1].value, sort_order: d.grid_matrix.cards.length },
+                { id: nextId(), image_title: "", image_url: "", portfolio_id: "", grid_span_class: SPAN_OPTIONS[1].value, sort_order: d.grid_matrix.cards.length },
               ],
             },
           }
@@ -392,6 +400,22 @@ export default function WebCmsHomePage() {
                 value={card.image_title}
                 onChange={(e) => updateCard(card.id, { image_title: e.target.value })}
               />
+              {/* Portfolio link dropdown */}
+              <div className="mt-2">
+                <label className={labelClass}>Link to Portfolio Item</label>
+                <select
+                  className={inputClass}
+                  value={card.portfolio_id || ""}
+                  onChange={(e) => updateCard(card.id, { portfolio_id: e.target.value })}
+                >
+                  <option value="">— No link (goes to /portfolio) —</option>
+                  {portfolioItems.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="flex items-center gap-2 mt-2">
                 <select
                   className={`${inputClass} flex-1`}

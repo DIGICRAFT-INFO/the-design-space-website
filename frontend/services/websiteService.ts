@@ -8,6 +8,7 @@ export type BentoCard = {
   id: string;
   image_title: string;
   image_url: string;
+  portfolio_id?: string; // linked Portfolio item _id — used for direct navigation
   grid_span_class: string;
   sort_order: number;
 };
@@ -279,7 +280,16 @@ export async function submitEnquiry(payload: EnquiryPayload): Promise<{ message:
   return data;
 }
 
-// ─── Blog ───────────────────────────────────────────────────────────────────
+// ─── Service Inquiry ────────────────────────────────────────────────────────
+
+export async function submitServiceInquiry(formData: FormData): Promise<{ id: string }> {
+  const res = await fetch(`${PUBLIC_URL}/service-inquiry`, { method: "POST", body: formData });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Something went wrong. Please try again.");
+  return data;
+}
+
+// ─── Blog Posts ─────────────────────────────────────────────────────────────
 
 export const getBlogPosts = (category?: string, limit?: number) => {
   const params = new URLSearchParams();

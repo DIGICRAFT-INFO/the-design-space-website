@@ -2,124 +2,247 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
-import Link from "next/link";
+import { ArrowRight, ChevronDown, Sparkles } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/media";
 import ZoomableImage from "@/components/website/ZoomableImage";
+import ServiceInquiryModal from "@/components/website/services/ServiceInquiryModal";
+import FadeIn from "@/components/website/FadeIn";
 import type { WebServicePackage } from "@/services/websiteService";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
+const TIER_COLORS: Record<string, string> = {
+  residential:  "bg-amber-50   text-amber-700  border-amber-200",
+  commercial:   "bg-sky-50     text-sky-700    border-sky-200",
+  consultation: "bg-violet-50  text-violet-700 border-violet-200",
+  turnkey:      "bg-emerald-50 text-emerald-700 border-emerald-200",
+  other:        "bg-[var(--ds-bg-alt)] text-[var(--ds-ink-soft)] border-[var(--ds-border)]",
+};
+
 export default function ServicesList({ packages }: { packages: WebServicePackage[] }) {
   const [openId, setOpenId] = useState<string | null>(packages[0]?.id ?? null);
+  const [inquiryService, setInquiryService] = useState<{ name: string; id: string } | null>(null);
 
   if (packages.length === 0) {
-    return <p className="text-[var(--ds-ink-soft)]">Service packages will appear here once published.</p>;
+    return (
+      <p className="text-[var(--ds-ink-soft)]">
+        Service packages will appear here once published.
+      </p>
+    );
   }
 
+  const active = packages.find((p) => p.id === openId) ?? packages[0];
+
   return (
-    <div className="grid lg:grid-cols-[minmax(0,1fr)_1.1fr] gap-10 lg:gap-16">
-      {/* List — accordion on mobile, tab-list on desktop */}
-      <div>
-        {packages.map((pkg) => {
-          const open = openId === pkg.id;
-          return (
-            <div key={pkg.id} className="border-b border-[var(--ds-border)]">
-              <button
-                onClick={() => setOpenId(open ? null : pkg.id)}
-                className="w-full flex items-center justify-between py-6 text-left"
-              >
-                <div>
-                  <h3 className="text-xl md:text-2xl font-light" style={{ fontFamily: "var(--font-display)" }}>
-                    {pkg.package_name}
-                  </h3>
-                  {pkg.price_estimation && (
-                    <p className="text-xs text-[var(--ds-gold)] mt-1 tracking-wide">{pkg.price_estimation}</p>
-                  )}
-                </div>
-                <ChevronDown
-                  size={18}
-                  className={`shrink-0 transition-transform duration-300 lg:hidden ${open ? "rotate-180" : ""}`}
-                />
-              </button>
+    <>
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_1.15fr] gap-0 lg:gap-14 xl:gap-20">
 
-              {/* Mobile accordion body */}
-              <AnimatePresence initial={false}>
-                {open && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.4, ease: EASE }}
-                    className="overflow-hidden lg:hidden"
-                  >
-                    <PackageBody pkg={pkg} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          );
-        })}
-      </div>
+        {/* ── Left: service list ──────────────────────────────────────── */}
+        <div className="divide-y divide-[var(--ds-border)]">
+          {packages.map((pkg, idx) => {
+            const isOpen = openId === pkg.id;
+            const tierClass = TIER_COLORS[pkg.tier_classification] ?? TIER_COLORS.other;
+            const tierLabel = pkg.tier_label || pkg.tier_classification;
 
-      {/* Desktop detail panel */}
-      <div className="hidden lg:block sticky top-28 self-start">
-        <AnimatePresence mode="wait">
-          {packages.map(
-            (pkg) =>
-              openId === pkg.id && (
-                <motion.div
-                  key={pkg.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.4, ease: EASE }}
+            return (
+              <div key={pkg.id}>
+                <button
+                  onClick={() => setOpenId(isOpen ? null : pkg.id)}
+                  className="w-full flex items-center justify-between py-5 md:py-6 text-left group"
+                  aria-expanded={isOpen}
                 >
-                  <div className="aspect-[4/3] rounded-sm overflow-hidden mb-6">
-                    <ZoomableImage
-                      src={resolveMediaUrl(pkg.cover_image) || "/logo.png"}
-                      alt={pkg.package_name}
-                      className="w-full h-full"
-                    />
+                  {/* Number + name */}
+                  <div className="flex items-start gap-4 min-w-0">
+                    <span
+                      className={`text-[11px] font-bold tabular-nums mt-1 shrink-0 transition-colors ${
+                        isOpen ? "text-[var(--ds-gold)]" : "text-[var(--ds-ink-soft)] group-hover:text-[var(--ds-gold)]"
+                      }`}
+                    >
+                      {String(idx + 1).padStart(2, "0")}
+                    </span>
+                    <div className="min-w-0">
+                      <h3
+                        className={`text-lg md:text-xl lg:text-2xl font-light tracking-tight transition-colors ${
+                          isOpen ? "text-[var(--ds-ink)]" : "text-[var(--ds-ink)] group-hover:text-[var(--ds-gold)]"
+                        }`}
+                        style={{ fontFamily: "var(--font-display)" }}
+                      >
+                        {pkg.package_name}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <span
+                          className={`inline-block text-[9px] font-semibold tracking-[0.12em] uppercase border rounded-full px-2 py-0.5 ${tierClass}`}
+                        >
+                          {tierLabel}
+                        </span>
+                        {pkg.price_estimation && (
+                          <span className="text-[11px] text-[var(--ds-gold)] tracking-wide">
+                            {pkg.price_estimation}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <PackageBody pkg={pkg} />
-                </motion.div>
-              )
-          )}
-        </AnimatePresence>
+
+                  {/* Arrow icon */}
+                  <div className="flex items-center gap-2 ml-4 shrink-0">
+                    <motion.div
+                      animate={{ rotate: isOpen ? 90 : 0 }}
+                      transition={{ duration: 0.3, ease: EASE }}
+                      className="hidden lg:flex"
+                    >
+                      <ArrowRight
+                        size={16}
+                        className={`transition-colors ${
+                          isOpen ? "text-[var(--ds-gold)]" : "text-[var(--ds-ink-soft)] group-hover:text-[var(--ds-gold)]"
+                        }`}
+                      />
+                    </motion.div>
+                    <motion.div
+                      animate={{ rotate: isOpen ? 180 : 0 }}
+                      transition={{ duration: 0.3, ease: EASE }}
+                      className="lg:hidden"
+                    >
+                      <ChevronDown
+                        size={16}
+                        className="text-[var(--ds-ink-soft)] group-hover:text-[var(--ds-gold)] transition-colors"
+                      />
+                    </motion.div>
+                  </div>
+                </button>
+
+                {/* Mobile accordion */}
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.45, ease: EASE }}
+                      className="overflow-hidden lg:hidden"
+                    >
+                      <PackageDetail
+                        pkg={pkg}
+                        onInquire={() => setInquiryService({ name: pkg.package_name, id: pkg.id })}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Right: sticky detail panel (desktop only) ─────────────── */}
+        <div className="hidden lg:block">
+          <div className="sticky top-28 self-start">
+            <AnimatePresence mode="wait">
+              {packages.map(
+                (pkg) =>
+                  openId === pkg.id && (
+                    <motion.div
+                      key={pkg.id}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -16 }}
+                      transition={{ duration: 0.4, ease: EASE }}
+                    >
+                      {/* Cover image */}
+                      <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-7 shadow-sm">
+                        <ZoomableImage
+                          src={resolveMediaUrl(pkg.cover_image) || "/logo.png"}
+                          alt={pkg.package_name}
+                          className="w-full h-full"
+                        />
+                        {/* Tier badge on image */}
+                        {pkg.tier_classification && (
+                          <span
+                            className={`absolute top-4 left-4 text-[9px] font-bold tracking-[0.14em] uppercase border rounded-full px-2.5 py-1 backdrop-blur-sm ${
+                              TIER_COLORS[pkg.tier_classification] ?? TIER_COLORS.other
+                            }`}
+                          >
+                            {pkg.tier_label || pkg.tier_classification}
+                          </span>
+                        )}
+                      </div>
+
+                      <PackageDetail
+                        pkg={pkg}
+                        onInquire={() => setInquiryService({ name: pkg.package_name, id: pkg.id })}
+                      />
+                    </motion.div>
+                  )
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Inquiry Modal */}
+      {inquiryService && (
+        <ServiceInquiryModal
+          serviceName={inquiryService.name}
+          serviceId={inquiryService.id}
+          onClose={() => setInquiryService(null)}
+        />
+      )}
+    </>
   );
 }
 
-function PackageBody({ pkg }: { pkg: WebServicePackage }) {
+// ── Package detail (shared between mobile accordion and desktop panel) ──────
+
+function PackageDetail({
+  pkg,
+  onInquire,
+}: {
+  pkg: WebServicePackage;
+  onInquire: () => void;
+}) {
   return (
     <div className="pb-8 lg:pb-0">
-      {/* Image — visible on mobile only (desktop shows it above in the panel) */}
-      <div className="aspect-[4/3] rounded-sm overflow-hidden mb-5 lg:hidden">
+      {/* Mobile cover image */}
+      <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-5 lg:hidden shadow-sm">
         <ZoomableImage
           src={resolveMediaUrl(pkg.cover_image) || "/logo.png"}
           alt={pkg.package_name}
           className="w-full h-full"
         />
       </div>
-      <p className="text-sm md:text-base text-[var(--ds-ink-soft)] leading-relaxed mb-4">{pkg.scope_summary}</p>
+
+      {/* Scope summary */}
+      {pkg.scope_summary && (
+        <p className="text-sm md:text-base text-[var(--ds-ink-soft)] leading-relaxed mb-5">
+          {pkg.scope_summary}
+        </p>
+      )}
+
+      {/* Highlights */}
       {pkg.highlights?.length > 0 && (
-        <ul className="space-y-2 mb-6">
+        <ul className="space-y-2.5 mb-7">
           {pkg.highlights.map((h, i) => (
-            <li key={i} className="flex items-start gap-2.5 text-sm">
-              <span className="mt-2 w-1 h-1 rounded-full bg-[var(--ds-gold)] shrink-0" />
+            <li key={i} className="flex items-start gap-3 text-sm text-[var(--ds-ink)]">
+              <span className="mt-[7px] w-1 h-1 rounded-full bg-[var(--ds-gold)] shrink-0" />
               {h}
             </li>
           ))}
         </ul>
       )}
-      <Link
-        href={`/contact?service=${encodeURIComponent(pkg.package_name)}`}
-        className="inline-flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase border-b border-[var(--ds-ink)] pb-1 hover:text-[var(--ds-gold)] hover:border-[var(--ds-gold)] transition-colors"
-      >
-        Inquire for details
-      </Link>
+
+      {/* CTA */}
+      <FadeIn>
+        <button
+          onClick={onInquire}
+          className="group inline-flex items-center gap-2.5 px-6 py-3 rounded-full bg-[var(--ds-ink)] text-[var(--ds-bg)] text-[11px] tracking-[0.14em] uppercase font-semibold hover:bg-[var(--ds-gold)] transition-colors duration-300"
+        >
+          <Sparkles size={13} className="opacity-80" />
+          Inquire for Details
+          <ArrowRight
+            size={13}
+            className="transition-transform duration-300 group-hover:translate-x-1"
+          />
+        </button>
+      </FadeIn>
     </div>
   );
 }

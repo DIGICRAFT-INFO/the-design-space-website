@@ -1,4 +1,5 @@
 import { getPortfolio, getPortfolioCategories, getSeoEntries, resolveSeo } from "@/services/websiteService";
+import { resolveMediaUrl } from "@/lib/media";
 import SplitText from "@/components/website/SplitText";
 import PortfolioGrid from "@/components/website/portfolio/PortfolioGrid";
 
@@ -14,14 +15,23 @@ export async function generateMetadata() {
 }
 
 export default async function PortfolioPage() {
-  const [items, categories] = await Promise.all([
+  const [rawItems, categories] = await Promise.all([
     getPortfolio().catch(() => []),
     getPortfolioCategories().catch(() => []),
   ]);
 
+  // Resolve all image URLs server-side so client components get absolute URLs
+  const items = rawItems.map((item) => ({
+    ...item,
+    images: (item.images || []).map((img) => ({
+      ...img,
+      file_url: resolveMediaUrl(img.file_url),
+    })),
+  }));
+
   return (
     <>
-      <section className="pt-40 md:pt-48 pb-16 md:pb-20">
+      <section className="page-hero-pt pb-16 md:pb-20">
         <div className="max-w-[1600px] mx-auto px-6 md:px-10">
           <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-5">Selected Workspace Index</p>
           <SplitText

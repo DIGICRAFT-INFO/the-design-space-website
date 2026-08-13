@@ -6,18 +6,23 @@ import type { SliderImage } from "@/services/websiteService";
 
 interface Props {
   images: SliderImage[];
+  /** Fallback single image URL when no slider_images are configured */
+  fallbackImage?: string;
   /** Auto-advance interval in ms. Default 5000. */
   interval?: number;
 }
 
-const FALLBACK_IMAGES: SliderImage[] = [
-  { id: "f1", image_url: "/logo.png", alt_text: "The Design Space", sort_order: 0 },
-];
+export default function AboutImageSlider({ images, fallbackImage, interval = 5000 }: Props) {
+  // Build slides — if no slider_images, use fallbackImage; if neither, skip logo
+  const buildSlides = (): SliderImage[] => {
+    if (images.length > 0) return images;
+    if (fallbackImage) {
+      return [{ id: "fallback", image_url: fallbackImage, alt_text: "The Design Space", sort_order: 0 }];
+    }
+    return [];
+  };
 
-export default function AboutImageSlider({ images, interval = 5000 }: Props) {
-  const slides = (images.length > 0 ? images : FALLBACK_IMAGES)
-    .slice()
-    .sort((a, b) => a.sort_order - b.sort_order);
+  const slides = buildSlides().slice().sort((a, b) => a.sort_order - b.sort_order);
 
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -37,7 +42,18 @@ export default function AboutImageSlider({ images, interval = 5000 }: Props) {
     };
   }, [active, paused, interval, goTo, slides.length]);
 
-  if (slides.length === 0) return null;
+  if (slides.length === 0) {
+    return (
+      <div
+        className="relative w-full overflow-hidden rounded-2xl bg-[var(--ds-bg-alt)] flex items-center justify-center"
+        style={{ aspectRatio: "4 / 3" }}
+      >
+        <p className="text-[var(--ds-ink-soft)] text-sm tracking-wider uppercase opacity-40">
+          No image added
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div

@@ -109,10 +109,22 @@ async function getOrCreateAbout() {
 
   if (!doc.who_we_are || !doc.who_we_are.title) {
     doc.who_we_are = {
-      title: 'Crafting Spaces That Speak',
-      body: 'The Design Space is a full-service interior design studio rooted in the belief that great spaces are never accidental. We blend timeless aesthetics with purposeful functionality — creating homes and commercial environments that feel considered, personal, and enduring. Every project we take on is a dialogue: between your vision and ours, between structure and softness, between restraint and richness.',
+      title: 'A Collective of Visionaries & Artisans',
+      body: 'The Design Space is a full-service architectural and interior design studio rooted in the belief that great spaces are never accidental. We blend timeless aesthetics with purposeful functionality — creating spaces and environments that feel considered, personal, and enduring. Every project we take on is a dialogue: between your vision and ours, between structure and softness, between restraint and richness.',
       background_image: '',
     };
+    dirty = true;
+  } else if (doc.who_we_are.body && (
+    doc.who_we_are.body.includes('func- tionality') ||
+    doc.who_we_are.body.includes('creat- ing') ||
+    doc.who_we_are.body.includes('en- during')
+  )) {
+    // Fix broken hyphenated text that was seeded with bad line breaks
+    doc.who_we_are.body = doc.who_we_are.body
+      .replace(/func-\s*tionality/g, 'functionality')
+      .replace(/creat-\s*ing/g, 'creating')
+      .replace(/en-\s*during/g, 'enduring');
+    doc.markModified('who_we_are');
     dirty = true;
   }
 

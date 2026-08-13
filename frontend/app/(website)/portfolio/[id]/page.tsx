@@ -14,15 +14,21 @@ export default async function PortfolioDetailPage({ params }: { params: Promise<
 
   if (!project) notFound();
 
-  const [hero, ...rest] = project.images || [];
-  const docs = project.documents || [];
+  const [hero, ...rest] = (project.images || []).map((img) => ({
+    ...img,
+    file_url: resolveMediaUrl(img.file_url),
+  }));
+  const docs = (project.documents || []).map((doc) => ({
+    ...doc,
+    file_url: resolveMediaUrl(doc.file_url),
+  }));
 
   return (
     <>
       {/* ── Panoramic hero ──────────────────────────────────────────────── */}
       <section className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden">
         <img
-          src={resolveMediaUrl(hero?.file_url) || "/logo.png"}
+          src={hero?.file_url || "/logo.png"}
           alt={project.title}
           className="w-full h-full object-cover"
         />
@@ -66,7 +72,7 @@ export default async function PortfolioDetailPage({ params }: { params: Promise<
                   {docs.map((doc) => (
                     <li key={doc.id}>
                       <a
-                        href={resolveMediaUrl(doc.file_url)}
+                        href={doc.file_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 p-3 rounded-lg border border-[var(--ds-border)] hover:border-[var(--ds-gold)] hover:bg-[var(--ds-gold)]/5 transition-colors group"
@@ -123,7 +129,7 @@ export default async function PortfolioDetailPage({ params }: { params: Promise<
             {rest.map((img, i) => (
               <RevealImage
                 key={img.id}
-                src={resolveMediaUrl(img.file_url)}
+                src={img.file_url}
                 alt={img.caption || project.title}
                 delay={(i % 4) * 0.06}
                 className={`rounded-sm ${i % 3 === 0 ? "md:col-span-2 aspect-video" : "aspect-[4/5]"}`}

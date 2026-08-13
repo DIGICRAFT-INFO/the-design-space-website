@@ -112,3 +112,24 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Page hero spacing — navbar is fixed at ~76px (scrolled: 66px).
+   All interior pages use this class on their first <section> so the
+   content clears the navbar consistently across every breakpoint.
+   Mobile: navbar ~64px  → pt-20  (80px) gives a small visual breath
+   Tablet: navbar ~70px  → pt-36  (144px)
+   Desktop: navbar ~76px → pt-44  (176px)
+   ─────────────────────────────────────────────────────────────────────── */
+.page-hero-pt {
+  padding-top: 5rem;       /* 80px — mobile */
+}
+@media (min-width: 768px) {
+  .page-hero-pt {
+    padding-top: 9rem;     /* 144px — tablet */
+  }
+}
+@media (min-width: 1024px) {
+  .page-hero-pt {
+    padding-top: 11rem;    /* 176px — desktop */
+  }
+}

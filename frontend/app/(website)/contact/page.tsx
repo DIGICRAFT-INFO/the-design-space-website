@@ -30,7 +30,7 @@ export default async function ContactPage() {
   return (
     <>
       {/* ── Hero header ──────────────────────────────────────────────────── */}
-      <section className="pt-32 md:pt-40 pb-10 md:pb-14 px-6 md:px-10 max-w-[1600px] mx-auto">
+      <section className="page-hero-pt pb-10 md:pb-14 px-6 md:px-10 max-w-[1600px] mx-auto">
         <p className="text-[11px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-4">
           Get In Touch
         </p>

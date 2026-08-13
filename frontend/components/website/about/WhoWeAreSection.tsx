@@ -74,7 +74,11 @@ export default function WhoWeAreSection({ data }: Props) {
             delay={0.2}
             className="order-1 lg:order-2 w-full"
           >
-            <AboutImageSlider images={images} interval={5000} />
+            <AboutImageSlider
+              images={images}
+              fallbackImage={data.background_image || undefined}
+              interval={5000}
+            />
           </FadeIn>
 
         </div>

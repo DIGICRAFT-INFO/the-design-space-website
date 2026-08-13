@@ -6,6 +6,7 @@ const careerController = require('../controllers/web_career_controller');
 const seoController = require('../controllers/web_seo_controller');
 const mediaController = require('../controllers/web_media_controller');
 const leadsController = require('../controllers/web_leads_controller');
+const serviceInquiryController = require('../controllers/service_inquiry_controller');
 const { is_authenticated, is_manager_or_above } = require('../middleware/permissions');
 const handleUpload = require('../middleware/handleUpload');
 
@@ -111,6 +112,15 @@ router.delete('/applications/:id', careerController.delete_application);
 
 // ── Leads (aggregated enquiries + applications) ─────────────────────────────
 router.get('/leads', leadsController.list_leads);
+
+// ── Service Inquiries ────────────────────────────────────────────────────────
+router.get('/service-inquiries', serviceInquiryController.list_inquiries);
+router.delete('/service-inquiries/bulk', serviceInquiryController.bulk_delete_inquiries);
+router.route('/service-inquiries/:id')
+  .get(serviceInquiryController.get_inquiry)
+  .patch(serviceInquiryController.update_inquiry)
+  .put(serviceInquiryController.update_inquiry)
+  .delete(serviceInquiryController.delete_inquiry);
 
 // ── SEO Manager ──────────────────────────────────────────────────────────────
 router.get('/seo', seoController.list_seo_admin);

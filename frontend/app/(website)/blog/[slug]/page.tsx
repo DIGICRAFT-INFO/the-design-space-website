@@ -27,7 +27,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
 
   return (
     <>
-      <section className="pt-40 md:pt-48 pb-10 md:pb-14">
+      <section className="page-hero-pt pb-10 md:pb-14">
         <div className="max-w-3xl mx-auto px-6 md:px-10">
           {post.category && <p className="text-[12px] tracking-[0.3em] uppercase text-[var(--ds-gold)] mb-5">{post.category}</p>}
           <SplitText
@@ -56,7 +56,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
         </section>
       )}
 
-      <section className="max-w-3xl mx-auto px-6 md:px-10 pb-28 md:pb-40">
+      <section className="max-w-3xl mx-auto px-6 md:px-10 pb-16 md:pb-24">
         <div className="ds-prose">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
         </div>

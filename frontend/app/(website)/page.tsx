@@ -55,7 +55,13 @@ export default async function HomePage() {
   const cmsBentoCards = (home?.grid_matrix?.cards ?? [])
     .slice()
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((c) => ({ id: c.id, title: c.image_title, image: resolveMediaUrl(c.image_url) || "", span: c.grid_span_class }));
+    .map((c) => ({
+      id: c.id,
+      portfolioId: c.portfolio_id || null, // linked portfolio item id
+      title: c.image_title,
+      image: resolveMediaUrl(c.image_url) || "",
+      span: c.grid_span_class,
+    }));
 
   const cmsBentoHasImages = cmsBentoCards.some((c) => !!c.image);
 
@@ -63,6 +69,7 @@ export default async function HomePage() {
     ? cmsBentoCards
     : featured.slice(0, 3).map((p, i) => ({
         id: p.id,
+        portfolioId: p.id, // portfolio item directly
         title: p.title,
         image: resolveMediaUrl(p.images?.[0]?.file_url) || "",
         span: ["lg:col-span-1 lg:row-span-2", "lg:col-span-1", "lg:col-span-1"][i] || "",
@@ -183,7 +190,7 @@ export default async function HomePage() {
           {gridCards.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5">
               {gridCards.filter((card) => !!card.image).map((card, i) => (
-                <Link key={card.id} href="/portfolio" className={`relative group aspect-[3/4] rounded-xl overflow-hidden shadow-sm ${card.span}`}>
+                <Link key={card.id} href={card.portfolioId ? `/portfolio/${card.portfolioId}` : "/portfolio"} className={`relative group aspect-[3/4] rounded-xl overflow-hidden shadow-sm ${card.span}`}>
                   <FallbackImg
                     src={card.image}
                     alt={card.title}
@@ -203,7 +210,7 @@ export default async function HomePage() {
                 {featured.map((p) => (
                   <Link
                     key={p.id}
-                    href={`/portfolio`}
+                    href={`/portfolio/${p.id}`}
                     className="w-[280px] md:w-[340px] shrink-0 group"
                   >
                     <div className="aspect-[4/3] rounded-xl overflow-hidden bg-[var(--ds-bg)] mb-3 shadow-sm">

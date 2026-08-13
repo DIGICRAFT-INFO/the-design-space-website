@@ -12,7 +12,7 @@ export default async function PrivacyPolicyPage() {
   const content = settings?.legal.privacy_policy;
 
   return (
-    <section className="pt-40 md:pt-48 pb-28 md:pb-40">
+    <section className="page-hero-pt pb-16 md:pb-24">
       <div className="max-w-3xl mx-auto px-6 md:px-10">
         <SplitText
           text="Privacy Policy"

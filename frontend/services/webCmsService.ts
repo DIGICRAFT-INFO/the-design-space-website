@@ -240,6 +240,47 @@ export type Lead = {
 export const listLeads = (type?: "enquiry" | "application") =>
   req<Lead[]>(`${CMS_URL}/leads${type ? `?type=${type}` : ""}`);
 
+// ─── Service Inquiries ───────────────────────────────────────────────────────
+
+export type ServiceInquiryAttachment = {
+  id: string;
+  file_url: string;
+  original_filename: string;
+  file_size: number;
+  mime_type: string;
+};
+
+export type ServiceInquiry = {
+  id: string;
+  service_name: string;
+  service_id: string;
+  name: string;
+  phone: string;
+  email: string;
+  subject: string;
+  description: string;
+  attachments: ServiceInquiryAttachment[];
+  status: "new" | "reviewed" | "in_progress" | "resolved" | "archived";
+  admin_note: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export const listServiceInquiries = (status?: string) =>
+  req<ServiceInquiry[]>(`${CMS_URL}/service-inquiries${status ? `?status=${status}` : ""}`);
+
+export const getServiceInquiry = (id: string) =>
+  req<ServiceInquiry>(`${CMS_URL}/service-inquiries/${id}`);
+
+export const updateServiceInquiry = (id: string, data: { status?: ServiceInquiry["status"]; admin_note?: string }) =>
+  req<ServiceInquiry>(`${CMS_URL}/service-inquiries/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+
+export const deleteServiceInquiry = (id: string) =>
+  req<void>(`${CMS_URL}/service-inquiries/${id}`, { method: "DELETE" });
+
+export const bulkDeleteServiceInquiries = (ids: string[]) =>
+  req<void>(`${CMS_URL}/service-inquiries/bulk`, { method: "DELETE", body: JSON.stringify({ ids }) });
+
 // ─── SEO Manager ────────────────────────────────────────────────────────────
 
 export const listSeoAdmin = () => req<WebSeoEntry[]>(`${CMS_URL}/seo`);
