@@ -3,7 +3,7 @@ const router = express.Router();
 const { 
   get_invoices, create_invoice, get_invoice_detail, 
   update_invoice, delete_invoice, generate_invoice, get_invoice_pdf,
-  send_invoice, mark_invoice_paid, copy_invoice
+  send_invoice, mark_invoice_paid, copy_invoice, create_direct_invoice
 } = require('../controllers/invoice_controller');
 
 const {
@@ -22,6 +22,14 @@ router.post(
   is_authenticated,
   is_manager_or_above,
   generate_invoice,
+);
+
+// Direct invoice creation WITHOUT quotation (manual/ad-hoc billing)
+router.post(
+  "/direct/",
+  is_authenticated,
+  is_manager_or_above,
+  create_direct_invoice,
 );
 
 // -------------------------------------------------------------

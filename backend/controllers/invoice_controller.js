@@ -280,13 +280,40 @@ exports.delete_invoice = async (req, res) => {
   }
 };
 
-// GenerateInvoiceView -> POST
+// GenerateInvoiceView -> POST (from quotation)
 exports.generate_invoice = async (req, res) => {
   try {
     const invoice = await invoiceService.generate_invoice_from_quotation(req.body);
     res.status(201).json(invoice);
   } catch (error) {
-    res.status(400).json({ detail: error.message }); //
+    res.status(400).json({ detail: error.message });
+  }
+};
+
+// DirectInvoiceView -> POST (without quotation — manual/ad-hoc billing)
+exports.create_direct_invoice = async (req, res) => {
+  try {
+    const invoice = await invoiceService.create_direct_invoice(req.body);
+
+    // Populate for response
+    const populated = await require('../models/invoice').findById(invoice._id)
+      .populate({ path: 'project', populate: { path: 'client' } })
+      .populate('items');
+    const obj = populated.toJSON();
+    obj.project_name = populated.project ? populated.project.name : null;
+    obj.client_name  = populated.project && populated.project.client ? populated.project.client.full_name : null;
+
+    await createNotification({
+      event_type: 'invoice_created',
+      title: 'Invoice Generated',
+      message: `Direct invoice ${obj.invoice_number} created for ₹${obj.grand_total}`,
+      reference_id: obj.id,
+      reference_type: 'invoice',
+    });
+
+    res.status(201).json(obj);
+  } catch (error) {
+    res.status(400).json({ detail: error.message });
   }
 };
 // ─── Copy Invoice (POST /:pk/copy/) ───────────────────────────────────────────

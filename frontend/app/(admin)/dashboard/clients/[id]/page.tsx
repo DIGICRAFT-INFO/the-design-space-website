@@ -3449,60 +3449,46 @@ const handleProjectEditClick = (proj: any) => {
                     <div className="p-6 space-y-5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#FAF8F5] rounded-xl p-4 border border-[#EDE8DF] text-[13px]">
                         <div>
-                          <p className="text-[10px] font-bold text-[#9A8F82] uppercase tracking-wider mb-1">
-                            Client
-                          </p>
-                          <p className="font-semibold text-[#1C1C1C]">
-                            {viewingInvoice.client_name}
-                          </p>
+                          <p className="text-[10px] font-bold text-[#9A8F82] uppercase tracking-wider mb-1">Client</p>
+                          <p className="font-semibold text-[#1C1C1C]">{viewingInvoice.client_name}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold text-[#9A8F82] uppercase tracking-wider mb-1">
-                            Invoice Type
-                          </p>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${invoiceTypeBadge(viewingInvoice.invoice_type)}`}
-                          >
+                          <p className="text-[10px] font-bold text-[#9A8F82] uppercase tracking-wider mb-1">Invoice Type</p>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${invoiceTypeBadge(viewingInvoice.invoice_type)}`}>
                             {viewingInvoice.invoice_type}
                           </span>
                           {viewingInvoice.milestone_label && (
-                            <span className="ml-2 text-[12px] text-[#6B6259]">
-                              — {viewingInvoice.milestone_label}
-                            </span>
+                            <span className="ml-2 text-[12px] text-[#6B6259]">— {viewingInvoice.milestone_label}</span>
                           )}
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold text-[#9A8F82] uppercase tracking-wider mb-1">
-                            Invoice Date
-                          </p>
+                          <p className="text-[10px] font-bold text-[#9A8F82] uppercase tracking-wider mb-1">Invoice Date</p>
                           <p className="text-[#1C1C1C]">
                             {viewingInvoice.invoice_date
-                              ? new Date(
-                                  viewingInvoice.invoice_date,
-                                ).toLocaleDateString("en-IN", {
-                                  day: "2-digit",
-                                  month: "long",
-                                  year: "numeric",
-                                })
+                              ? new Date(viewingInvoice.invoice_date).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })
                               : "—"}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold text-[#9A8F82] uppercase tracking-wider mb-1">
-                            Due Date
-                          </p>
+                          <p className="text-[10px] font-bold text-[#9A8F82] uppercase tracking-wider mb-1">Due Date</p>
                           <p className="text-[#1C1C1C]">
                             {viewingInvoice.due_date
-                              ? new Date(
-                                  viewingInvoice.due_date,
-                                ).toLocaleDateString("en-IN", {
-                                  day: "2-digit",
-                                  month: "long",
-                                  year: "numeric",
-                                })
+                              ? new Date(viewingInvoice.due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })
                               : "—"}
                           </p>
                         </div>
+                        {/* Quotation link */}
+                        {viewingInvoice.quotation && (
+                          <div className="col-span-2">
+                            <p className="text-[10px] font-bold text-[#9A8F82] uppercase tracking-wider mb-1">Linked Quotation</p>
+                            <button
+                              onClick={() => { setActiveTab("quotations"); fetchQuoteDetail(viewingInvoice.quotation); }}
+                              className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#C8922A] hover:underline"
+                            >
+                              <Receipt size={12} /> View Quotation
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {viewingInvoice.items?.length > 0 ? (

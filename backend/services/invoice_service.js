@@ -90,3 +90,100 @@ exports.generate_invoice_from_quotation = async (data) => {
     throw error;
   }
 };
+
+// ── Direct invoice creation WITHOUT quotation ─────────────────────────────────
+// Used when admin wants to create a manual invoice for a client/project
+// without an existing quotation (e.g. ad-hoc billing, walk-in clients).
+exports.create_direct_invoice = async (data) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const {
+      project_id,
+      client_id,
+      invoice_type = 'full',
+      milestone_label = '',
+      milestone_percentage = 100,
+      invoice_date,
+      due_days = 15,
+      notes = '',
+      items = [],
+      cgst_rate = 0,
+      sgst_rate = 0,
+      igst_rate = 0,
+    } = data;
+
+    if (!project_id && !client_id) {
+      throw new Error('Either project_id or client_id is required for a direct invoice.');
+    }
+
+    // If only client_id, find or create a "default" project reference
+    let projectId = project_id;
+    if (!projectId && client_id) {
+      // Find first project for this client
+      const Project = require('../models/project');
+      const proj = await Project.findOne({ client: client_id }).session(session);
+      if (!proj) throw new Error('No project found for this client. Please create a project first.');
+      projectId = proj._id;
+    }
+
+    const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+    // Calculate totals from items
+    const subtotal = round2(items.reduce((s, it) => s + (parseFloat(it.quantity) || 0) * (parseFloat(it.rate) || 0), 0));
+    const cgstAmt = round2(subtotal * (parseFloat(cgst_rate) || 0) / 100);
+    const sgstAmt = round2(subtotal * (parseFloat(sgst_rate) || 0) / 100);
+    const igstAmt = round2(subtotal * (parseFloat(igst_rate) || 0) / 100);
+    const totalTax = round2(cgstAmt + sgstAmt + igstAmt);
+    const grandTotal = round2(subtotal + totalTax);
+
+    const today = invoice_date ? new Date(invoice_date) : new Date();
+    const due_date = new Date(today);
+    due_date.setDate(today.getDate() + (parseInt(due_days) || 15));
+
+    const invoice_number = await exports.generate_invoice_number();
+
+    const [invoice] = await Invoice.create([{
+      project: projectId,
+      quotation: null,
+      invoice_number,
+      invoice_type,
+      invoice_date: today,
+      due_date,
+      status: 'draft',
+      milestone_label,
+      milestone_percentage,
+      subtotal,
+      taxable_amount: subtotal,
+      cgst_amount: cgstAmt,
+      sgst_amount: sgstAmt,
+      igst_amount: igstAmt,
+      total_tax: totalTax,
+      grand_total: grandTotal,
+      balance_due: grandTotal,
+      notes,
+    }], { session });
+
+    if (items.length > 0) {
+      const invoiceItems = items.map((it) => ({
+        invoice: invoice._id,
+        description: it.description || '',
+        category: it.category || '',
+        quantity: parseFloat(it.quantity) || 1,
+        unit: it.unit || '',
+        rate: parseFloat(it.rate) || 0,
+        amount: round2((parseFloat(it.quantity) || 1) * (parseFloat(it.rate) || 0)),
+      }));
+      await InvoiceItem.insertMany(invoiceItems, { session });
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+    return invoice;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};

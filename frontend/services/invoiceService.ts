@@ -129,6 +129,42 @@ export async function generateInvoice(payload: GenerateInvoicePayload): Promise<
   return res.json() as Promise<Invoice>;
 }
 
+// ─── POST: Create direct invoice WITHOUT quotation ────────────────────────────
+export type DirectInvoicePayload = {
+  project_id?: string;
+  client_id?: string;
+  invoice_type: InvoiceType;
+  milestone_label?: string;
+  milestone_percentage?: number;
+  invoice_date: string;
+  due_days?: number;
+  notes?: string;
+  cgst_rate?: number;
+  sgst_rate?: number;
+  igst_rate?: number;
+  items: Array<{
+    description: string;
+    category?: string;
+    quantity: string;
+    unit: string;
+    rate: string;
+  }>;
+};
+
+export async function createDirectInvoice(payload: DirectInvoicePayload): Promise<Invoice> {
+  const res = await fetch(`${API_BASE_URL}/invoices/direct/`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  handleUnauthorized(res.status);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw err;
+  }
+  return res.json() as Promise<Invoice>;
+}
+
 // ─── PATCH: Update invoice fields ─────────────────────────────────────────────
 
 export async function updateInvoice(id: string, data: Partial<Invoice>): Promise<Invoice> {
