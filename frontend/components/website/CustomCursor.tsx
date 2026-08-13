@@ -138,8 +138,14 @@ export default function CustomCursor() {
     setEnabled(true);
     document.body.classList.add("ds-cursor-enabled");
 
-    const canvas = canvasRef.current!;
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resize = () => {
+      if (!canvasRef.current) return;
+      canvasRef.current.width  = window.innerWidth;
+      canvasRef.current.height = window.innerHeight;
+    };
     resize();
     window.addEventListener("resize", resize);
 
@@ -185,7 +191,8 @@ export default function CustomCursor() {
     document.documentElement.addEventListener("mouseleave", onLeave);
     document.documentElement.addEventListener("mouseenter", onEnter);
 
-    const ctx = canvas.getContext("2d")!;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
     const loop = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
