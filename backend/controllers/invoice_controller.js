@@ -31,6 +31,22 @@ exports.get_invoice_pdf = async (req, res) => {
 // InvoiceListCreateView -> GET
 exports.get_invoices = async (req, res) => {
   try {
+    // ── Real-time overdue auto-update ─────────────────────────────────────
+    // Mark any invoice as overdue if due_date has passed and it's still
+    // issued or partial — so Payment Tracker always shows current status
+    // without waiting for the daily 9AM cron job.
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      await Invoice.updateMany(
+        { due_date: { $lt: today }, status: { $in: ['issued', 'partial'] } },
+        { $set: { status: 'overdue' } }
+      );
+    } catch (e) {
+      // Non-fatal — continue even if overdue update fails
+      console.warn('Real-time overdue update failed:', e.message);
+    }
+
     let query = {};
 
     // Support single or multiple ?status= values
