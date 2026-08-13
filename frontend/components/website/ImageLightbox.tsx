@@ -76,7 +76,7 @@ export default function ImageLightbox({ images, initialIndex = 0, onClose }: Pro
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
-        className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+        className="fixed inset-0 z-[9990] flex flex-col items-center justify-center ds-cursor-enabled"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -127,9 +127,9 @@ export default function ImageLightbox({ images, initialIndex = 0, onClose }: Pro
                 src={current.src}
                 alt={current.alt || ""}
                 onClick={() => setZoomed((z) => !z)}
-                className={`max-w-full max-h-full object-contain rounded-lg shadow-2xl cursor-zoom-in transition-transform duration-500 select-none ${
+                className={`max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-transform duration-500 select-none ${
                   zoomed
-                    ? "scale-150 md:scale-[2] cursor-zoom-out"
+                    ? "scale-150 md:scale-[2]"
                     : "scale-100"
                 }`}
                 style={{ maxHeight: "calc(100vh - 8rem)", maxWidth: "calc(100vw - 6rem)" }}

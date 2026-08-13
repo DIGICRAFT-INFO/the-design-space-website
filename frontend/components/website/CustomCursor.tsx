@@ -4,14 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useSpring, AnimatePresence } from "framer-motion";
 
 /**
- * Premium cursor — dot + ring design (framer-motion), new look:
+ * Premium cursor — dot + ring, dark visible design.
  *
- *  • Small sharp square-diamond dot — rotated 45°, snaps to pointer
- *  • Larger hollow ring — smooth spring lag, morphs on hover/label
- *  • Ring rotates slowly when idle (spin animation)
- *  • Dashed ring on interactive hover
- *  • Solid pill + label on [data-cursor] elements
- *  • Press scale effect on both layers
+ *  • Diamond dot — dark ink fill + gold glow, snaps to pointer instantly
+ *  • Ring — dark stroke with gold accent, smooth spring lag
+ *  • Dashed ring with compass ticks on interactive hover
+ *  • Solid dark pill + white label on [data-cursor] elements
+ *  • Press squish on both layers
+ *  • z-index above lightbox (z-[99999])
  *  • Touch / reduced-motion safe
  */
 export default function CustomCursor() {
@@ -20,16 +20,17 @@ export default function CustomCursor() {
   const [label,    setLabel]    = useState<string | null>(null);
   const [pressed,  setPressed]  = useState(false);
   const [hovering, setHovering] = useState(false);
+  const rafRef = useRef<number>(0);
 
-  // Dot — instant
+  // Dot — instant via rAF
   const dotX = useMotionValue(-300);
   const dotY = useMotionValue(-300);
 
   // Ring — spring lag
-  const rawX = useMotionValue(-300);
-  const rawY = useMotionValue(-300);
-  const ringX = useSpring(rawX, { damping: 30, stiffness: 300, mass: 0.5 });
-  const ringY = useSpring(rawY, { damping: 30, stiffness: 300, mass: 0.5 });
+  const rawX  = useMotionValue(-300);
+  const rawY  = useMotionValue(-300);
+  const ringX = useSpring(rawX, { damping: 28, stiffness: 290, mass: 0.5 });
+  const ringY = useSpring(rawY, { damping: 28, stiffness: 290, mass: 0.5 });
 
   useEffect(() => {
     const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
@@ -39,15 +40,13 @@ export default function CustomCursor() {
     setEnabled(true);
     document.body.classList.add("ds-cursor-enabled");
 
-    let raf = 0;
-    let cx = -300, cy = -300;
-
     const onMove = (e: MouseEvent) => {
-      cx = e.clientX; cy = e.clientY;
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        dotX.set(cx); dotY.set(cy);
-        rawX.set(cx); rawY.set(cy);
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        dotX.set(e.clientX);
+        dotY.set(e.clientY);
+        rawX.set(e.clientX);
+        rawY.set(e.clientY);
       });
       if (!visible) setVisible(true);
 
@@ -70,7 +69,7 @@ export default function CustomCursor() {
     document.documentElement.addEventListener("mouseenter", onEnter);
 
     return () => {
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(rafRef.current);
       window.removeEventListener("mousemove",  onMove);
       window.removeEventListener("mousedown",  onDown);
       window.removeEventListener("mouseup",    onUp);
@@ -83,16 +82,16 @@ export default function CustomCursor() {
 
   if (!enabled) return null;
 
-  const hasLabel  = !!label;
-  const ringSize  = hasLabel ? 88 : hovering ? 48 : 36;
-  const opacity   = visible ? 1 : 0;
-  const dotSize   = hasLabel ? 0 : pressed ? 5 : 7;
+  const hasLabel = !!label;
+  const ringSize = hasLabel ? 90 : hovering ? 50 : 38;
+  const opacity  = visible ? 1 : 0;
+  const dotSize  = hasLabel ? 0 : pressed ? 5 : 8;
 
   return (
     <>
-      {/* ── Ring ──────────────────────────────────────────────────────── */}
+      {/* ── Ring — z above lightbox (99999) ───────────────────────────── */}
       <motion.div
-        className="pointer-events-none fixed top-0 left-0 z-[9998] flex items-center justify-center"
+        className="pointer-events-none fixed top-0 left-0 z-[99999] flex items-center justify-center"
         style={{
           x: ringX,
           y: ringY,
@@ -103,98 +102,91 @@ export default function CustomCursor() {
           width:   ringSize,
           height:  ringSize,
           opacity,
-          scale:   pressed ? 0.8 : 1,
+          scale:   pressed ? 0.78 : 1,
         }}
         transition={{
-          width:   { type: "spring", damping: 22, stiffness: 240 },
-          height:  { type: "spring", damping: 22, stiffness: 240 },
+          width:   { type: "spring", damping: 20, stiffness: 220 },
+          height:  { type: "spring", damping: 20, stiffness: 220 },
           opacity: { duration: 0.2 },
           scale:   { type: "spring", damping: 16, stiffness: 420 },
         }}
       >
-        {/* Ring SVG — changes stroke style based on state */}
         <motion.svg
           width="100%"
           height="100%"
           viewBox="0 0 100 100"
-          style={{ position: "absolute", inset: 0 }}
-          animate={{ rotate: hasLabel ? 0 : hovering ? 180 : 0 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
+          style={{ position: "absolute", inset: 0, overflow: "visible" }}
+          animate={{ rotate: hovering && !hasLabel ? 45 : 0 }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
         >
           {hasLabel ? (
-            // Solid circle when label
-            <circle
-              cx="50" cy="50" r="47"
-              fill="var(--ds-gold)"
-              opacity="0.92"
-            />
+            /* Solid dark pill */
+            <circle cx="50" cy="50" r="47" fill="#1C1C1C" opacity="0.93" />
           ) : hovering ? (
-            // Dashed ring on hover
+            /* Dashed ring with tick marks on hover */
             <>
               <circle
                 cx="50" cy="50" r="44"
                 fill="none"
-                stroke="var(--ds-gold)"
+                stroke="#1C1C1C"
                 strokeWidth="1.5"
-                strokeDasharray="6 5"
-                opacity="0.7"
+                strokeDasharray="7 5"
+                opacity="0.75"
               />
-              {/* 4 corner tick marks */}
+              {/* Compass ticks at N/E/S/W */}
               {[0, 90, 180, 270].map((deg) => (
                 <line
                   key={deg}
-                  x1="50" y1="6"
-                  x2="50" y2="13"
-                  stroke="var(--ds-gold)"
-                  strokeWidth="2"
+                  x1="50" y1="4" x2="50" y2="12"
+                  stroke="#B8923F"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                   transform={`rotate(${deg} 50 50)`}
-                  opacity="0.9"
                 />
               ))}
             </>
           ) : (
-            // Default: thin ring with 4 small gaps
+            /* Default: segmented dark ring + inner gold hairline */
             <>
               <circle
                 cx="50" cy="50" r="44"
                 fill="none"
-                stroke="var(--ds-gold)"
-                strokeWidth="1"
-                strokeDasharray="55 15"
+                stroke="#1C1C1C"
+                strokeWidth="1.2"
+                strokeDasharray="60 14"
                 opacity="0.55"
               />
               <circle
-                cx="50" cy="50" r="44"
+                cx="50" cy="50" r="40"
                 fill="none"
-                stroke="var(--ds-gold)"
-                strokeWidth="0.5"
-                opacity="0.2"
+                stroke="#B8923F"
+                strokeWidth="0.6"
+                opacity="0.35"
               />
             </>
           )}
         </motion.svg>
 
-        {/* Label text */}
+        {/* Label */}
         <AnimatePresence>
           {hasLabel && (
             <motion.span
               key="lbl"
-              initial={{ opacity: 0, scale: 0.75 }}
+              initial={{ opacity: 0, scale: 0.7 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.75 }}
-              transition={{ duration: 0.16 }}
+              exit={{ opacity: 0, scale: 0.7 }}
+              transition={{ duration: 0.15 }}
               style={{
+                position: "relative",
+                zIndex: 1,
                 fontSize: 9.5,
                 letterSpacing: "0.18em",
                 textTransform: "uppercase",
                 color: "#fff",
                 fontWeight: 700,
                 userSelect: "none",
-                position: "relative",
-                zIndex: 1,
                 textAlign: "center",
-                padding: "0 8px",
+                padding: "0 6px",
                 lineHeight: 1.2,
               }}
             >
@@ -204,29 +196,30 @@ export default function CustomCursor() {
         </AnimatePresence>
       </motion.div>
 
-      {/* ── Dot — diamond shape (rotated square) ──────────────────────── */}
+      {/* ── Dot — diamond (rotated square), dark fill + gold glow ─────── */}
       <motion.div
-        className="pointer-events-none fixed top-0 left-0 z-[9999]"
+        className="pointer-events-none fixed top-0 left-0 z-[99999]"
         style={{
           x: dotX,
           y: dotY,
           translateX: "-50%",
           translateY: "-50%",
-          backgroundColor: "var(--ds-gold)",
+          backgroundColor: "#1C1C1C",
           rotate: 45,
-          boxShadow: "0 0 8px 1px var(--ds-gold)",
+          /* Gold outer glow + dark inner fill = visible on any bg */
+          boxShadow: "0 0 0 1.5px #B8923F, 0 0 10px 2px rgba(184,146,63,0.5)",
         }}
         animate={{
           width:   dotSize,
           height:  dotSize,
           opacity: visible && !hasLabel ? 1 : 0,
-          scale:   pressed ? 0.6 : 1,
+          scale:   pressed ? 0.55 : 1,
         }}
         transition={{
-          width:   { duration: 0.1 },
-          height:  { duration: 0.1 },
-          opacity: { duration: 0.15 },
-          scale:   { type: "spring", damping: 14, stiffness: 500 },
+          width:   { duration: 0.08 },
+          height:  { duration: 0.08 },
+          opacity: { duration: 0.12 },
+          scale:   { type: "spring", damping: 12, stiffness: 500 },
         }}
       />
     </>
