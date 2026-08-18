@@ -29,6 +29,14 @@ router.route('/numbering/')
 router.post('/brand/logo/', is_manager_or_above, ctrl.logo_upload_middleware, ctrl.upload_logo);
 
 // -------------------------------------------------------------
+// Terms & Conditions
+// -------------------------------------------------------------
+router.route('/terms/')
+  .get(ctrl.get_terms)
+  .put(is_manager_or_above, ctrl.update_terms)
+  .patch(is_manager_or_above, ctrl.update_terms);
+
+// -------------------------------------------------------------
 // Milestones Routes
 // -------------------------------------------------------------
 router.route('/milestones/')

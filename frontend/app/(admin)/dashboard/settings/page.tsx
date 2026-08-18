@@ -18,6 +18,7 @@ import {
   saveMilestones,
   type GSTData,
   type Milestone,
+  type TermsTemplates,
 } from "@/services/settingsService";
 import { setGstEnabledLocal } from "@/lib/gstToggle";
 import ProfileSection from "@/components/settings/ProfileSection";
@@ -70,6 +71,7 @@ const adminTabs = [
   "Branding",
   "Bank Details",
   "Document Numbering",
+  "Terms & Conditions",
 ];
 
 const gstFields = ["default_cgst", "default_sgst", "default_igst"] as const;
@@ -635,6 +637,7 @@ export default function SettingsPage() {
   const [brandData, setBrandData] = useState<BrandData>({});
   const [numberingData, setNumberingData] = useState<NumberingData>({});
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [termsData, setTermsData] = useState<TermsTemplates>({});
 
   useEffect(() => {
     try {
@@ -665,6 +668,7 @@ export default function SettingsPage() {
       setBrandData(settings.brand);
       setNumberingData(settings.numbering);
       setMilestones(settings.milestones);
+      setTermsData(settings.terms || {});
       setGstEnabledLocal(!!settings.gst?.gst_enabled);
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -1205,6 +1209,87 @@ export default function SettingsPage() {
                 className="flex items-center gap-2 bg-[#C8922A] text-white px-5 py-2.5 rounded-lg text-[13px] font-semibold hover:bg-[#B07A20] transition-all"
               >
                 <Save size={14} /> Save Numbering
+              </button>
+            </div>
+          )}
+
+          {/* ── Terms & Conditions ── */}
+          {isAdmin && activeTab === "Terms & Conditions" && (
+            <div className="bg-white rounded-xl border border-[#EDE8DF] p-6">
+              <div className="mb-6">
+                <h2 className="text-[16px] font-semibold">Terms &amp; Conditions</h2>
+                <p className="text-[12px] text-[#9A8F82] mt-0.5">
+                  These terms appear at the bottom of all generated PDFs. Each document type has its own set.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                {/* Quotation T&C */}
+                <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#EDE8DF]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="w-2 h-2 rounded-full bg-[#C8922A] inline-block" />
+                    <label className="text-[13px] font-semibold text-[#1C1C1C] uppercase tracking-wide">
+                      Quotation Terms
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-[#9A8F82] mb-2">
+                    Appears on all quotation PDFs. Enter each clause on a new line (e.g. &quot;1. Payment terms...&quot;).
+                  </p>
+                  <textarea
+                    rows={7}
+                    value={termsData.quotation_terms ?? ""}
+                    onChange={(e) => setTermsData({ ...termsData, quotation_terms: e.target.value })}
+                    className="w-full border border-[#EDE8DF] rounded-lg px-3 py-2.5 text-[13px] text-[#1C1C1C] outline-none focus:border-[#C8922A] resize-y bg-white font-mono leading-relaxed"
+                    placeholder={"1. This quotation is valid until the date mentioned above.\n2. 50% advance payment required to commence work."}
+                  />
+                </div>
+
+                {/* Invoice T&C */}
+                <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#EDE8DF]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="w-2 h-2 rounded-full bg-[#C8922A] inline-block" />
+                    <label className="text-[13px] font-semibold text-[#1C1C1C] uppercase tracking-wide">
+                      Invoice Terms
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-[#9A8F82] mb-2">
+                    Appears on all invoice PDFs.
+                  </p>
+                  <textarea
+                    rows={6}
+                    value={termsData.invoice_terms ?? ""}
+                    onChange={(e) => setTermsData({ ...termsData, invoice_terms: e.target.value })}
+                    className="w-full border border-[#EDE8DF] rounded-lg px-3 py-2.5 text-[13px] text-[#1C1C1C] outline-none focus:border-[#C8922A] resize-y bg-white font-mono leading-relaxed"
+                    placeholder={"1. Payment is due within 15 days of invoice date.\n2. Please quote invoice number in all payments."}
+                  />
+                </div>
+
+                {/* Proposal T&C */}
+                <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#EDE8DF]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="w-2 h-2 rounded-full bg-[#C8922A] inline-block" />
+                    <label className="text-[13px] font-semibold text-[#1C1C1C] uppercase tracking-wide">
+                      Proposal Terms
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-[#9A8F82] mb-2">
+                    Appears on all proposal PDFs.
+                  </p>
+                  <textarea
+                    rows={5}
+                    value={termsData.proposal_terms ?? ""}
+                    onChange={(e) => setTermsData({ ...termsData, proposal_terms: e.target.value })}
+                    className="w-full border border-[#EDE8DF] rounded-lg px-3 py-2.5 text-[13px] text-[#1C1C1C] outline-none focus:border-[#C8922A] resize-y bg-white font-mono leading-relaxed"
+                    placeholder={"1. This proposal is valid for 30 days from date of issue.\n2. All designs remain property of The Design Space until full payment."}
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={() => handleSave("terms", termsData as Record<string, unknown>)}
+                className="mt-6 flex items-center gap-2 bg-[#C8922A] text-white px-5 py-2.5 rounded-lg text-[13px] font-semibold hover:bg-[#B07A20] transition-all"
+              >
+                <Save size={14} /> Save Terms &amp; Conditions
               </button>
             </div>
           )}

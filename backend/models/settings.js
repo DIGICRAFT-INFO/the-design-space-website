@@ -66,10 +66,20 @@ const documentNumberingSchema = new mongoose.Schema({
 }, { timestamps: { createdAt: false, updatedAt: 'updated_at' }, collection: 'document_numbering' });
 documentNumberingSchema.set('toJSON', toJSONConfig);
 
+// 6. Terms & Conditions Templates (Singleton — one doc per document type)
+const termsTemplateSchema = new mongoose.Schema({
+  _id: { type: String, default: uuidv4 },
+  quotation_terms: { type: String, default: '1. This quotation is valid until the date mentioned above.\n2. 50% advance payment required to commence work.\n3. Balance payment due before final handover.\n4. Any changes to scope may result in revised quotation.\n5. All prices are inclusive of taxes as applicable.' },
+  invoice_terms:   { type: String, default: '1. Payment is due within 15 days of invoice date.\n2. Late payments may attract interest at 2% per month.\n3. Please quote invoice number in all payments.\n4. Cheques to be drawn in favour of The Design Space.' },
+  proposal_terms:  { type: String, default: '1. This proposal is valid for 30 days from date of issue.\n2. All designs and concepts remain property of The Design Space until full payment.\n3. Revisions beyond agreed scope will be charged separately.' },
+}, { timestamps: { createdAt: false, updatedAt: 'updated_at' }, collection: 'terms_templates' });
+termsTemplateSchema.set('toJSON', toJSONConfig);
+
 module.exports = {
   TaxSettings: mongoose.model('TaxSettings', taxSettingsSchema),
   BankDetails: mongoose.model('BankDetails', bankDetailsSchema),
   BrandTheme: mongoose.model('BrandTheme', brandThemeSchema),
   MilestoneTemplate: mongoose.model('MilestoneTemplate', milestoneTemplateSchema),
-  DocumentNumbering: mongoose.model('DocumentNumbering', documentNumberingSchema)
+  DocumentNumbering: mongoose.model('DocumentNumbering', documentNumberingSchema),
+  TermsTemplate: mongoose.model('TermsTemplate', termsTemplateSchema),
 };

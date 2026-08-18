@@ -1,7 +1,6 @@
 /**
- * pdf_engine_service.js
- * Pure JavaScript PDF generation using PDFKit — no Chromium/Puppeteer needed.
- * Works on any Node.js host including Hostinger shared hosting.
+ * pdf_engine_service.js — PDFKit-based PDF generation
+ * Fixes: bigger logo, firm name centered, grand total single-line, T&C from DB
  */
 
 const PDFDocument = require('pdfkit');
@@ -11,382 +10,319 @@ const path        = require('path');
 const BrandTheme  = require('../models/brand_theme');
 const BankDetails = require('../models/bank_details');
 const TaxSettings = require('../models/tax_settings');
+const { TermsTemplate } = require('../models/settings');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-const INR = (n) =>
-  'Rs. ' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-
+const INR = (n) => 'Rs. ' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
 const fmt_date = (d) => {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-const GOLD   = '#C8922A';
-const DARK   = '#1C1C1C';
-const GREY   = '#6B6259';
-const LGREY  = '#EDE8DF';
-const WHITE  = '#FFFFFF';
-const GREEN  = '#10B981';
-const RED    = '#EF4444';
+const GOLD  = '#C8922A';
+const DARK  = '#1C1C1C';
+const GREY  = '#6B6259';
+const LGREY = '#EDE8DF';
+const WHITE = '#FFFFFF';
+const GREEN = '#10B981';
+const RED   = '#EF4444';
+const BGALT = '#FAF8F5';
 
 const brand_color = (brand) => (brand && brand.primary_color) ? brand.primary_color : GOLD;
 
-// Get logo buffer from disk or return null
 const get_logo_buffer = (brand) => {
   if (brand && brand.logo) {
-    const logo = brand.logo.trim();
-    const local = path.isAbsolute(logo)
-      ? logo
-      : path.join(__dirname, '..', logo.replace(/^\//, ''));
-    if (fs.existsSync(local)) {
-      try { return fs.readFileSync(local); } catch (_) {}
-    }
+    const logo  = brand.logo.trim();
+    const local = path.isAbsolute(logo) ? logo : path.join(__dirname, '..', logo.replace(/^\//, ''));
+    if (fs.existsSync(local)) { try { return fs.readFileSync(local); } catch (_) {} }
   }
-  // fallback logo — stored in public/ folder (committed to git, available on all servers)
-  const fallback = path.join(__dirname, '..', 'public', 'logo2.png');
-  if (fs.existsSync(fallback)) {
-    try { return fs.readFileSync(fallback); } catch (_) {}
-  }
-  // secondary fallback — uploads folder (local dev only)
-  const fallback2 = path.join(__dirname, '..', 'uploads', 'logo2.png');
-  if (fs.existsSync(fallback2)) {
-    try { return fs.readFileSync(fallback2); } catch (_) {}
-  }
+  const fb1 = path.join(__dirname, '..', 'public', 'logo2.png');
+  if (fs.existsSync(fb1)) { try { return fs.readFileSync(fb1); } catch (_) {} }
+  const fb2 = path.join(__dirname, '..', 'uploads', 'logo2.png');
+  if (fs.existsSync(fb2)) { try { return fs.readFileSync(fb2); } catch (_) {} }
   return null;
 };
 
-// Render PDF to Buffer
 const to_buffer = (doc) =>
   new Promise((resolve, reject) => {
     const chunks = [];
     doc.on('data', (c) => chunks.push(c));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('end',  () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
   });
 
-// ── Shared header ─────────────────────────────────────────────────────────────
+// ── Header ────────────────────────────────────────────────────────────────────
+// Layout: Logo (left, bigger) | Firm name (center) | Doc type (right)
 const draw_header = (doc, brand, doc_type, doc_number) => {
   const color = brand_color(brand);
   const firm  = (brand && brand.firm_name) || 'The Design Space';
 
-  // Logo
+  // Subtle header background
+  doc.rect(0, 0, 595, 108).fill('#FAFAF8');
+
+  // Logo — bigger, left
   const logo_buf = get_logo_buffer(brand);
   if (logo_buf) {
-    try {
-      doc.image(logo_buf, 40, 40, { height: 50, fit: [120, 50] });
-    } catch (_) {}
+    try { doc.image(logo_buf, 36, 16, { height: 68, fit: [75, 68] }); } catch (_) {}
   }
 
-  // Firm name + tagline
-  doc.fontSize(18).fillColor(color).font('Helvetica-Bold')
-     .text(firm, 170, 42);
+  // Firm name — centered across full page width
+  doc.fontSize(20).fillColor(color).font('Helvetica-Bold')
+     .text(firm, 0, 24, { width: 595, align: 'center' });
+
   if (brand && brand.tagline) {
-    doc.fontSize(9).fillColor(GREY).font('Helvetica')
-       .text(brand.tagline, 170, 64);
+    doc.fontSize(8.5).fillColor(GREY).font('Helvetica')
+       .text(brand.tagline, 0, 50, { width: 595, align: 'center' });
   }
 
-  // Doc type + number (right side)
+  // Doc type + number — right side
   doc.fontSize(22).fillColor(DARK).font('Helvetica-Bold')
-     .text(doc_type, 350, 42, { width: 200, align: 'right' });
-  doc.fontSize(11).fillColor(GREY).font('Helvetica')
-     .text(doc_number || '', 350, 68, { width: 200, align: 'right' });
+     .text(doc_type, 355, 20, { width: 204, align: 'right' });
+  doc.fontSize(10).fillColor(GREY).font('Helvetica')
+     .text(doc_number || '', 355, 46, { width: 204, align: 'right' });
 
-  // Divider
-  doc.moveTo(40, 100).lineTo(555, 100).lineWidth(2).strokeColor(color).stroke();
-
-  return 115; // y position after header
+  // Gold divider
+  doc.moveTo(36, 108).lineTo(559, 108).lineWidth(2).strokeColor(color).stroke();
+  return 122;
 };
 
-// ── Shared footer ─────────────────────────────────────────────────────────────
+// ── Footer ────────────────────────────────────────────────────────────────────
 const draw_footer = (doc, brand) => {
   const firm = (brand && brand.firm_name) || 'The Design Space';
-  const y = doc.page.height - 50;
-  doc.moveTo(40, y).lineTo(555, y).lineWidth(0.5).strokeColor(LGREY).stroke();
+  const y    = doc.page.height - 44;
+  doc.rect(0, y - 2, 595, 50).fill('#F5F3EF');
+  doc.moveTo(36, y - 2).lineTo(559, y - 2).lineWidth(0.5).strokeColor(LGREY).stroke();
   doc.fontSize(8).fillColor(GREY).font('Helvetica')
-     .text(`This is a computer-generated document. | ${firm}`, 40, y + 8, {
-       width: 515, align: 'center',
-     });
+     .text(`This is a computer-generated document. | ${firm}`, 36, y + 6, { width: 523, align: 'center' });
 };
 
-// ── Two-column info box ───────────────────────────────────────────────────────
+// ── Info boxes ────────────────────────────────────────────────────────────────
 const draw_info_boxes = (doc, left_title, left_lines, right_title, right_lines, y) => {
-  const col1 = 40, col2 = 300;
+  const col1 = 36, col2 = 302;
+  const lh   = left_lines.length  * 14 + 24;
+  const rh   = right_lines.length * 14 + 24;
 
-  doc.fontSize(8).fillColor(GREY).font('Helvetica-Bold')
-     .text(left_title.toUpperCase(), col1, y);
-  doc.moveTo(col1, y + 11).lineTo(250, y + 11).lineWidth(0.5).strokeColor(LGREY).stroke();
+  doc.rect(col1, y, 250, lh).fillAndStroke(BGALT, LGREY).lineWidth(0.5);
+  doc.rect(col2, y, 257, rh).fillAndStroke(BGALT, LGREY).lineWidth(0.5);
 
-  let ly = y + 16;
+  doc.fontSize(7.5).fillColor(GREY).font('Helvetica-Bold')
+     .text(left_title.toUpperCase(), col1 + 8, y + 7);
+  doc.moveTo(col1 + 8, y + 18).lineTo(col1 + 242, y + 18).lineWidth(0.4).strokeColor(LGREY).stroke();
+
+  let ly = y + 24;
   left_lines.forEach(([label, value]) => {
-    doc.fontSize(9).fillColor(GREY).font('Helvetica').text(label + ':', col1, ly, { continued: false });
-    doc.fontSize(9).fillColor(DARK).font('Helvetica-Bold').text(String(value || '—'), col1 + 80, ly);
+    doc.fontSize(8.5).fillColor(GREY).font('Helvetica').text(label + ':', col1 + 8, ly);
+    doc.fontSize(8.5).fillColor(DARK).font('Helvetica-Bold').text(String(value || '—'), col1 + 78, ly);
     ly += 14;
   });
 
-  doc.fontSize(8).fillColor(GREY).font('Helvetica-Bold')
-     .text(right_title.toUpperCase(), col2, y);
-  doc.moveTo(col2, y + 11).lineTo(555, y + 11).lineWidth(0.5).strokeColor(LGREY).stroke();
+  doc.fontSize(7.5).fillColor(GREY).font('Helvetica-Bold')
+     .text(right_title.toUpperCase(), col2 + 8, y + 7);
+  doc.moveTo(col2 + 8, y + 18).lineTo(col2 + 249, y + 18).lineWidth(0.4).strokeColor(LGREY).stroke();
 
-  let ry = y + 16;
+  let ry = y + 24;
   right_lines.forEach(([label, value]) => {
-    doc.fontSize(9).fillColor(GREY).font('Helvetica').text(label + ':', col2, ry, { continued: false });
-    doc.fontSize(9).fillColor(DARK).font('Helvetica-Bold').text(String(value || '—'), col2 + 90, ry);
+    doc.fontSize(8.5).fillColor(GREY).font('Helvetica').text(label + ':', col2 + 8, ry);
+    doc.fontSize(8.5).fillColor(DARK).font('Helvetica-Bold').text(String(value || '—'), col2 + 84, ry);
     ry += 14;
   });
 
-  return Math.max(ly, ry) + 10;
+  return Math.max(ly, ry) + 14;
 };
 
 // ── Table ─────────────────────────────────────────────────────────────────────
 const draw_table = (doc, headers, rows, col_widths, y, color) => {
-  const x_start = 40;
-  const row_h   = 22;
-  const head_h  = 24;
+  const xs    = 36;
+  const row_h = 22, head_h = 24;
+  const tot_w = col_widths.reduce((a, b) => a + b, 0);
 
-  // Header row
-  doc.rect(x_start, y, 515, head_h).fill(color);
-  let cx = x_start + 6;
+  doc.rect(xs, y, tot_w, head_h).fill(color);
+  let cx = xs + 6;
   headers.forEach((h, i) => {
-    const align = i >= 3 ? 'right' : 'left';
-    doc.fontSize(9).fillColor(WHITE).font('Helvetica-Bold')
-       .text(h, cx, y + 7, { width: col_widths[i] - 6, align });
+    doc.fontSize(8.5).fillColor(WHITE).font('Helvetica-Bold')
+       .text(h, cx, y + 7, { width: col_widths[i] - 6, align: i >= 3 ? 'right' : 'left' });
     cx += col_widths[i];
   });
 
-  let row_y = y + head_h;
-
+  let ry = y + head_h;
   rows.forEach((row, ri) => {
-    // Zebra
-    if (ri % 2 === 1) {
-      doc.rect(x_start, row_y, 515, row_h).fill('#FAF8F5');
-    }
-    let rx = x_start + 6;
+    if (ri % 2 === 1) doc.rect(xs, ry, tot_w, row_h).fill(BGALT);
+    let rx = xs + 6;
     row.forEach((cell, ci) => {
-      const align = ci >= 3 ? 'right' : 'left';
-      doc.fontSize(9).fillColor(DARK).font('Helvetica')
-         .text(String(cell || ''), rx, row_y + 6, { width: col_widths[ci] - 6, align });
+      doc.fontSize(8.5).fillColor(DARK).font('Helvetica')
+         .text(String(cell || ''), rx, ry + 6, { width: col_widths[ci] - 6, align: ci >= 3 ? 'right' : 'left' });
       rx += col_widths[ci];
     });
-    // bottom border
-    doc.moveTo(x_start, row_y + row_h).lineTo(x_start + 515, row_y + row_h)
-       .lineWidth(0.3).strokeColor(LGREY).stroke();
-    row_y += row_h;
+    doc.moveTo(xs, ry + row_h).lineTo(xs + tot_w, ry + row_h).lineWidth(0.3).strokeColor(LGREY).stroke();
+    ry += row_h;
   });
-
-  return row_y + 10;
+  return ry + 10;
 };
 
-// ── Totals block ──────────────────────────────────────────────────────────────
+// ── Totals ────────────────────────────────────────────────────────────────────
 const draw_totals = (doc, lines, grand_total, y, color) => {
-  const x = 320, w = 235;
-
+  const x = 318, w = 241;
   lines.forEach(([label, value]) => {
-    doc.fontSize(10).fillColor(GREY).font('Helvetica')
-       .text(label, x, y, { width: w - 80 });
-    doc.fontSize(10).fillColor(DARK).font('Helvetica-Bold')
-       .text(value, x + w - 80, y, { width: 75, align: 'right' });
-    doc.moveTo(x, y + 14).lineTo(x + w, y + 14).lineWidth(0.3).strokeColor(LGREY).stroke();
-    y += 18;
+    doc.fontSize(9.5).fillColor(GREY).font('Helvetica').text(label, x, y, { width: w - 95 });
+    doc.fontSize(9.5).fillColor(DARK).font('Helvetica-Bold').text(value, x + w - 95, y, { width: 90, align: 'right' });
+    doc.moveTo(x, y + 13).lineTo(x + w, y + 13).lineWidth(0.3).strokeColor(LGREY).stroke();
+    y += 17;
   });
-
-  // Grand total band
-  doc.rect(x, y, w, 26).fill(color);
-  doc.fontSize(12).fillColor(WHITE).font('Helvetica-Bold')
-     .text('Grand Total', x + 6, y + 7, { width: w - 80 });
-  doc.fontSize(12).fillColor(WHITE).font('Helvetica-Bold')
-     .text(grand_total, x + w - 80, y + 7, { width: 75, align: 'right' });
-
-  return y + 36;
+  // Grand total — single line, font sized to always fit
+  doc.rect(x, y, w, 28).fill(color);
+  doc.fontSize(11).fillColor(WHITE).font('Helvetica-Bold')
+     .text('Grand Total', x + 6, y + 8, { width: 100 });
+  doc.fontSize(11).fillColor(WHITE).font('Helvetica-Bold')
+     .text(grand_total, x + w - 125, y + 8, { width: 119, align: 'right' });
+  return y + 38;
 };
 
-// ── Notes box ─────────────────────────────────────────────────────────────────
+// ── Notes ─────────────────────────────────────────────────────────────────────
 const draw_notes = (doc, notes, y, color) => {
   if (!notes) return y;
-  doc.rect(40, y, 4, 40).fill(color);
-  doc.fontSize(8).fillColor(GREY).font('Helvetica-Bold').text('NOTES / TERMS', 52, y);
-  doc.fontSize(9).fillColor(DARK).font('Helvetica').text(notes, 52, y + 12, { width: 500 });
-  return y + 50;
+  const h = Math.max(38, doc.heightOfString(notes, { width: 497 }) + 22);
+  doc.rect(36, y, 4, h).fill(color);
+  doc.rect(40, y, 519, h).fill(BGALT);
+  doc.fontSize(8).fillColor(GREY).font('Helvetica-Bold').text('NOTES', 50, y + 7);
+  doc.fontSize(9).fillColor(DARK).font('Helvetica').text(notes, 50, y + 18, { width: 497 });
+  return y + h + 8;
+};
+
+// ── Terms & Conditions ────────────────────────────────────────────────────────
+const draw_terms = (doc, terms_text, y, color) => {
+  if (!terms_text) return y;
+  const lines = terms_text.split('\n').filter(l => l.trim());
+  const bh    = lines.length * 13 + 24;
+  if (y + bh > doc.page.height - 56) { doc.addPage(); y = 48; }
+  doc.rect(36, y, 4, bh).fill(color);
+  doc.rect(40, y, 519, bh).fill(BGALT);
+  doc.fontSize(8).fillColor(GREY).font('Helvetica-Bold').text('TERMS & CONDITIONS', 50, y + 7);
+  let ty = y + 19;
+  lines.forEach(line => {
+    doc.fontSize(8.5).fillColor(DARK).font('Helvetica').text(line.trim(), 50, ty, { width: 497 });
+    ty += 13;
+  });
+  return ty + 10;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. QUOTATION PDF  — Professional real-world format with service images
+// 1. QUOTATION PDF
 // ─────────────────────────────────────────────────────────────────────────────
 exports.render_quotation_pdf = async (quotation) => {
-  const brand   = await BrandTheme.findOne();
-  const tax_cfg = await TaxSettings.findOne();
-  // Always populate items — .populated() is not a valid Mongoose 9 method
+  const brand    = await BrandTheme.findOne();
+  const termsDoc = await TermsTemplate.findOne();
   await quotation.populate('items');
 
   const color  = brand_color(brand);
   const client = quotation.project && quotation.project.client;
-  const firm   = (brand && brand.firm_name) || 'The Design Space';
 
-  const doc = new PDFDocument({ margin: 40, size: 'A4', autoFirstPage: true });
+  const doc = new PDFDocument({ margin: 36, size: 'A4', autoFirstPage: true });
   const buf = to_buffer(doc);
 
-  // ── PAGE 1: Cover / Summary ───────────────────────────────────────────────
   let y = draw_header(doc, brand, 'QUOTATION', `${quotation.quote_number} (v${quotation.version || 1})`);
 
-  // Client + quotation info boxes
-  const client_lines = [
-    ['Client',  (client && client.full_name) || '—'],
-    ['Email',   (client && client.email)     || '—'],
-    ['Phone',   (client && client.phone)     || '—'],
-    ['Project', (quotation.project && quotation.project.name) || '—'],
-  ];
-  const quote_lines = [
-    ['Ref #',       quotation.quote_number],
-    ['Date',        fmt_date(quotation.created_at)],
-    ['Valid Until', fmt_date(quotation.valid_until)],
-    ['Status',      (quotation.status || 'DRAFT').toUpperCase()],
-  ];
-  y = draw_info_boxes(doc, 'Prepared For', client_lines, 'Quotation Details', quote_lines, y);
+  y = draw_info_boxes(doc,
+    'Prepared For',
+    [
+      ['Client',  (client && client.full_name) || '—'],
+      ['Email',   (client && client.email)     || '—'],
+      ['Phone',   (client && client.phone)     || '—'],
+      ['Project', (quotation.project && quotation.project.name) || '—'],
+    ],
+    'Quotation Details',
+    [
+      ['Ref #',       quotation.quote_number],
+      ['Date',        fmt_date(quotation.created_at)],
+      ['Valid Until', fmt_date(quotation.valid_until)],
+      ['Status',      (quotation.status || 'DRAFT').toUpperCase()],
+    ],
+    y
+  );
 
-  // ── Section: Line Items table (compact, with service name) ────────────────
   y += 10;
-  doc.fontSize(10).fillColor(color).font('Helvetica-Bold').text('SCOPE OF WORK & PRICING', 40, y);
-  doc.moveTo(40, y + 13).lineTo(555, y + 13).lineWidth(1).strokeColor(color).stroke();
-  y += 20;
+  doc.fontSize(10).fillColor(color).font('Helvetica-Bold').text('SCOPE OF WORK & PRICING', 36, y);
+  doc.moveTo(36, y + 13).lineTo(559, y + 13).lineWidth(1).strokeColor(color).stroke();
+  y += 22;
 
   const items = quotation.items || [];
+  const col_w = [25, 165, 75, 38, 45, 84, 91];
 
-  // Table columns: # | Service / Description | Category | Qty | Unit | Rate | Amount
-  const col_w = [25, 165, 75, 38, 45, 82, 85];
-  const headers_q = ['#', 'Description / Service', 'Category', 'Qty', 'Unit', 'Rate (₹)', 'Amount (₹)'];
-
-  // Header row
-  doc.rect(40, y, 515, 24).fill(color);
-  let cx = 46;
-  headers_q.forEach((h, i) => {
+  doc.rect(36, y, 523, 24).fill(color);
+  let cx = 42;
+  ['#', 'Description / Service', 'Category', 'Qty', 'Unit', 'Rate (Rs.)', 'Amount (Rs.)'].forEach((h, i) => {
     doc.fontSize(8).fillColor(WHITE).font('Helvetica-Bold')
        .text(h, cx, y + 8, { width: col_w[i] - 4, align: i >= 3 ? 'right' : 'left' });
     cx += col_w[i];
   });
   y += 24;
 
-  // Data rows (with multi-line description support)
   items.forEach((item, ri) => {
     const row_h = 22;
-    if (ri % 2 === 1) doc.rect(40, y, 515, row_h).fill('#FAF8F5');
-
-    let rx = 46;
-    const cells = [
+    if (ri % 2 === 1) doc.rect(36, y, 523, row_h).fill(BGALT);
+    let rx = 42;
+    [
       String(ri + 1),
       item.description || '—',
-      item.category || '—',
+      item.category    || '—',
       String(item.quantity || 1),
       item.unit || '—',
-      Number(item.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+      Number(item.rate   || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
       Number(item.amount || (item.quantity * item.rate) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
-    ];
-    cells.forEach((cell, ci) => {
-      doc.fontSize(9).fillColor(DARK).font('Helvetica')
+    ].forEach((cell, ci) => {
+      doc.fontSize(8.5).fillColor(DARK).font('Helvetica')
          .text(cell, rx, y + 6, { width: col_w[ci] - 4, align: ci >= 3 ? 'right' : 'left' });
       rx += col_w[ci];
     });
-    doc.moveTo(40, y + row_h).lineTo(555, y + row_h).lineWidth(0.3).strokeColor(LGREY).stroke();
+    doc.moveTo(36, y + row_h).lineTo(559, y + row_h).lineWidth(0.3).strokeColor(LGREY).stroke();
     y += row_h;
   });
-
   y += 10;
 
-  // ── Totals ─────────────────────────────────────────────────────────────────
   const total_lines = [['Subtotal', INR(quotation.subtotal)]];
   if (quotation.discount_amount > 0)
     total_lines.push([`Discount (${quotation.discount_type === 'percentage' ? quotation.discount_value + '%' : 'Fixed'})`, `- ${INR(quotation.discount_amount)}`]);
   total_lines.push(['Taxable Amount', INR(quotation.taxable_amount)]);
-  if (quotation.cgst_amount > 0)
-    total_lines.push([`CGST @ ${quotation.cgst_rate}%`, INR(quotation.cgst_amount)]);
-  if (quotation.sgst_amount > 0)
-    total_lines.push([`SGST @ ${quotation.sgst_rate}%`, INR(quotation.sgst_amount)]);
-  if (quotation.igst_amount > 0)
-    total_lines.push([`IGST @ ${quotation.igst_rate}%`, INR(quotation.igst_amount)]);
+  if (quotation.cgst_amount > 0) total_lines.push([`CGST @ ${quotation.cgst_rate}%`, INR(quotation.cgst_amount)]);
+  if (quotation.sgst_amount > 0) total_lines.push([`SGST @ ${quotation.sgst_rate}%`, INR(quotation.sgst_amount)]);
+  if (quotation.igst_amount > 0) total_lines.push([`IGST @ ${quotation.igst_rate}%`, INR(quotation.igst_amount)]);
 
   y = draw_totals(doc, total_lines, INR(quotation.grand_total), y, color);
 
-  // Notes / terms
-  if (quotation.notes) {
-    y = draw_notes(doc, quotation.notes, y + 10, color);
-  }
+  if (quotation.notes) y = draw_notes(doc, quotation.notes, y + 10, color);
 
-  // ── Standard terms block ──────────────────────────────────────────────────
-  const terms = [
-    '1. This quotation is valid until the date mentioned above.',
-    '2. 50% advance payment required to commence work.',
-    '3. Balance payment due before final handover.',
-    '4. Any changes to scope may result in revised quotation.',
-    '5. All prices are inclusive of taxes as applicable.',
-  ];
-  y += 14;
-  if (y + 80 > doc.page.height - 60) { doc.addPage(); y = 50; }
-  doc.rect(40, y, 4, terms.length * 14 + 10).fill(color);
-  doc.fontSize(8).fillColor(GREY).font('Helvetica-Bold').text('TERMS & CONDITIONS', 52, y);
-  y += 12;
-  terms.forEach(t => {
-    doc.fontSize(8).fillColor(DARK).font('Helvetica').text(t, 52, y, { width: 490 });
-    y += 13;
-  });
+  const q_terms = (termsDoc && termsDoc.quotation_terms) ||
+    '1. This quotation is valid until the date mentioned above.\n2. 50% advance payment required to commence work.\n3. Balance payment due before final handover.\n4. Any changes to scope may result in revised quotation.\n5. All prices are inclusive of taxes as applicable.';
+  draw_terms(doc, q_terms, y + 12, color);
 
   draw_footer(doc, brand);
 
-  // ── PAGE 2+: Service Showcase (one service per section with image) ─────────
-  const items_with_images = items.filter(it => it.service_image_url);
-  if (items_with_images.length > 0) {
-    doc.addPage();
-    y = 40;
-
-    // Page heading
-    doc.fontSize(16).fillColor(color).font('Helvetica-Bold')
-       .text('SERVICE SHOWCASE', 40, y);
-    doc.moveTo(40, y + 20).lineTo(555, y + 20).lineWidth(1.5).strokeColor(color).stroke();
+  // Service showcase
+  const with_img = items.filter(it => it.service_image_url);
+  if (with_img.length > 0) {
+    doc.addPage(); y = 40;
+    doc.fontSize(16).fillColor(color).font('Helvetica-Bold').text('SERVICE SHOWCASE', 36, y);
+    doc.moveTo(36, y + 20).lineTo(559, y + 20).lineWidth(1.5).strokeColor(color).stroke();
     y += 35;
-
-    for (const item of items_with_images) {
-      // Check page space
+    for (const item of with_img) {
       if (y + 200 > doc.page.height - 60) { doc.addPage(); y = 50; }
-
-      // Service card background
-      doc.rect(40, y, 515, 4).fill(color);
-      y += 10;
-
-      // Service name + description (left column)
-      doc.fontSize(13).fillColor(DARK).font('Helvetica-Bold')
-         .text(item.description || '—', 40, y, { width: 290 });
+      doc.rect(36, y, 523, 4).fill(color); y += 10;
+      doc.fontSize(13).fillColor(DARK).font('Helvetica-Bold').text(item.description || '—', 36, y, { width: 290 });
       y += 18;
-
       if (item.category) {
-        doc.fontSize(9).fillColor(color).font('Helvetica-Bold')
-           .text(item.category.toUpperCase(), 40, y);
+        doc.fontSize(9).fillColor(color).font('Helvetica-Bold').text(item.category.toUpperCase(), 36, y);
         y += 14;
       }
-
-      // Rate + qty info
       doc.fontSize(10).fillColor(GREY).font('Helvetica')
-         .text(`Qty: ${item.quantity} ${item.unit || ''}   |   Rate: ${INR(item.rate)}   |   Amount: ${INR(item.amount || item.quantity * item.rate)}`, 40, y, { width: 290 });
+         .text(`Qty: ${item.quantity} ${item.unit || ''}   |   Rate: ${INR(item.rate)}   |   Amount: ${INR(item.amount || item.quantity * item.rate)}`, 36, y, { width: 290 });
       y += 16;
-
-      // Try to draw the service image (right side, or below if it failed)
-      const img_url = item.service_image_url;
-      if (img_url) {
-        const img_path = path.isAbsolute(img_url)
-          ? img_url
-          : path.join(__dirname, '..', img_url.replace(/^\//, ''));
-
-        if (fs.existsSync(img_path)) {
-          try {
-            // Image on right column (x=345) aligned with card start
-            const img_y = y - 50; // align with top of card
-            doc.image(img_path, 345, img_y, { width: 200, height: 140, fit: [200, 140] });
-          } catch (_) { /* skip if image unreadable */ }
-        }
+      if (item.service_image_url) {
+        const ip = path.isAbsolute(item.service_image_url) ? item.service_image_url : path.join(__dirname, '..', item.service_image_url.replace(/^\//, ''));
+        if (fs.existsSync(ip)) { try { doc.image(ip, 345, y - 50, { width: 200, height: 140, fit: [200, 140] }); } catch (_) {} }
       }
-
       y += 20;
-      doc.moveTo(40, y).lineTo(555, y).lineWidth(0.4).strokeColor(LGREY).stroke();
+      doc.moveTo(36, y).lineTo(559, y).lineWidth(0.4).strokeColor(LGREY).stroke();
       y += 16;
     }
-
     draw_footer(doc, brand);
   }
 
@@ -398,23 +334,22 @@ exports.render_quotation_pdf = async (quotation) => {
 // 2. INVOICE PDF
 // ─────────────────────────────────────────────────────────────────────────────
 exports.render_invoice_pdf = async (invoice) => {
-  const brand   = await BrandTheme.findOne();
-  const bank    = await BankDetails.findOne();
-  // Always populate items — .populated() is not a valid Mongoose 9 method
+  const brand    = await BrandTheme.findOne();
+  const bank     = await BankDetails.findOne();
+  const termsDoc = await TermsTemplate.findOne();
   await invoice.populate('items');
 
   const color  = brand_color(brand);
   const client = invoice.project && invoice.project.client;
-  const doc    = new PDFDocument({ margin: 40, size: 'A4' });
+  const doc    = new PDFDocument({ margin: 36, size: 'A4' });
   const buf    = to_buffer(doc);
 
   let y = draw_header(doc, brand, 'INVOICE', invoice.invoice_number);
 
-  // Status badge
-  const status_color = invoice.status === 'paid' ? GREEN : invoice.status === 'overdue' ? RED : color;
-  doc.rect(430, 42, 80, 20).fill(status_color);
+  const sc = invoice.status === 'paid' ? GREEN : invoice.status === 'overdue' ? RED : color;
+  doc.rect(430, 42, 90, 22).fill(sc);
   doc.fontSize(9).fillColor(WHITE).font('Helvetica-Bold')
-     .text((invoice.status || '').toUpperCase(), 430, 48, { width: 80, align: 'center' });
+     .text((invoice.status || '').toUpperCase(), 430, 48, { width: 90, align: 'center' });
 
   y = draw_info_boxes(doc,
     'Bill To',
@@ -435,57 +370,45 @@ exports.render_invoice_pdf = async (invoice) => {
   );
 
   const items = invoice.items || [];
-  const rows  = items.map((item, i) => [
-    i + 1,
-    item.description || '—',
-    item.quantity,
-    item.unit || '—',
-    INR(item.rate),
-    INR(item.amount || item.quantity * item.rate),
-  ]);
-
   y = draw_table(doc,
     ['#', 'Description', 'Qty', 'Unit', 'Rate', 'Amount'],
-    rows,
-    [25, 190, 50, 55, 95, 100],
+    items.map((item, i) => [i + 1, item.description || '—', item.quantity, item.unit || '—', INR(item.rate), INR(item.amount || item.quantity * item.rate)]),
+    [25, 198, 50, 55, 98, 97],
     y, color
   );
 
-  const total_lines = [['Subtotal', INR(invoice.subtotal)]];
-  if (invoice.discount_amount > 0)
-    total_lines.push(['Discount', `- ${INR(invoice.discount_amount)}`]);
-  total_lines.push(['Taxable Amount', INR(invoice.taxable_amount)]);
-  if (invoice.cgst_amount > 0)
-    total_lines.push([`CGST @ ${invoice.cgst_rate}%`, INR(invoice.cgst_amount)]);
-  if (invoice.sgst_amount > 0)
-    total_lines.push([`SGST @ ${invoice.sgst_rate}%`, INR(invoice.sgst_amount)]);
-  if (invoice.igst_amount > 0)
-    total_lines.push([`IGST @ ${invoice.igst_rate}%`, INR(invoice.igst_amount)]);
-  if (invoice.amount_paid > 0)
-    total_lines.push(['Amount Paid', `- ${INR(invoice.amount_paid)}`]);
+  const tl = [['Subtotal', INR(invoice.subtotal)]];
+  if (invoice.discount_amount > 0) tl.push(['Discount', `- ${INR(invoice.discount_amount)}`]);
+  tl.push(['Taxable Amount', INR(invoice.taxable_amount)]);
+  if (invoice.cgst_amount > 0) tl.push([`CGST @ ${invoice.cgst_rate}%`, INR(invoice.cgst_amount)]);
+  if (invoice.sgst_amount > 0) tl.push([`SGST @ ${invoice.sgst_rate}%`, INR(invoice.sgst_amount)]);
+  if (invoice.igst_amount > 0) tl.push([`IGST @ ${invoice.igst_rate}%`, INR(invoice.igst_amount)]);
+  if (invoice.amount_paid > 0) tl.push(['Amount Paid', `- ${INR(invoice.amount_paid)}`]);
 
-  y = draw_totals(doc, total_lines, INR(invoice.balance_due || invoice.grand_total), y, color);
+  y = draw_totals(doc, tl, INR(invoice.balance_due || invoice.grand_total), y, color);
 
-  // Bank details
   if (bank && (bank.bank_name || bank.account_number)) {
     y += 10;
-    doc.rect(40, y, 4, 70).fill(color);
-    doc.fontSize(8).fillColor(GREY).font('Helvetica-Bold').text('BANK DETAILS', 52, y);
-    y += 12;
-    const bank_lines = [
-      ['Bank', bank.bank_name],
-      ['Account', bank.account_number],
-      ['IFSC', bank.ifsc_code],
-      ['UPI', bank.upi_id],
-    ].filter(([, v]) => v);
-    bank_lines.forEach(([label, value]) => {
-      doc.fontSize(9).fillColor(GREY).font('Helvetica').text(`${label}:`, 52, y, { continued: false });
-      doc.fontSize(9).fillColor(DARK).font('Helvetica-Bold').text(value, 110, y);
-      y += 13;
+    const bl = [['Bank', bank.bank_name], ['Account', bank.account_number], ['IFSC', bank.ifsc_code], ['UPI', bank.upi_id]].filter(([, v]) => v);
+    const bh = bl.length * 13 + 24;
+    doc.rect(36, y, 4, bh).fill(color);
+    doc.rect(40, y, 519, bh).fill(BGALT);
+    doc.fontSize(8).fillColor(GREY).font('Helvetica-Bold').text('BANK DETAILS', 50, y + 7);
+    let by = y + 19;
+    bl.forEach(([label, value]) => {
+      doc.fontSize(9).fillColor(GREY).font('Helvetica').text(`${label}:`, 50, by);
+      doc.fontSize(9).fillColor(DARK).font('Helvetica-Bold').text(value, 110, by);
+      by += 13;
     });
+    y = by + 10;
   }
 
-  y = draw_notes(doc, invoice.notes, y + 10, color);
+  y = draw_notes(doc, invoice.notes, y + 6, color);
+
+  const i_terms = (termsDoc && termsDoc.invoice_terms) ||
+    '1. Payment is due within 15 days of invoice date.\n2. Late payments may attract interest at 2% per month.\n3. Please quote invoice number in all payments.\n4. Cheques to be drawn in favour of The Design Space.';
+  draw_terms(doc, i_terms, y + 10, color);
+
   draw_footer(doc, brand);
   doc.end();
   return buf;
@@ -495,100 +418,61 @@ exports.render_invoice_pdf = async (invoice) => {
 // 3. PROPOSAL PDF
 // ─────────────────────────────────────────────────────────────────────────────
 exports.render_proposal_pdf = async (proposal) => {
-  const brand  = await BrandTheme.findOne();
-  const color  = brand_color(brand);
-  const client = proposal.project && proposal.project.client;
-  const doc    = new PDFDocument({ margin: 40, size: 'A4' });
-  const buf    = to_buffer(doc);
+  const brand    = await BrandTheme.findOne();
+  const termsDoc = await TermsTemplate.findOne();
+  const color    = brand_color(brand);
+  const client   = proposal.project && proposal.project.client;
+  const doc      = new PDFDocument({ margin: 36, size: 'A4' });
+  const buf      = to_buffer(doc);
 
   let y = draw_header(doc, brand, 'PROPOSAL', proposal.prop_number || '');
 
   y = draw_info_boxes(doc,
     'Prepared For',
-    [
-      ['Client',  client && client.full_name],
-      ['Email',   client && client.email],
-      ['Phone',   client && client.phone],
-      ['Project', proposal.project && proposal.project.name],
-    ],
+    [['Client', client && client.full_name], ['Email', client && client.email], ['Phone', client && client.phone], ['Project', proposal.project && proposal.project.name]],
     'Proposal Details',
-    [
-      ['Ref #',   proposal.prop_number],
-      ['Date',    fmt_date(proposal.created_at)],
-      ['Status',  (proposal.status || '').toUpperCase()],
-    ],
+    [['Ref #', proposal.prop_number], ['Date', fmt_date(proposal.created_at)], ['Status', (proposal.status || '').toUpperCase()]],
     y
   );
 
-  // Title
-  doc.fontSize(14).fillColor(color).font('Helvetica-Bold')
-     .text(proposal.title || 'Proposal', 40, y + 10);
+  doc.fontSize(14).fillColor(color).font('Helvetica-Bold').text(proposal.title || 'Proposal', 36, y + 10);
   y += 30;
 
-  // Content
   if (proposal.content) {
-    doc.fontSize(10).fillColor(DARK).font('Helvetica')
-       .text(proposal.content, 40, y, { width: 515, lineGap: 4 });
+    doc.fontSize(10).fillColor(DARK).font('Helvetica').text(proposal.content, 36, y, { width: 523, lineGap: 4 });
     y = doc.y + 15;
   }
 
-  if (proposal.notes) {
-    y = draw_notes(doc, proposal.notes, y, color);
-  }
+  if (proposal.notes) y = draw_notes(doc, proposal.notes, y, color);
+
+  const p_terms = (termsDoc && termsDoc.proposal_terms) ||
+    '1. This proposal is valid for 30 days from date of issue.\n2. All designs and concepts remain property of The Design Space until full payment.\n3. Revisions beyond agreed scope will be charged separately.';
+  draw_terms(doc, p_terms, y + 10, color);
 
   draw_footer(doc, brand);
 
-  // ── Service Showcase Page (if services attached) ──────────────────────────
-  const services = proposal.services || [];
-  const services_with_images = services.filter(svc => svc && svc.media && svc.media.some(m => m.file_type === 'image'));
-
-  if (services_with_images.length > 0) {
-    doc.addPage();
-    y = 40;
-
-    doc.fontSize(16).fillColor(color).font('Helvetica-Bold')
-       .text('OUR SERVICES', 40, y);
-    doc.moveTo(40, y + 20).lineTo(555, y + 20).lineWidth(1.5).strokeColor(color).stroke();
+  const svcs = (proposal.services || []).filter(s => s && s.media && s.media.some(m => m.file_type === 'image'));
+  if (svcs.length > 0) {
+    doc.addPage(); y = 40;
+    doc.fontSize(16).fillColor(color).font('Helvetica-Bold').text('OUR SERVICES', 36, y);
+    doc.moveTo(36, y + 20).lineTo(559, y + 20).lineWidth(1.5).strokeColor(color).stroke();
     y += 35;
-
-    for (const svc of services_with_images) {
+    for (const svc of svcs) {
       if (y + 180 > doc.page.height - 60) { doc.addPage(); y = 50; }
-
-      doc.rect(40, y, 515, 4).fill(color);
-      y += 10;
-
-      doc.fontSize(13).fillColor(DARK).font('Helvetica-Bold')
-         .text(svc.name || '—', 40, y, { width: 290 });
-      y += 18;
-
-      if (svc.description) {
-        doc.fontSize(9).fillColor(GREY).font('Helvetica')
-           .text(svc.description, 40, y, { width: 290 });
-        y += 14;
+      doc.rect(36, y, 523, 4).fill(color); y += 10;
+      doc.fontSize(13).fillColor(DARK).font('Helvetica-Bold').text(svc.name || '—', 36, y, { width: 290 }); y += 18;
+      if (svc.description) { doc.fontSize(9).fillColor(GREY).font('Helvetica').text(svc.description, 36, y, { width: 290 }); y += 14; }
+      const fi = svc.media.find(m => m.file_type === 'image');
+      if (fi && fi.file_url) {
+        const ip = path.isAbsolute(fi.file_url) ? fi.file_url : path.join(__dirname, '..', fi.file_url.replace(/^\//, ''));
+        if (fs.existsSync(ip)) { try { doc.image(ip, 345, y - 32, { width: 200, height: 130, fit: [200, 130] }); } catch (_) {} }
       }
-
-      // Draw first image from service media
-      const first_img = svc.media.find(m => m.file_type === 'image');
-      if (first_img && first_img.file_url) {
-        const img_path = path.isAbsolute(first_img.file_url)
-          ? first_img.file_url
-          : path.join(__dirname, '..', first_img.file_url.replace(/^\//, ''));
-        if (fs.existsSync(img_path)) {
-          try {
-            const img_y = y - 32;
-            doc.image(img_path, 345, img_y, { width: 200, height: 130, fit: [200, 130] });
-          } catch (_) {}
-        }
-      }
-
       y += 20;
-      doc.moveTo(40, y).lineTo(555, y).lineWidth(0.4).strokeColor(LGREY).stroke();
+      doc.moveTo(36, y).lineTo(559, y).lineWidth(0.4).strokeColor(LGREY).stroke();
       y += 16;
     }
-
     draw_footer(doc, brand);
   }
-
   doc.end();
   return buf;
 };
@@ -599,41 +483,26 @@ exports.render_proposal_pdf = async (proposal) => {
 exports.render_portfolio_pdf = async (portfolio) => {
   const brand  = await BrandTheme.findOne();
   const color  = brand_color(brand);
-  const doc    = new PDFDocument({ margin: 40, size: 'A4' });
+  const doc    = new PDFDocument({ margin: 36, size: 'A4' });
   const buf    = to_buffer(doc);
 
   let y = draw_header(doc, brand, 'PORTFOLIO', portfolio.title || '');
-
-  // Title + description
-  doc.fontSize(16).fillColor(color).font('Helvetica-Bold')
-     .text(portfolio.title || '', 40, y);
-  y += 22;
-
+  doc.fontSize(16).fillColor(color).font('Helvetica-Bold').text(portfolio.title || '', 36, y); y += 22;
   if (portfolio.description) {
-    doc.fontSize(10).fillColor(GREY).font('Helvetica')
-       .text(portfolio.description, 40, y, { width: 515, lineGap: 3 });
+    doc.fontSize(10).fillColor(GREY).font('Helvetica').text(portfolio.description, 36, y, { width: 523, lineGap: 3 });
     y = doc.y + 15;
   }
 
-  // Images (2 per row)
   const images = portfolio.images || [];
-  const img_w  = 237;
-  const img_h  = 160;
+  const img_w = 237, img_h = 160;
   let col = 0;
-
   for (const img of images) {
-    const img_path = img.file_url
-      ? path.join(__dirname, '..', img.file_url.replace(/^\//, ''))
-      : null;
-    if (!img_path || !fs.existsSync(img_path)) continue;
-
+    const ip = img.file_url ? path.join(__dirname, '..', img.file_url.replace(/^\//, '')) : null;
+    if (!ip || !fs.existsSync(ip)) continue;
     try {
-      const img_x = col === 0 ? 40 : 280;
-      if (y + img_h > doc.page.height - 80) {
-        doc.addPage();
-        y = 40;
-      }
-      doc.image(img_path, img_x, y, { width: img_w, height: img_h, fit: [img_w, img_h] });
+      const ix = col === 0 ? 36 : 282;
+      if (y + img_h > doc.page.height - 80) { doc.addPage(); y = 36; }
+      doc.image(ip, ix, y, { width: img_w, height: img_h, fit: [img_w, img_h] });
       col++;
       if (col >= 2) { col = 0; y += img_h + 10; }
     } catch (_) {}

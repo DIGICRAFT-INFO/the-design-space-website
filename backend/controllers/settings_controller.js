@@ -1,4 +1,4 @@
-const { TaxSettings, BankDetails, BrandTheme, MilestoneTemplate, DocumentNumbering } = require('../models/settings');
+const { TaxSettings, BankDetails, BrandTheme, MilestoneTemplate, DocumentNumbering, TermsTemplate } = require('../models/settings');
 const multer = require('multer');
 const path   = require('path');
 const fs     = require('fs');
@@ -129,3 +129,7 @@ exports.upload_logo = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// --- TERMS & CONDITIONS ---
+exports.get_terms    = (req, res) => getSingleton(TermsTemplate, res);
+exports.update_terms = (req, res) => updateSingleton(TermsTemplate, req, res);

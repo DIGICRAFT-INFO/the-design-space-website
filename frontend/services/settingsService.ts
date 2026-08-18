@@ -26,12 +26,19 @@ export type Milestone = {
   percentage: number;
 };
 
+export type TermsTemplates = {
+  quotation_terms?: string;
+  invoice_terms?:   string;
+  proposal_terms?:  string;
+};
+
 export type AllSettings = {
   gst: GSTData;
   bank: Record<string, any>;
   brand: Record<string, any>;
   numbering: Record<string, any>;
   milestones: Milestone[];
+  terms: TermsTemplates;
 };
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -59,7 +66,7 @@ function handleUnauthorized(status: number) {
 // ─── GET: Sab settings ek saath lao ──────────────────────────────────────────
 
 export async function getAllSettings(): Promise<AllSettings> {
-  const endpoints = ["tax", "bank", "brand", "numbering", "milestones"];
+  const endpoints = ["tax", "bank", "brand", "numbering", "milestones", "terms"];
 
   const responses = await Promise.all(
     endpoints.map((ep) =>
@@ -72,7 +79,7 @@ export async function getAllSettings(): Promise<AllSettings> {
 
   responses.forEach((res) => handleUnauthorized(res.status));
 
-  const [gst, bank, brand, numbering, milestonesRaw] = await Promise.all(
+  const [gst, bank, brand, numbering, milestonesRaw, terms] = await Promise.all(
     responses.map((res) => res.json())
   );
 
@@ -82,6 +89,7 @@ export async function getAllSettings(): Promise<AllSettings> {
     brand,
     numbering,
     milestones: milestonesRaw.results ?? milestonesRaw,
+    terms: terms || {},
   };
 }
 
