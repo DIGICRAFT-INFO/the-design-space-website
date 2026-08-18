@@ -95,14 +95,23 @@ export default function GenerateInvoicePage() {
   const fetchQuotations = async (clientId: string) => {
     setQuotationsLoading(true);
     try {
-      // If no client selected, load ALL quotations
-      const url = clientId
-        ? `${API_BASE}/quotations/?client=${clientId}`
-        : `${API_BASE}/quotations/`;
-      const res = await fetch(url, { headers: getAuthHeaders() });
+      // Always load all quotations first — client filter is done client-side
+      const res = await fetch(`${API_BASE}/quotations/`, { headers: getAuthHeaders() });
       if (res.ok) {
         const d = await res.json();
-        setQuotations(d.results ?? d);
+        const all: any[] = d.results ?? d;
+        if (clientId) {
+          // Try server-side filter first
+          const filtered = all.filter(q =>
+            q.project?.client?.id === clientId ||
+            q.project?.client?._id === clientId ||
+            q.client_id === clientId
+          );
+          // If server-side filter returns nothing, show all (client may not be linked)
+          setQuotations(filtered.length > 0 ? filtered : all);
+        } else {
+          setQuotations(all);
+        }
       }
     } catch {
       setQuotations([]);
