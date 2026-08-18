@@ -309,7 +309,12 @@ export async function sendInvoiceEmail(id: string): Promise<void> {
     headers: getAuthHeaders(),
   });
   handleUnauthorized(res.status);
-  if (!res.ok) throw new Error("Email failed");
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const err: any = new Error(data.detail || "Email failed");
+    err.detail = data.detail;
+    throw err;
+  }
 }
 
 // ─── POST: Send WhatsApp ──────────────────────────────────────────────────────

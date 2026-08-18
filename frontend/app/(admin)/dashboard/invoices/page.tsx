@@ -611,8 +611,9 @@ export default function InvoicesPage() {
     try {
       await sendInvoiceEmail(id);
       showToast("Email sent!", "success");
-    } catch {
-      showToast("Email failed", "error");
+    } catch (err: any) {
+      const msg = err?.detail || err?.message || "Email failed";
+      showToast(msg.includes("email not set") ? "Client email not set — update client profile first" : msg, "error");
     } finally {
       setActionId(null);
     }
