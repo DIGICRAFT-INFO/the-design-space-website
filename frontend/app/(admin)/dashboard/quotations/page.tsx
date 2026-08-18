@@ -549,7 +549,12 @@ export default function QuotationsPage() {
       setEditingId(id);
       setSelectedClientId(matchedClientId);
       setSelectedClient(matchedClient);
-      setSelectedProjectId(q.project || "");
+      // q.project may be a populated object or a plain ID string — extract the id
+      const rawProj: any = q.project;
+      const projId = rawProj
+        ? (typeof rawProj === "object" ? (rawProj.id || rawProj._id || "") : String(rawProj))
+        : "";
+      setSelectedProjectId(projId);
 
       const cgstR = parseFloat(q.cgst_rate || "9");
       const sgstR = parseFloat(q.sgst_rate || "9");
@@ -581,8 +586,13 @@ export default function QuotationsPage() {
     try {
       const noGst   = !gstEnabled || formMeta.taxMode === "non_gst";
       const useIgst = gstEnabled && formMeta.taxMode === "igst";
+      const rawProject = selectedProjectId as any;
       const payload = {
-        project: selectedProjectId || null,
+        project: rawProject
+          ? (typeof rawProject === "object"
+              ? (rawProject.id || rawProject._id || null)
+              : String(rawProject))
+          : null,
         valid_until: formMeta.valid_until || null,
         discount_type: formMeta.discount_type,
         discount_value: parseFloat(formMeta.discount_value) || 0,
