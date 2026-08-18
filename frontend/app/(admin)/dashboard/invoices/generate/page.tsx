@@ -63,6 +63,9 @@ export default function GenerateInvoicePage() {
     due_days: 15, notes: "",
   });
   const [qErrors, setQErrors] = useState<Record<string, string>>({});
+  // Milestone amount mode: "percent" = % of quotation, "fixed" = manual Rs. amount
+  const [qMilestoneMode, setQMilestoneMode] = useState<"percent" | "fixed">("percent");
+  const [qFixedAmount, setQFixedAmount]     = useState<string>("");
 
   // ── Direct mode ────────────────────────────────────────────────────────────
   const [projects, setProjects] = useState<any[]>([]);
@@ -84,20 +87,25 @@ export default function GenerateInvoicePage() {
   useEffect(() => {
     if (!getToken()) { window.location.href = "/login"; return; }
     getAllClients().then(setClients).catch(() => {}).finally(() => setClientsLoading(false));
+    // Load all quotations immediately so dropdown is populated
+    fetchQuotations("");
   }, []);
 
   // ── Quotation helpers ──────────────────────────────────────────────────────
   const fetchQuotations = async (clientId: string) => {
-    if (!clientId) { setQuotations([]); return; }
     setQuotationsLoading(true);
     try {
-      const data = await getQuotationsByClient(clientId);
-      setQuotations(data);
+      // If no client selected, load ALL quotations
+      const url = clientId
+        ? `${API_BASE}/quotations/?client=${clientId}`
+        : `${API_BASE}/quotations/`;
+      const res = await fetch(url, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const d = await res.json();
+        setQuotations(d.results ?? d);
+      }
     } catch {
-      try {
-        const res = await fetch(`${API_BASE}/quotations/`, { headers: getAuthHeaders() });
-        if (res.ok) { const d = await res.json(); setQuotations(d.results ?? d); }
-      } catch {}
+      setQuotations([]);
     } finally { setQuotationsLoading(false); }
   };
 
@@ -158,7 +166,7 @@ export default function GenerateInvoicePage() {
         quotation_id: qForm.quotation_id,
         invoice_type: qForm.invoice_type,
         milestone_label: qForm.invoice_type !== "full" ? qForm.milestone_label : undefined,
-        milestone_percentage: qForm.milestone_percentage,
+        milestone_percentage: effectivePct,
         invoice_date: qForm.invoice_date,
         due_days: qForm.due_days,
         notes: qForm.notes || undefined,
@@ -215,7 +223,14 @@ export default function GenerateInvoicePage() {
 
   // Selected quotation preview
   const selectedQ = quotations.find(q => q.id === qForm.quotation_id);
-  const qAmount = selectedQ ? (parseFloat(selectedQ.grand_total || "0") * qForm.milestone_percentage) / 100 : 0;
+  const qGrandTotal = selectedQ ? parseFloat(selectedQ.grand_total || "0") : 0;
+  const qAmount = qMilestoneMode === "fixed"
+    ? (parseFloat(qFixedAmount) || 0)
+    : selectedQ ? (qGrandTotal * qForm.milestone_percentage) / 100 : 0;
+  // Effective percentage for API (if fixed mode, compute % from grand total)
+  const effectivePct = qMilestoneMode === "fixed" && qGrandTotal > 0
+    ? Math.round(((parseFloat(qFixedAmount) || 0) / qGrandTotal) * 100 * 100) / 100
+    : qForm.milestone_percentage;
   const approvedQs = quotations.filter(q => q.status === "approved");
   const otherQs    = quotations.filter(q => q.status !== "approved");
 
@@ -345,19 +360,68 @@ export default function GenerateInvoicePage() {
                       <span className="w-6 h-6 rounded-full bg-[#C8922A] text-white text-[11px] font-bold flex items-center justify-center">3</span>
                       Milestone Details
                     </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="col-span-2">
+                    <div className="space-y-4">
+                      {/* Label */}
+                      <div>
                         <label className="block text-[11px] font-bold text-[#9A8F82] uppercase tracking-wide mb-1.5">Milestone Label *</label>
-                        <input value={qForm.milestone_label} onChange={e => setQForm(f => ({ ...f, milestone_label: e.target.value }))}
+                        <input value={qForm.milestone_label}
+                          onChange={e => setQForm(f => ({ ...f, milestone_label: e.target.value }))}
                           placeholder={qForm.invoice_type === "advance" ? "Advance on Booking" : qForm.invoice_type === "final" ? "Final Handover" : "e.g. Design & Layout Approval"}
                           className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none bg-[#FAF8F5] ${qErrors.milestone_label ? "border-red-300" : "border-[#EDE8DF] focus:border-[#C8922A]"}`} />
                         {qErrors.milestone_label && <p className="text-[11px] text-red-500 mt-1">{qErrors.milestone_label}</p>}
                       </div>
+
+                      {/* Amount mode toggle */}
                       <div>
-                        <label className="block text-[11px] font-bold text-[#9A8F82] uppercase tracking-wide mb-1.5">Percentage (%) *</label>
-                        <input type="number" min={1} max={100} value={qForm.milestone_percentage}
-                          onChange={e => setQForm(f => ({ ...f, milestone_percentage: Number(e.target.value) }))}
-                          className="w-full border border-[#EDE8DF] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C8922A] bg-[#FAF8F5]" />
+                        <label className="block text-[11px] font-bold text-[#9A8F82] uppercase tracking-wide mb-2">Amount Mode</label>
+                        <div className="flex gap-2 mb-3">
+                          <button type="button" onClick={() => setQMilestoneMode("percent")}
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold border-2 transition-all ${qMilestoneMode === "percent" ? "border-[#C8922A] bg-[#FDF3E3] text-[#C8922A]" : "border-[#EDE8DF] bg-white text-[#6B6259]"}`}>
+                            % Percentage
+                          </button>
+                          <button type="button" onClick={() => setQMilestoneMode("fixed")}
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold border-2 transition-all ${qMilestoneMode === "fixed" ? "border-[#C8922A] bg-[#FDF3E3] text-[#C8922A]" : "border-[#EDE8DF] bg-white text-[#6B6259]"}`}>
+                            ₹ Fixed Amount
+                          </button>
+                        </div>
+
+                        {qMilestoneMode === "percent" ? (
+                          <div className="grid grid-cols-2 gap-4 items-end">
+                            <div>
+                              <label className="block text-[11px] font-bold text-[#9A8F82] uppercase tracking-wide mb-1.5">Percentage (%)</label>
+                              <input type="number" min={1} max={100} value={qForm.milestone_percentage}
+                                onChange={e => setQForm(f => ({ ...f, milestone_percentage: Number(e.target.value) }))}
+                                className="w-full border border-[#EDE8DF] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C8922A] bg-[#FAF8F5]" />
+                            </div>
+                            {selectedQ && (
+                              <div className="bg-[#FAF8F5] rounded-xl p-3 border border-[#EDE8DF]">
+                                <p className="text-[10px] text-[#9A8F82] uppercase font-bold mb-0.5">Invoice Amount</p>
+                                <p className="text-[16px] font-bold text-[#C8922A]">{fmt(qAmount)}</p>
+                                <p className="text-[10px] text-[#9A8F82]">{qForm.milestone_percentage}% of {fmt(qGrandTotal)}</p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-4 items-end">
+                            <div>
+                              <label className="block text-[11px] font-bold text-[#9A8F82] uppercase tracking-wide mb-1.5">Fixed Amount (₹)</label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A8F82] text-[13px] font-semibold">₹</span>
+                                <input type="number" min={0} value={qFixedAmount}
+                                  onChange={e => setQFixedAmount(e.target.value)}
+                                  placeholder="e.g. 50000"
+                                  className="w-full border border-[#EDE8DF] rounded-xl pl-7 pr-3 py-2.5 text-[13px] outline-none focus:border-[#C8922A] bg-[#FAF8F5]" />
+                              </div>
+                            </div>
+                            {selectedQ && parseFloat(qFixedAmount) > 0 && (
+                              <div className="bg-[#FAF8F5] rounded-xl p-3 border border-[#EDE8DF]">
+                                <p className="text-[10px] text-[#9A8F82] uppercase font-bold mb-0.5">Invoice Amount</p>
+                                <p className="text-[16px] font-bold text-[#C8922A]">₹{parseFloat(qFixedAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+                                <p className="text-[10px] text-[#9A8F82]">{effectivePct}% of {fmt(qGrandTotal)}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
