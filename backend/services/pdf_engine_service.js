@@ -346,10 +346,11 @@ exports.render_invoice_pdf = async (invoice) => {
 
   let y = draw_header(doc, brand, 'INVOICE', invoice.invoice_number);
 
+  // Status badge — below invoice number, right-aligned, not overlapping doc title
   const sc = invoice.status === 'paid' ? GREEN : invoice.status === 'overdue' ? RED : color;
-  doc.rect(430, 42, 90, 22).fill(sc);
-  doc.fontSize(9).fillColor(WHITE).font('Helvetica-Bold')
-     .text((invoice.status || '').toUpperCase(), 430, 48, { width: 90, align: 'center' });
+  doc.rect(484, 60, 75, 20).fill(sc);
+  doc.fontSize(8.5).fillColor(WHITE).font('Helvetica-Bold')
+     .text((invoice.status || '').toUpperCase(), 484, 65, { width: 75, align: 'center' });
 
   y = draw_info_boxes(doc,
     'Bill To',
