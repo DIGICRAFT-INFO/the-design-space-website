@@ -8,13 +8,13 @@ const projectSchema = new mongoose.Schema(
     name: { type: String, required: true, maxLength: 200 },
     property_type: { 
       type: String, 
-      enum: ['apartment', 'villa', 'office', 'commercial'], 
-      required: true 
+      default: 'apartment',
+      maxLength: 100,
     },
     style_category: { 
       type: String, 
-      enum: ['modern', 'traditional', 'minimalist', 'contemporary', ''], 
-      default: '' 
+      default: '',
+      maxLength: 100,
     },
     area_sqft: { type: Number, default: null }, // DecimalField mapped to Number
     budget_range: { type: String, default: '' },

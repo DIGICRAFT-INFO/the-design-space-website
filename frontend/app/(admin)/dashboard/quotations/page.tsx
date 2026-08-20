@@ -264,10 +264,27 @@ function QuickAddProjectModal({ clientId, clientName, onClose, onCreated }: {
           </div>
           <div>
             <label className="block text-[10px] font-bold text-[#9A8F82] uppercase mb-1">Property Type</label>
-            <select value={form.property_type} onChange={e => setForm({...form, property_type: e.target.value})}
-              className="w-full border border-[#EDE8DF] rounded-lg p-2.5 text-[13px] outline-none focus:border-[#C8922A] bg-[#FAF8F5]">
-              {["apartment","villa","office","commercial","residential"].map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
+            {(() => {
+              const KNOWN = ["apartment","villa","office","commercial","residential","showroom","shop","bungalow","penthouse","studio","farmhouse"];
+              const isKnown = KNOWN.includes(form.property_type);
+              return (
+                <>
+                  <select value={isKnown ? form.property_type : "other"}
+                    onChange={e => setForm({...form, property_type: e.target.value === "other" ? "" : e.target.value})}
+                    className="w-full border border-[#EDE8DF] rounded-lg p-2.5 text-[13px] outline-none focus:border-[#C8922A] bg-[#FAF8F5]">
+                    {KNOWN.map(v => <option key={v} value={v}>{v.charAt(0).toUpperCase()+v.slice(1)}</option>)}
+                    <option value="other">Other (Custom)</option>
+                  </select>
+                  {!isKnown && (
+                    <input type="text" value={form.property_type}
+                      onChange={e => setForm({...form, property_type: e.target.value})}
+                      placeholder="e.g. Sports Showroom"
+                      className="w-full border border-[#C8922A] rounded-lg p-2.5 text-[13px] outline-none bg-[#FDF3E3] mt-2"
+                      autoFocus />
+                  )}
+                </>
+              );
+            })()}
           </div>
           <div>
             <label className="block text-[10px] font-bold text-[#9A8F82] uppercase mb-1">Notes</label>

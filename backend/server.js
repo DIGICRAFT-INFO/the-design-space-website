@@ -29,6 +29,7 @@ const corsOptions = {
     const allowed = [
       'http://localhost:3000',
       'http://localhost:3001',
+      'http://localhost:3200',
       'https://the-design-space-websiteadmin.vercel.app',
       'https://websitethedesignspace.vercel.app',
       process.env.FRONTEND_URL,

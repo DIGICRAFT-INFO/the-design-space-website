@@ -673,16 +673,33 @@ export default function ProjectsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-[#9A8F82] uppercase tracking-widest">Property Type</label>
-                  <select
-                    value={formData.property_type}
-                    onChange={(e) => setFormData({ ...formData, property_type: e.target.value })}
-                    className="w-full border border-[#EDE8DF] rounded-xl p-3 text-[14px] outline-none bg-white focus:border-[#C8922A]"
-                  >
-                    <option value="apartment">Apartment</option>
-                    <option value="villa">Villa</option>
-                    <option value="office">Office</option>
-                    <option value="commercial">Commercial</option>
-                  </select>
+                  {(() => {
+                    const KNOWN = ["apartment","villa","office","commercial","residential","showroom","shop","bungalow","penthouse","studio","farmhouse"];
+                    const isKnown = KNOWN.includes(formData.property_type);
+                    const isOther = !isKnown;
+                    return (
+                      <>
+                        <select
+                          value={isKnown ? formData.property_type : "other"}
+                          onChange={(e) => setFormData({ ...formData, property_type: e.target.value === "other" ? "" : e.target.value })}
+                          className="w-full border border-[#EDE8DF] rounded-xl p-3 text-[14px] outline-none bg-white focus:border-[#C8922A]"
+                        >
+                          {KNOWN.map(v => <option key={v} value={v} className="capitalize">{v.charAt(0).toUpperCase()+v.slice(1)}</option>)}
+                          <option value="other">Other (Custom)</option>
+                        </select>
+                        {isOther && (
+                          <input
+                            type="text"
+                            value={formData.property_type}
+                            onChange={(e) => setFormData({ ...formData, property_type: e.target.value })}
+                            placeholder="Enter custom property type e.g. Sports Showroom"
+                            className="w-full border border-[#C8922A] rounded-xl p-3 text-[14px] outline-none bg-[#FDF3E3] mt-2"
+                            autoFocus
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 

@@ -3732,18 +3732,42 @@ const handleProjectEditClick = (proj: any) => {
               />
             </FF>
             <FF label="Property Type">
-              <select
-                name="property_type"
-                value={projectForm.property_type}
-                onChange={handleProjectInputChange}
-                className={inputCls}
-              >
-                {["apartment", "villa", "office", "commercial"].map((v) => (
-                  <option key={v} value={v}>
-                    {v.charAt(0).toUpperCase() + v.slice(1)}
-                  </option>
-                ))}
-              </select>
+              {(() => {
+                const KNOWN = ["apartment","villa","office","commercial","residential","showroom","shop","bungalow","penthouse","studio","farmhouse"];
+                const isKnown = KNOWN.includes(projectForm.property_type);
+                return (
+                  <>
+                    <select
+                      name="property_type"
+                      value={isKnown ? projectForm.property_type : "other"}
+                      onChange={(e) => {
+                        if (e.target.value === "other") {
+                          handleProjectInputChange({ target: { name: "property_type", value: "" } } as any);
+                        } else {
+                          handleProjectInputChange(e);
+                        }
+                      }}
+                      className={inputCls}
+                    >
+                      {KNOWN.map((v) => (
+                        <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</option>
+                      ))}
+                      <option value="other">Other (Custom)</option>
+                    </select>
+                    {!isKnown && (
+                      <input
+                        type="text"
+                        name="property_type"
+                        value={projectForm.property_type}
+                        onChange={handleProjectInputChange}
+                        placeholder="Enter custom type e.g. Sports Showroom"
+                        className={`${inputCls} mt-2 border-[#C8922A] bg-[#FDF3E3]`}
+                        autoFocus
+                      />
+                    )}
+                  </>
+                );
+              })()}
             </FF>
             <FF label="Area (Sq. Ft.)">
               <input
