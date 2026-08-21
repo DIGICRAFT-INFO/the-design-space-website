@@ -78,18 +78,12 @@ exports.create_client = async (req, res) => {
 // ClientDetailView -> GET
 exports.get_client_detail = async (req, res) => {
   try {
-    // findById ke saath findOne bhi try karo
-    const client = await Client.findOne({ 
-      $or: [
-        { _id: req.params.pk },
-        { id: req.params.pk }
-      ]
-    }).populate('projects');
-    
+    // Use findById directly — 'id' is a virtual (toJSON transform), not a real DB field
+    const client = await Client.findById(req.params.pk).populate('projects');
     if (!client) return res.status(404).json({ detail: 'Not found.' });
-    
+
     const clientObj = client.toJSON();
-    clientObj.project_count = client.projects.length;
+    clientObj.project_count = client.projects ? client.projects.length : 0;
     res.json(clientObj);
   } catch (error) {
     res.status(500).json({ error: error.message });

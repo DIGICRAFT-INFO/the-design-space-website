@@ -95,20 +95,19 @@ export default function GenerateInvoicePage() {
   const fetchQuotations = async (clientId: string) => {
     setQuotationsLoading(true);
     try {
-      // Always load all quotations first — client filter is done client-side
       const res = await fetch(`${API_BASE}/quotations/`, { headers: getAuthHeaders() });
       if (res.ok) {
         const d = await res.json();
         const all: any[] = d.results ?? d;
         if (clientId) {
-          // Try server-side filter first
+          // F11 fix: removed fallback that showed ALL quotations when client had none.
+          // If a client has no quotations, show empty — don't pollute the dropdown.
           const filtered = all.filter(q =>
             q.project?.client?.id === clientId ||
             q.project?.client?._id === clientId ||
             q.client_id === clientId
           );
-          // If server-side filter returns nothing, show all (client may not be linked)
-          setQuotations(filtered.length > 0 ? filtered : all);
+          setQuotations(filtered);
         } else {
           setQuotations(all);
         }
@@ -164,8 +163,18 @@ export default function GenerateInvoicePage() {
   const handleQSubmit = async () => {
     const e: Record<string, string> = {};
     if (!qForm.quotation_id) e.quotation_id = "Please select a quotation";
+    // F9: block if quotation is not approved
+    if (qForm.quotation_id && selectedQ && selectedQ.status !== "approved") {
+      e.quotation_id = `This quotation is "${selectedQ.status}" — only approved quotations can generate invoices. Approve it first.`;
+    }
     if (!qForm.invoice_date) e.invoice_date = "Invoice date required";
     if (qForm.invoice_type !== "full" && !qForm.milestone_label) e.milestone_label = "Milestone label required";
+    // F10: validate fixed amount doesn't exceed grand total
+    if (qMilestoneMode === "fixed" && qGrandTotal > 0) {
+      const fixed = parseFloat(qFixedAmount) || 0;
+      if (fixed <= 0) e.qFixedAmount = "Fixed amount must be greater than 0";
+      else if (fixed > qGrandTotal) e.qFixedAmount = `Amount ₹${fixed.toLocaleString("en-IN")} exceeds quotation total ₹${qGrandTotal.toLocaleString("en-IN")}`;
+    }
     setQErrors(e);
     if (Object.keys(e).length) return;
 
@@ -419,8 +428,9 @@ export default function GenerateInvoicePage() {
                                 <input type="number" min={0} value={qFixedAmount}
                                   onChange={e => setQFixedAmount(e.target.value)}
                                   placeholder="e.g. 50000"
-                                  className="w-full border border-[#EDE8DF] rounded-xl pl-7 pr-3 py-2.5 text-[13px] outline-none focus:border-[#C8922A] bg-[#FAF8F5]" />
+                                  className={`w-full border rounded-xl pl-7 pr-3 py-2.5 text-[13px] outline-none bg-[#FAF8F5] ${qErrors.qFixedAmount ? "border-red-300" : "border-[#EDE8DF] focus:border-[#C8922A]"}`} />
                               </div>
+                              {qErrors.qFixedAmount && <p className="text-[11px] text-red-500 mt-1">{qErrors.qFixedAmount}</p>}
                             </div>
                             {selectedQ && parseFloat(qFixedAmount) > 0 && (
                               <div className="bg-[#FAF8F5] rounded-xl p-3 border border-[#EDE8DF]">
@@ -702,8 +712,8 @@ export default function GenerateInvoicePage() {
             {/* Generate button */}
             <button
               onClick={mode === "from_quotation" ? handleQSubmit : handleDSubmit}
-              disabled={loading || success}
-              className="w-full bg-[#C8922A] hover:bg-[#B07A20] disabled:opacity-60 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2.5 text-[14px] transition-all shadow-lg"
+              disabled={loading || success || (mode === "from_quotation" && !!selectedQ && selectedQ.status !== "approved")}
+              className="w-full bg-[#C8922A] hover:bg-[#B07A20] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2.5 text-[14px] transition-all shadow-lg"
             >
               {loading ? <><Loader2 className="animate-spin" size={18} /> Generating…</> :
                success ? <><CheckCircle2 size={18} /> Generated!</> :

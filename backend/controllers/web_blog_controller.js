@@ -100,11 +100,12 @@ exports.delete_blog_post = async (req, res) => {
 
 exports.list_blog_public = async (req, res) => {
   try {
-    const filter = {};
+    const filter = { status: 'published' }; // Never expose drafts to the public website
     if (req.query.category && req.query.category !== 'all') filter.category = req.query.category;
     const limit = req.query.limit ? Math.min(Number(req.query.limit), 50) : 0;
-    const posts = await WebBlog.find(filter).sort({ created_at: -1 });
-    res.json(limit ? posts.slice(0, limit) : posts);
+    const query = WebBlog.find(filter).sort({ created_at: -1 });
+    const posts = limit ? await query.limit(limit) : await query;
+    res.json(posts);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

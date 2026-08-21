@@ -65,11 +65,15 @@ exports.get_service_detail = async (req, res) => {
 // ── POST /  ───────────────────────────────────────────────────────────────────
 exports.create_service = async (req, res) => {
   try {
+    // req.user is guaranteed by is_authenticated middleware, but guard anyway
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
     const service = await MasterService.create({
       name: req.body.name,
       description: req.body.description,
       status: req.body.status || 'active',
-      created_by: req.user ? req.user._id : null
+      created_by: req.user._id,
     });
 
     await createNotification({
@@ -177,7 +181,7 @@ exports.get_service_assignments = async (req, res) => {
 
     const assignments = await ServiceAssignment.find({ service: req.params.id })
       .populate('client', 'full_name')
-      .populate('assigned_by', 'name')
+      .populate('assigned_by', 'full_name')
       .sort('-assigned_at');
 
     res.json(assignments);
@@ -201,15 +205,19 @@ exports.assign_client = async (req, res) => {
     const existing = await ServiceAssignment.findOne({ service: req.params.id, client: clientId });
     if (existing) return res.status(400).json({ error: 'Client is already assigned to this service.' });
 
+    // req.user is guaranteed by is_authenticated middleware, but guard anyway
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
     const assignment = await ServiceAssignment.create({
       service: req.params.id,
       client: clientId,
-      assigned_by: req.user ? req.user._id : null
+      assigned_by: req.user._id,
     });
 
     const populated = await ServiceAssignment.findById(assignment._id)
       .populate('client', 'full_name')
-      .populate('assigned_by', 'name');
+      .populate('assigned_by', 'full_name');
 
     res.status(201).json(populated);
   } catch (error) {

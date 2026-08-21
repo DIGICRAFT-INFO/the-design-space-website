@@ -57,12 +57,11 @@ const statusConfig: Record<
   string,
   { label: string; color: string; bg: string }
 > = {
-  draft: { label: "Draft", color: "#6B7280", bg: "#F3F4F6" },
-  issued: { label: "Issued", color: "#3B82F6", bg: "#EFF6FF" },
-  partial: { label: "Partial", color: "#F59E0B", bg: "#FFFBEB" },
-  partially_paid: { label: "Partial", color: "#F59E0B", bg: "#FFFBEB" },
-  paid: { label: "Paid", color: "#10B981", bg: "#ECFDF5" },
-  overdue: { label: "Overdue", color: "#EF4444", bg: "#FEF2F2" },
+  draft:     { label: "Draft",     color: "#6B7280", bg: "#F3F4F6" },
+  issued:    { label: "Issued",    color: "#3B82F6", bg: "#EFF6FF" },
+  partial:   { label: "Partial",   color: "#F59E0B", bg: "#FFFBEB" },
+  paid:      { label: "Paid",      color: "#10B981", bg: "#ECFDF5" },
+  overdue:   { label: "Overdue",   color: "#EF4444", bg: "#FEF2F2" },
   cancelled: { label: "Cancelled", color: "#9CA3AF", bg: "#F9FAFB" },
 };
 
@@ -137,32 +136,25 @@ function InvoiceDetailPanel({
     );
   }
 
+  // Fix F1: use sendReminder from service instead of raw fetch; show toast on error
   async function sendReminder(channel: "whatsapp" | "email") {
     setReminderLoading(true);
     setReminderMenu(false);
     try {
-      const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api/v1").replace(/\/+$/, "");
-      const endpoint =
-        channel === "whatsapp"
-          ? `${API_BASE_URL}/notifications/whatsapp/reminder/${inv.id}/`
-          : `${API_BASE_URL}/notifications/email/reminder/${inv.id}/`;
-      await fetch(endpoint, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      const { sendReminder: sendReminderSvc } = await import("@/services/invoiceService");
+      await sendReminderSvc(inv.id, channel);
       setReminderSuccess(channel);
       setTimeout(() => setReminderSuccess(null), 3000);
-    } catch {
-      /* silently fail */
+    } catch (err: any) {
+      // surface the error so user knows the reminder failed
+      alert(err?.detail || err?.message || `${channel} reminder failed`);
     } finally {
       setReminderLoading(false);
     }
   }
 
-  const canPay = !["paid", "cancelled"].includes(inv.status);
-  const canRemind = ["overdue", "partial", "partially_paid", "issued"].includes(
-    inv.status,
-  );
+  const canPay    = !["paid", "cancelled"].includes(inv.status);
+  const canRemind = ["overdue", "partial", "issued"].includes(inv.status);
   const isOverdue = inv.status === "overdue";
 
   const invoiceForModal = {
@@ -490,12 +482,19 @@ export default function InvoicesPage() {
   const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
   const [copySourceInvoice, setCopySourceInvoice] = useState<any>(null);
   const [copySubmitting, setCopySubmitting] = useState(false);
+  const [copyLoading, setCopyLoading] = useState(false);
   const [copyForm, setCopyForm] = useState<{
     invoice_date: string;
     due_date: string;
     notes: string;
     items: Array<{ _key: string; description: string; category: string; quantity: string; unit: string; rate: string }>;
   }>({ invoice_date: "", due_date: "", notes: "", items: [] });
+
+  const closeCopyModal = () => {
+    setIsCopyModalOpen(false);
+    setCopySourceInvoice(null);
+    setCopyForm({ invoice_date: "", due_date: "", notes: "", items: [] });
+  };
 
   const showToast = (message: string, type: "success" | "error" | "info") =>
     setToast({ message, type });
@@ -547,8 +546,8 @@ export default function InvoicesPage() {
       showToast("Marked as Issued!", "success");
       fetchInvoices();
       if (viewingInvoice?.id === id) openDetail(id);
-    } catch {
-      showToast("Failed", "error");
+    } catch (err: any) {
+      showToast(err?.detail || err?.message || "Failed to issue invoice", "error");
     } finally {
       setActionId(null);
     }
@@ -562,8 +561,8 @@ export default function InvoicesPage() {
       showToast("Marked as Paid!", "success");
       fetchInvoices();
       if (viewingInvoice?.id === id) openDetail(id);
-    } catch {
-      showToast("Failed", "error");
+    } catch (err: any) {
+      showToast(err?.detail || err?.message || "Failed to mark paid", "error");
     } finally {
       setActionId(null);
     }
@@ -633,25 +632,34 @@ export default function InvoicesPage() {
 
   // ── Copy Modal Handlers ────────────────────────────────────────────────────
   const openCopyModal = async (inv: Invoice) => {
-    const full = await getInvoiceById(inv.id);
-    setCopySourceInvoice(full);
-    const today = new Date().toISOString().split("T")[0];
-    const due = new Date();
-    due.setDate(due.getDate() + 15);
-    setCopyForm({
-      invoice_date: today,
-      due_date: due.toISOString().split("T")[0],
-      notes: (full as any).notes || "",
-      items: ((full as any).items || []).map((it: any, i: number) => ({
-        _key: `item_${i}_${Date.now()}`,
-        description: it.description || "",
-        category: it.category || "",
-        quantity: String(it.quantity || "1"),
-        unit: it.unit || "",
-        rate: String(it.rate || "0"),
-      })),
-    });
-    setIsCopyModalOpen(true);
+    // Prevent double-open
+    if (copyLoading) return;
+    setCopyLoading(true);
+    try {
+      const full = await getInvoiceById(inv.id);
+      setCopySourceInvoice(full);
+      const today = new Date().toISOString().split("T")[0];
+      const due = new Date();
+      due.setDate(due.getDate() + 15);
+      setCopyForm({
+        invoice_date: today,
+        due_date: due.toISOString().split("T")[0],
+        notes: (full as any).notes || "",
+        items: ((full as any).items || []).map((it: any, i: number) => ({
+          _key: `item_${i}_${Date.now()}`,
+          description: it.description || "",
+          category: it.category || "",
+          quantity: String(it.quantity || "1"),
+          unit: it.unit || "",
+          rate: String(it.rate || "0"),
+        })),
+      });
+      setIsCopyModalOpen(true);
+    } catch {
+      showToast("Failed to load invoice details", "error");
+    } finally {
+      setCopyLoading(false);
+    }
   };
 
   const updateCopyItem = (key: string, field: string, value: string) => {
@@ -691,13 +699,12 @@ export default function InvoicesPage() {
           rate: it.rate,
         })),
       });
-      setIsCopyModalOpen(false);
-      setCopySourceInvoice(null);
+      closeCopyModal();
       await fetchInvoices();
       showToast("Invoice copied successfully!", "success");
       if (newInv?.id) openDetail(newInv.id);
     } catch (e: any) {
-      showToast(e?.message || "Copy failed", "error");
+      showToast(e?.detail || e?.message || "Copy failed", "error");
     } finally {
       setCopySubmitting(false);
     }
@@ -710,13 +717,17 @@ export default function InvoicesPage() {
   };
 
   const stats = {
-    total: invoices.reduce((s, i) => s + parseFloat(i.grand_total || "0"), 0),
+    total: invoices
+      .filter((i) => i.status !== "cancelled")
+      .reduce((s, i) => s + parseFloat(i.grand_total || "0"), 0),
+    // F4 fix: use amount_paid for actual received, fall back to grand_total only for fully-paid invoices
     paid: invoices
       .filter((i) => i.status === "paid")
-      .reduce((s, i) => s + parseFloat(i.grand_total || "0"), 0),
+      .reduce((s, i) => s + parseFloat(i.amount_paid || i.grand_total || "0"), 0),
+    // F6 fix: include overdue invoices in pending balance
     pending: invoices
       .filter((i) =>
-        ["draft", "issued", "partial", "partially_paid"].includes(i.status),
+        ["draft", "issued", "partial", "overdue"].includes(i.status),
       )
       .reduce(
         (s, i) => s + parseFloat(i.balance_due || i.grand_total || "0"),
@@ -995,7 +1006,7 @@ export default function InvoicesPage() {
                             )}
                           </button>
                         )}
-                        {["issued", "partial", "partially_paid"].includes(
+                        {["issued", "partial", "overdue"].includes(
                           inv.status,
                         ) && (
                           <button
@@ -1070,9 +1081,14 @@ export default function InvoicesPage() {
                         <button
                           onClick={(e) => { e.stopPropagation(); openCopyModal(inv); }}
                           title="Copy & Edit Invoice"
-                          className="p-1.5 bg-amber-50 text-amber-700 rounded-md hover:bg-amber-100"
+                          disabled={copyLoading}
+                          className="p-1.5 bg-amber-50 text-amber-700 rounded-md hover:bg-amber-100 disabled:opacity-50"
                         >
-                          <Copy size={13} />
+                          {copyLoading ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : (
+                            <Copy size={13} />
+                          )}
                         </button>
                       </div>
                     </td>
@@ -1113,10 +1129,10 @@ export default function InvoicesPage() {
                 <h2 className="text-[15px] font-bold text-[#1C1C1C]">Copy Invoice</h2>
                 <p className="text-[11px] text-[#9A8F82] mt-0.5">
                   Source: <span className="font-semibold text-[#C8922A]">{copySourceInvoice.invoice_number}</span>
-                  {" "}→ will create <span className="font-semibold text-[#C8922A]">{copySourceInvoice.invoice_number}-C1</span> (or next suffix)
+                  {" "}→ a new draft copy will be created with the next available suffix
                 </p>
               </div>
-              <button onClick={() => setIsCopyModalOpen(false)} className="text-[#9A8F82] hover:text-red-500">
+              <button onClick={closeCopyModal} className="text-[#9A8F82] hover:text-red-500">
                 <X size={18} />
               </button>
             </div>
@@ -1270,7 +1286,7 @@ export default function InvoicesPage() {
             {/* Footer */}
             <div className="px-6 py-4 border-t border-[#EDE8DF] flex justify-end gap-3 bg-[#FAF8F5] rounded-b-2xl">
               <button
-                onClick={() => setIsCopyModalOpen(false)}
+                onClick={closeCopyModal}
                 className="px-4 py-2 rounded-lg border border-[#EDE8DF] text-[13px] font-semibold text-[#6B6259] hover:bg-[#F5F2ED]"
               >
                 Cancel

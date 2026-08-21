@@ -97,7 +97,8 @@ exports.markAllAsRead = async (req, res) => {
 // DELETE /:pk  (admin utility to delete single notification)
 exports.deleteNotification = async (req, res) => {
   try {
-    await InAppNotification.findByIdAndDelete(req.params.pk);
+    const notification = await InAppNotification.findByIdAndDelete(req.params.pk);
+    if (!notification) return res.status(404).json({ detail: 'Not found.' });
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: error.message });

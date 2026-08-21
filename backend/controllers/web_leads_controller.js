@@ -68,10 +68,10 @@ exports.get_overview = async (req, res) => {
         Enquiry.find({ source: 'website', created_at: { $gte: sevenDaysAgo } }).then((r) => r.length).catch(() => 0),
         WebCareerApplication.find({ created_at: { $gte: sevenDaysAgo } }).then((r) => r.length).catch(() => 0),
       ]).then(([a, b]) => a + b),
-      Enquiry.find({ source: 'website' }).sort({ created_at: -1 }),
-      WebCareerApplication.find().sort({ created_at: -1 }),
-      Portfolio.find().sort({ updated_at: -1 }),
-      WebBlog.find().sort({ updated_at: -1 }),
+      Enquiry.find({ source: 'website' }).sort({ created_at: -1 }).limit(5),
+      WebCareerApplication.find().sort({ created_at: -1 }).limit(5),
+      Portfolio.find().sort({ updated_at: -1 }).limit(5),
+      WebBlog.find().sort({ updated_at: -1 }).limit(5),
     ]);
 
     const activity = [

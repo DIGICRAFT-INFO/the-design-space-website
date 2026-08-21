@@ -27,15 +27,10 @@ router.get('/:id/pdf/', is_authenticated, controller.get_portfolio_pdf);
 router.post('/:id/send/', is_authenticated, is_manager_or_above, controller.send_portfolio);
 
 // GET/:id, PUT/:id, PATCH/:id, DELETE/:id
-// BUG FIX: Added PATCH method (frontend uses PATCH for partial updates)
-// BUG FIX: Changed DELETE permission from is_owner to is_manager_or_above for consistency
-router.route('/:id/')
-  .get(is_authenticated, controller.get_portfolio_detail)
-  .put(is_authenticated, is_manager_or_above, controller.update_portfolio)
-  .patch(is_authenticated, is_manager_or_above, controller.update_portfolio)
-  .delete(is_authenticated, is_manager_or_above, controller.delete_portfolio);
-
-// Without trailing slash variants (compatibility)
+// Single registration only — duplicate /:id/ + /:id registrations caused
+// every request to execute the handler twice ("Cannot set headers after they
+// are sent" error). Express non-strict routing already normalises trailing
+// slashes, so one entry is sufficient.
 router.route('/:id')
   .get(is_authenticated, controller.get_portfolio_detail)
   .put(is_authenticated, is_manager_or_above, controller.update_portfolio)

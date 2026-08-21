@@ -35,6 +35,15 @@ exports.generate_invoice_from_quotation = async (data) => {
       throw new Error('Only APPROVED quotations can generate invoices.'); //
     }
 
+    // Guard: prevent duplicate invoices for the same quotation (non-cancelled)
+    const existing = await Invoice.findOne({
+      quotation: quotation_id,
+      status: { $nin: ['cancelled'] }
+    }).session(session);
+    if (existing) {
+      throw new Error(`An active invoice (${existing.invoice_number}) already exists for this quotation. Cancel it first or create a copy.`);
+    }
+
     const today = invoice_date ? new Date(invoice_date) : new Date();
     const due_date = new Date(today);
     due_date.setDate(today.getDate() + due_days); //
@@ -68,10 +77,11 @@ exports.generate_invoice_from_quotation = async (data) => {
       notes
     }], { session });
 
-    // Copy line items (scaled)
+    // Copy line items (scaled) — includes category field (was missing before)
     const invoiceItems = quotation.items.map(q_item => ({
       invoice: invoice[0]._id,
       description: q_item.description,
+      category:    q_item.category || '',
       quantity: q_item.quantity,
       unit: q_item.unit,
       rate: round2(q_item.rate * percentage),

@@ -97,6 +97,7 @@ import {
   getInvoiceById,
   generateInvoice,
   updateInvoice,
+  updateInvoiceFull,
   deleteInvoice,
   sendInvoice,
   markInvoicePaid,
@@ -401,6 +402,7 @@ export default function ClientDetails() {
   >([]);
   const [quoteHistoryLoading, setQuoteHistoryLoading] = useState(false);
   const [showQuoteHistory, setShowQuoteHistory] = useState(false);
+  const [restoredHistoryId, setRestoredHistoryId] = useState<string | null>(null);
 
   // ── Quotation Copy Modal ───────────────────────────────────────────────────
   const [isQuoteCopyModalOpen, setIsQuoteCopyModalOpen] = useState(false);
@@ -445,6 +447,9 @@ export default function ClientDetails() {
   // optional invoice edit (minimal)
   const [isInvoiceEditOpen, setIsInvoiceEditOpen] = useState(false);
   const [invoiceEditSubmitting, setInvoiceEditSubmitting] = useState(false);
+  // F13 fix: store the ID of the invoice being edited independently of viewingInvoice
+  // so submit still works if viewingInvoice is cleared while the modal is open.
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   const [invoiceEditForm, setInvoiceEditForm] = useState<{
     invoice_type: string;
     invoice_date: string;
@@ -949,6 +954,57 @@ const handleProjectEditClick = (proj: any) => {
     }
   };
 
+  // Restore a history snapshot into the edit form.
+  // The snapshot contains the quotation state BEFORE that edit was made,
+  // so clicking R1 restores the very first saved state.
+  // After restoring, user edits and clicks "Update Quotation" →
+  // backend automatically records the new diff as the next history entry.
+  const handleRestoreHistory = (entry: QuotationHistoryEntry) => {
+    const snap = entry.snapshot;
+    if (!snap) return;
+
+    setRestoredHistoryId(entry.id);
+
+    // Restore basic fields
+    setQuoteForm({
+      project:
+        typeof snap.project === "object" && snap.project
+          ? (snap.project as any).id || (snap.project as any)._id || ""
+          : snap.project || "",
+      valid_until: snap.valid_until ? String(snap.valid_until).split("T")[0] : "",
+      discount_type: snap.discount_type || "percentage",
+      discount_value: String(snap.discount_value ?? "0"),
+      cgst_rate: String(snap.cgst_rate ?? "9"),
+      sgst_rate: String(snap.sgst_rate ?? "9"),
+      igst_rate: String(snap.igst_rate ?? "0"),
+      notes: snap.notes || "",
+    });
+
+    // Restore tax mode
+    const cgst = parseFloat(snap.cgst_rate ?? "0");
+    const sgst = parseFloat(snap.sgst_rate ?? "0");
+    const igst = parseFloat(snap.igst_rate ?? "0");
+    setTaxMode(
+      igst > 0 ? "igst" : cgst === 0 && sgst === 0 ? "non_gst" : "cgst_sgst"
+    );
+
+    // Restore line items from snapshot.items (simplified array stored by backend)
+    const snapItems: any[] = Array.isArray(snap.items) ? snap.items : [];
+    if (snapItems.length > 0) {
+      setQuoteItems(
+        snapItems.map((it: any) => ({
+          _key: Math.random(),
+          description: it.description || "",
+          category: it.category || "Furniture",
+          quantity: String(it.quantity ?? "1"),
+          unit: it.unit || "sqft",
+          rate: String(it.rate ?? "0"),
+          sort_order: it.sort_order || 1,
+        }))
+      );
+    }
+  };
+
   const openQuoteModal = () => {
     setEditingQuoteId(null);
     setQuoteForm({
@@ -966,6 +1022,7 @@ const handleProjectEditClick = (proj: any) => {
     setQuoteError(null);
     setQuoteHistoryEntries([]);
     setShowQuoteHistory(false);
+    setRestoredHistoryId(null);
     setIsQuoteModalOpen(true);
     fetchMasterServices();
   };
@@ -1025,6 +1082,13 @@ const handleProjectEditClick = (proj: any) => {
   const closeQuoteModal = () => {
     setIsQuoteModalOpen(false);
     setQuoteError(null);
+    setRestoredHistoryId(null);
+  };
+
+  // After a restore, if the user manually edits any field, clear the "Restored" highlight
+  // so they don't accidentally re-submit the same snapshot unchanged.
+  const clearRestored = () => {
+    if (restoredHistoryId) setRestoredHistoryId(null);
   };
 
   const addItem = () =>
@@ -1480,6 +1544,11 @@ const handleProjectEditClick = (proj: any) => {
 
   const handleInvoiceSubmit = async (e: any) => {
     e.preventDefault();
+    // F16 fix: validate quotation is selected before submitting
+    if (!invoiceForm.quotation_id) {
+      setInvoiceError({ error: "Please select a quotation first." });
+      return;
+    }
     setInvoiceSubmitting(true);
     setInvoiceError(null);
 
@@ -1525,8 +1594,8 @@ const handleProjectEditClick = (proj: any) => {
       await markInvoicePaid(iid);
       await fetchInvoices();
       if (viewingInvoice?.id === iid) await fetchInvoiceDetail(iid);
-    } catch {
-      alert("Failed.");
+    } catch (err: any) {
+      alert(err?.detail || err?.message || "Failed to mark as paid.");
     } finally {
       setInvoiceActionKey(null);
     }
@@ -1548,6 +1617,7 @@ const handleProjectEditClick = (proj: any) => {
 
   const openInvoiceEdit = async (iid: string) => {
     const inv = (await getInvoiceById(iid)) as any;
+    setEditingInvoiceId(iid);
     setInvoiceEditForm({
       invoice_type: inv.invoice_type || "full",
       invoice_date: inv.invoice_date ? inv.invoice_date.split("T")[0] : "",
@@ -1600,10 +1670,12 @@ const handleProjectEditClick = (proj: any) => {
 
   const submitInvoiceEdit = async (e: any) => {
     e.preventDefault();
-    if (!viewingInvoice?.id) return;
+    // F13 fix: use editingInvoiceId — independent of viewingInvoice state
+    if (!editingInvoiceId) return;
     setInvoiceEditSubmitting(true);
     try {
-      await updateInvoice(viewingInvoice.id, {
+      // F12 fix: use updateInvoiceFull which has proper items typing
+      await updateInvoiceFull(editingInvoiceId, {
         invoice_type: invoiceEditForm.invoice_type,
         invoice_date: invoiceEditForm.invoice_date,
         due_date: invoiceEditForm.due_date,
@@ -1615,12 +1687,13 @@ const handleProjectEditClick = (proj: any) => {
           unit: it.unit,
           rate: it.rate,
         })),
-      } as any);
+      });
       await fetchInvoices();
-      await fetchInvoiceDetail(viewingInvoice.id);
+      if (viewingInvoice?.id === editingInvoiceId) await fetchInvoiceDetail(editingInvoiceId);
       setIsInvoiceEditOpen(false);
+      setEditingInvoiceId(null);
     } catch (e: any) {
-      alert(e?.message || "Update failed");
+      alert(e?.detail || e?.message || "Update failed");
     } finally {
       setInvoiceEditSubmitting(false);
     }
@@ -1742,7 +1815,7 @@ const handleProjectEditClick = (proj: any) => {
         .filter((i: any) => i.status === "paid")
         .reduce((s: number, i: any) => s + parseFloat(i.grand_total || 0), 0),
       pending: invoices
-        .filter((i: any) => ["draft", "issued", "partial"].includes(i.status))
+        .filter((i: any) => ["draft", "issued", "partial", "overdue"].includes(i.status))
         .reduce(
           (s: number, i: any) =>
             s + parseFloat(i.balance_due || i.grand_total || 0),
@@ -3279,7 +3352,8 @@ const handleProjectEditClick = (proj: any) => {
                                 )}
 
                                 {(inv.status === "issued" ||
-                                  inv.status === "partial") && (
+                                  inv.status === "partial" ||
+                                  inv.status === "overdue") && (
                                   <button
                                     onClick={() => handleMarkPaid(inv.id)}
                                     disabled={
@@ -3624,7 +3698,8 @@ const handleProjectEditClick = (proj: any) => {
                         )}
 
                         {(viewingInvoice.status === "issued" ||
-                          viewingInvoice.status === "partial") && (
+                          viewingInvoice.status === "partial" ||
+                          viewingInvoice.status === "overdue") && (
                           <button
                             onClick={() => handleMarkPaid(viewingInvoice.id)}
                             disabled={!!invoiceActionKey}
@@ -3690,6 +3765,15 @@ const handleProjectEditClick = (proj: any) => {
                         >
                           <Trash2 size={13} /> Delete
                         </button>
+
+                        {!["paid", "partial", "cancelled"].includes(viewingInvoice.status) && (
+                          <button
+                            onClick={() => openCopyModal(viewingInvoice)}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 text-amber-700 border border-amber-100 rounded-lg text-[12px] font-semibold hover:bg-amber-100"
+                          >
+                            <Copy size={13} /> Copy
+                          </button>
+                        )}
                       </div>
                     </div>
                   ) : null}
@@ -4066,17 +4150,26 @@ const handleProjectEditClick = (proj: any) => {
               <QuoteHistoryPanel
                 entries={quoteHistoryEntries}
                 loading={quoteHistoryLoading}
+                onRestore={handleRestoreHistory}
+                restoredId={restoredHistoryId}
               />
             )
           }
         >
           <form
             onSubmit={handleQuoteSubmit}
+            onChange={clearRestored}
             className="max-h-[88vh] overflow-y-auto"
           >
             <div className="px-6 pt-5 pb-5 grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-[#EDE8DF]">
               {quoteError && (
                 <ErrorBanner error={quoteError} cls="sm:col-span-3" />
+              )}
+              {restoredHistoryId && (
+                <div className="sm:col-span-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 text-[12px] text-amber-800 font-medium">
+                  <span className="text-base">↩</span>
+                  Snapshot restored — edit as needed, then click <strong className="mx-1">Update Quotation</strong> to save it as a new history entry.
+                </div>
               )}
 
               <FF label="Project *" cls="sm:col-span-1">
@@ -4274,9 +4367,10 @@ const handleProjectEditClick = (proj: any) => {
                   return (
                     <div
                       key={item._key}
-                      className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-[#FAF8F5] border border-[#EDE8DF] rounded-xl px-3 py-2"
+                      className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-start bg-[#FAF8F5] border border-[#EDE8DF] rounded-xl px-3 py-2"
                     >
-                      <div className="sm:col-span-1 flex items-center justify-between sm:flex-col sm:items-center sm:gap-0">
+                      {/* Sort arrows + number */}
+                      <div className="sm:col-span-1 flex items-center justify-between sm:flex-col sm:items-center sm:gap-0 pt-1">
                         <button
                           type="button"
                           onClick={() => moveItem(item._key, -1)}
@@ -4298,6 +4392,7 @@ const handleProjectEditClick = (proj: any) => {
                         </button>
                       </div>
 
+                      {/* Description + service selector — wider */}
                       <div className="sm:col-span-4">
                         {masterServices.length > 0 && (
                           <select
@@ -4316,14 +4411,12 @@ const handleProjectEditClick = (proj: any) => {
                                 svc.service_description ||
                                 "";
 
-                              // Name + description combined in the item description field
                               updateItem(
                                 item._key,
                                 "description",
                                 desc ? `${name} - ${desc}` : name,
                               );
 
-                              // Bonus: auto-fill category/rate/unit if the master service defines them
                               if (svc.category)
                                 updateItem(item._key, "category", svc.category);
                               if (svc.unit)
@@ -4359,7 +4452,8 @@ const handleProjectEditClick = (proj: any) => {
                         />
                       </div>
 
-                      <div className="sm:col-span-1">
+                      {/* Category — sm:col-span-2 so full word "Furniture" fits */}
+                      <div className="sm:col-span-2">
                         <select
                           value={item.category}
                           onChange={(e) =>
@@ -4383,6 +4477,7 @@ const handleProjectEditClick = (proj: any) => {
                         </select>
                       </div>
 
+                      {/* Qty */}
                       <div className="sm:col-span-1 min-w-0">
                         <input
                           type="number"
@@ -4395,6 +4490,7 @@ const handleProjectEditClick = (proj: any) => {
                         />
                       </div>
 
+                      {/* Unit — sm:col-span-1 is enough now that category has extra space */}
                       <div className="sm:col-span-1 min-w-0">
                         <select
                           value={item.unit}
@@ -4417,6 +4513,7 @@ const handleProjectEditClick = (proj: any) => {
                         </select>
                       </div>
 
+                      {/* Rate — sm:col-span-2 */}
                       <div className="sm:col-span-2 min-w-0">
                         <input
                           type="number"
@@ -4430,7 +4527,8 @@ const handleProjectEditClick = (proj: any) => {
                         />
                       </div>
 
-                      <div className="sm:col-span-2 min-w-0 flex items-center justify-end gap-1">
+                      {/* Amount + delete — sm:col-span-1 */}
+                      <div className="sm:col-span-1 min-w-0 flex items-center justify-end gap-1 pt-1">
                         <span
                           title={`₹${fmt(amount)}`}
                           className="text-[12px] font-bold text-[#1C1C1C] truncate"
@@ -4462,12 +4560,19 @@ const handleProjectEditClick = (proj: any) => {
                     ₹{fmt(totals.subtotal)}
                   </span>
                 </div>
-                <div className="flex justify-between text-[#6B6259]">
-                  <span>Discount</span>
-                  <span className="font-semibold text-red-500">
-                    -₹{fmt(totals.discAmt)}
-                  </span>
-                </div>
+                {totals.discAmt > 0 && (
+                  <div className="flex justify-between text-[#6B6259]">
+                    <span>
+                      Discount
+                      {quoteForm.discount_type === "percentage"
+                        ? ` (${quoteForm.discount_value}%)`
+                        : ""}
+                    </span>
+                    <span className="font-semibold text-red-500">
+                      -₹{fmt(totals.discAmt)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-[#6B6259]">
                   <span>Taxable</span>
                   <span className="font-semibold text-[#1C1C1C]">
@@ -4587,15 +4692,31 @@ const handleProjectEditClick = (proj: any) => {
                 className={inputCls}
               >
                 <option value="">— Select Quotation —</option>
-                {quotations.map((q: any) => (
-                  <option key={q.id} value={q.id}>
-                    #{q.quote_number} v{q.version} — {q.project_name} (₹
-                    {fmt(q.grand_total)}) [{q.status}]
-                  </option>
-                ))}
+                {/* Approved quotations first, then others clearly labelled */}
+                {quotations.filter((q: any) => q.status === "approved").length > 0 && (
+                  <optgroup label="✅ Approved">
+                    {quotations
+                      .filter((q: any) => q.status === "approved")
+                      .map((q: any) => (
+                        <option key={q.id} value={q.id}>
+                          #{q.quote_number} v{q.version} — {q.project_name} (₹{fmt(q.grand_total)})
+                        </option>
+                      ))}
+                  </optgroup>
+                )}
+                {quotations.filter((q: any) => q.status !== "approved").length > 0 && (
+                  <optgroup label="Other (not approved)">
+                    {quotations
+                      .filter((q: any) => q.status !== "approved")
+                      .map((q: any) => (
+                        <option key={q.id} value={q.id}>
+                          #{q.quote_number} v{q.version} — {q.project_name} (₹{fmt(q.grand_total)}) [{q.status}]
+                        </option>
+                      ))}
+                  </optgroup>
+                )}
               </select>
-              {quotations.filter((q: any) => q.status === "approved").length ===
-                0 && (
+              {quotations.filter((q: any) => q.status === "approved").length === 0 && (
                 <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
                   <AlertCircle size={11} /> No approved quotations found.
                   Approve a quotation first.
@@ -4629,24 +4750,58 @@ const handleProjectEditClick = (proj: any) => {
 
             {invoiceForm.invoice_type !== "full" && (
               <FF label="Milestone Percentage (%)">
-                <input
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={invoiceForm.milestone_percentage}
-                  onChange={(e) =>
-                    setInvoiceForm((p: any) => ({
-                      ...p,
-                      milestone_percentage: Number(e.target.value),
-                    }))
-                  }
-                  className={inputCls}
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={invoiceForm.milestone_percentage}
+                    onChange={(e) =>
+                      setInvoiceForm((p: any) => ({
+                        ...p,
+                        milestone_percentage: Number(e.target.value),
+                      }))
+                    }
+                    className={`${inputCls} w-28 flex-shrink-0`}
+                  />
+                  {/* Live price preview — calculated from selected quotation grand_total */}
+                  {(() => {
+                    const selQ = quotations.find((q: any) => q.id === invoiceForm.quotation_id);
+                    const base = selQ ? parseFloat(selQ.grand_total) || 0 : 0;
+                    const pct  = Math.min(Math.max(Number(invoiceForm.milestone_percentage) || 0, 0), 100);
+                    const amt  = (base * pct) / 100;
+                    return base > 0 ? (
+                      <div className="flex-1 flex items-center justify-between bg-[#FDF3E3] border border-[#C8922A]/30 rounded-xl px-4 py-2.5">
+                        <span className="text-[11px] text-[#9A8F82] font-medium">Invoice Amount</span>
+                        <span className="text-[15px] font-bold text-[#C8922A]">
+                          ₹{amt.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
                 <p className="text-[11px] text-[#9A8F82] mt-1">
                   This % of quotation grand total will be invoiced.
                 </p>
               </FF>
             )}
+
+            {/* Price summary for Full (100%) type */}
+            {invoiceForm.invoice_type === "full" && (() => {
+              const selQ = quotations.find((q: any) => q.id === invoiceForm.quotation_id);
+              const base = selQ ? parseFloat(selQ.grand_total) || 0 : 0;
+              return base > 0 ? (
+                <div className="flex items-center justify-between bg-[#FDF3E3] border border-[#C8922A]/30 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-[11px] text-[#9A8F82] font-medium">Invoice Amount (100%)</p>
+                    <p className="text-[10px] text-[#9A8F82] mt-0.5">Full quotation grand total</p>
+                  </div>
+                  <span className="text-[17px] font-bold text-[#C8922A]">
+                    ₹{base.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              ) : null;
+            })()}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FF label="Invoice Date *">
@@ -5835,12 +5990,17 @@ function QuoteChangeRow({
 }
 
 // Right-side compare panel for the quotation modal: chronological edit list with diff highlighting.
+// Clicking a history card restores that snapshot into the edit form.
 function QuoteHistoryPanel({
   entries,
   loading,
+  onRestore,
+  restoredId,
 }: {
   entries: QuotationHistoryEntry[];
   loading: boolean;
+  onRestore: (entry: QuotationHistoryEntry) => void;
+  restoredId: string | null;
 }) {
   return (
     <div className="w-80 max-h-[88vh] bg-[#FCFBF9] rounded-2xl shadow-2xl border border-[#EDE8DF] flex flex-col overflow-hidden">
@@ -5849,7 +6009,7 @@ function QuoteHistoryPanel({
         <div>
           <h3 className="text-[13px] font-bold text-[#1C1C1C]">Edit History</h3>
           <p className="text-[11px] text-[#9A8F82]">
-            Compare against earlier saves
+            Click any version to restore it into the form
           </p>
         </div>
       </div>
@@ -5865,20 +6025,43 @@ function QuoteHistoryPanel({
           </p>
         ) : (
           entries.map((entry, idx) => {
-            const revisionNo = entries.length - idx; // entries are newest-first; oldest edit = R1
+            const revisionNo = entries.length - idx; // newest-first; oldest edit = R1
+            const isRestored = restoredId === entry.id;
             return (
-              <div
+              <button
                 key={entry.id}
-                className="p-3.5 bg-white rounded-xl border border-[#EDE8DF] space-y-2.5"
+                type="button"
+                onClick={() => onRestore(entry)}
+                className={`w-full text-left p-3.5 rounded-xl border-2 space-y-2.5 transition-all group
+                  ${isRestored
+                    ? "border-[#C8922A] bg-[#FDF3E3] shadow-sm"
+                    : "border-[#EDE8DF] bg-white hover:border-[#C8922A]/50 hover:shadow-sm"
+                  }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-[#1C1C1C]">
-                    R{revisionNo}
-                    {idx === 0 ? " · Latest" : ""}
-                  </span>
-                  <span className="text-[10px] text-[#9A8F82]">
-                    {timeAgo(entry.created_at)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-bold ${isRestored ? "text-[#C8922A]" : "text-[#1C1C1C]"}`}>
+                      R{revisionNo}
+                      {idx === 0 ? " · Latest" : ""}
+                    </span>
+                    {isRestored && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider bg-[#C8922A] text-white px-1.5 py-0.5 rounded-full">
+                        Restored
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-[#9A8F82]">
+                      {timeAgo(entry.created_at)}
+                    </span>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-all
+                      ${isRestored
+                        ? "text-[#C8922A]"
+                        : "text-[#C8922A] opacity-0 group-hover:opacity-100"
+                      }`}>
+                      ↩ Restore
+                    </span>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {entry.changes.map((c, i) => (
@@ -5890,7 +6073,7 @@ function QuoteHistoryPanel({
                     by {entry.changed_by_name}
                   </p>
                 )}
-              </div>
+              </button>
             );
           })
         )}

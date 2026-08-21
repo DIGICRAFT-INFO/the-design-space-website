@@ -241,7 +241,8 @@ exports.update_quotation = async (req, res) => {
 
 exports.delete_quotation = async (req, res) => {
   try {
-    await Quotation.findByIdAndDelete(req.params.pk);
+    const quotation = await Quotation.findByIdAndDelete(req.params.pk);
+    if (!quotation) return res.status(404).json({ detail: 'Not found.' });
     await deleteNotificationsByReference(req.params.pk, 'quotation');
     res.status(204).send();
   } catch (error) {
@@ -338,6 +339,10 @@ exports.send_quotation = async (req, res) => {
   try {
     const quotation = await Quotation.findById(req.params.pk);
     if (!quotation) return res.status(404).json({ detail: 'Not found.' });
+    // Guard: only draft quotations can be sent; approved/superseded/rejected should not be reset
+    if (!['draft', 'sent'].includes(quotation.status)) {
+      return res.status(400).json({ detail: `Cannot send a quotation with status: ${quotation.status}` });
+    }
     quotation.status = 'sent';
     await quotation.save();
     res.json(quotation);

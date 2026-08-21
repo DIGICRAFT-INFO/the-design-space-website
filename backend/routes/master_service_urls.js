@@ -26,17 +26,13 @@ router.delete('/:id/assign/:assignmentId', is_authenticated, is_manager_or_above
 
 // GET /:id         → service detail
 // PUT /:id         → full update (manager+)
-// BUG FIX: Added PATCH support — frontend sends PATCH but old routes only had PUT
 // PATCH /:id       → partial update (manager+)
 // DELETE /:id      → delete (manager+)
+// NOTE: Only one registration — Express strict routing is off by default so
+// both /services/123 and /services/123/ are handled by the same route.
+// Having both /:id and /:id/ registered caused every request to execute the
+// handler TWICE, resulting in "Cannot set headers after they are sent" errors.
 router.route('/:id')
-  .get(is_authenticated, ctrl.get_service_detail)
-  .put(is_authenticated, is_manager_or_above, ctrl.update_service)
-  .patch(is_authenticated, is_manager_or_above, ctrl.update_service)
-  .delete(is_authenticated, is_manager_or_above, ctrl.delete_service);
-
-// BUG FIX: Also support trailing slash variants (Next.js/Axios may append /)
-router.route('/:id/')
   .get(is_authenticated, ctrl.get_service_detail)
   .put(is_authenticated, is_manager_or_above, ctrl.update_service)
   .patch(is_authenticated, is_manager_or_above, ctrl.update_service)

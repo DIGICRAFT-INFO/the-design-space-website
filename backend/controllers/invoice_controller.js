@@ -78,6 +78,8 @@ exports.get_invoices = async (req, res) => {
       const obj = inv.toJSON();
       obj.project_name = inv.project ? inv.project.name : null;
       obj.client_name  = inv.project && inv.project.client ? inv.project.client.full_name : null;
+      // Expose client_id so frontend can navigate to the client page on row click
+      obj.client_id    = inv.project && inv.project.client ? inv.project.client._id : null;
       return obj;
     });
 
@@ -136,7 +138,16 @@ exports.mark_invoice_paid = async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.pk);
     if (!invoice) return res.status(404).json({ detail: 'Not found.' });
-    invoice.status = 'paid';
+    // Guard: cancelled invoices must not be re-marked as paid
+    if (invoice.status === 'cancelled') {
+      return res.status(400).json({ detail: 'Cannot mark a cancelled invoice as paid.' });
+    }
+    // Explicitly set paid status + sync balance fields so dashboard totals are correct.
+    // update_balance() would re-read PaymentRecords, but for a manual "mark paid" action
+    // we treat the full grand_total as collected and zero out the balance.
+    invoice.status      = 'paid';
+    invoice.amount_paid = parseFloat(invoice.grand_total) || 0;
+    invoice.balance_due = 0;
     await invoice.save();
 
     await createNotification({
@@ -255,7 +266,9 @@ exports.update_invoice = async (req, res) => {
         igst_amount:    igstAmt,
         total_tax:      totalTax,
         grand_total:    grandTotal,
-        balance_due:    grandTotal,
+        // Preserve existing amount_paid so balance_due reflects actual remaining balance,
+        // not the full grand_total (which would ignore payments already recorded).
+        balance_due: Math.max(0, round2(grandTotal - (parseFloat(existingInv.amount_paid) || 0))),
       });
     }
 
@@ -289,6 +302,8 @@ exports.delete_invoice = async (req, res) => {
   try {
     const invoice = await Invoice.findByIdAndDelete(req.params.pk);
     if (!invoice) return res.status(404).json({ detail: 'Not found.' });
+    // Clean up all associated line items to avoid orphaned documents
+    await InvoiceItem.deleteMany({ invoice: req.params.pk });
     await deleteNotificationsByReference(req.params.pk, 'invoice');
     res.status(204).send();
   } catch (error) {

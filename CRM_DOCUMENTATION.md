@@ -1,6 +1,6 @@
 # The Design Space — CRM System Documentation
 
-> **Version:** 1.0 | **Last Updated:** August 2026  
+> **Version:** 1.1 | **Last Updated:** 21 August 2026
 > **Stack:** Next.js 14 (Frontend) · Express.js + MongoDB (Backend) · Cloudinary (Media)
 
 ---
@@ -261,6 +261,23 @@ Grand Total    = Taxable Amount + All Taxes
 
 Quotations can be created **without a project** — select "— No Project —" in the project dropdown. Useful for walk-in clients or quick estimates.
 
+#### 4.4.6 Edit History & Restore
+
+Every time a quotation is updated (PUT), the system automatically saves a history entry recording exactly what changed — which fields, old value vs new value.
+
+**Viewing history:**
+- Open any existing quotation for edit
+- Click the **History** button in the modal header — a panel slides in on the right
+- Each entry is labelled R1 (oldest) through R*n* · Latest (most recent)
+- Each entry shows the changed fields with before/after values highlighted in red/green
+
+**Restoring a previous version:**
+- Click any history card — it highlights with a gold border and shows a **"Restored"** badge
+- The edit form is instantly populated with that version's values (project, discount, tax rates, notes, all line items)
+- An amber banner appears: *"Snapshot restored — edit as needed, then click Update Quotation"*
+- Make any adjustments, then click **Update Quotation**
+- The system saves the new state and records it as the next history entry (R3, R4, etc.) automatically
+
 **Where to find it:** Dashboard → Quotations (global list) OR Clients → [Client] → Quotations tab
 
 ---
@@ -317,17 +334,42 @@ Copy suffix: INV-2026-001-C1 (copy of invoice 001)
 #### 4.5.5 Two Ways to Generate an Invoice
 
 **Option A — From Quotation:**
-- Requires an approved quotation
-- Line items and amounts copied from quotation
+- Requires an approved quotation (system blocks submission if quotation is not approved)
+- Line items and amounts copied from quotation (including category field)
 - Amounts scaled by milestone percentage
 - Tax rates inherited from quotation
+- System prevents creating a duplicate invoice for the same quotation — if an active invoice already exists, a clear error is shown
+- **Price preview shown live:** as you type the percentage (e.g. 30%), the exact rupee amount is shown immediately next to the input so you know what will be invoiced before submitting
 
 **Option B — Direct Invoice:**
 - No quotation required
 - Client + Project selection
 - Manual line items entry
 - Tax mode selected manually (CGST+SGST / IGST / Non-GST)
+- Milestone percentage field is shown and editable for non-Full invoice types
 - Totals calculated from entered items
+
+#### 4.5.6 Copy & Edit Invoice
+
+Any draft, issued, or overdue invoice can be **copied**:
+
+- A new draft invoice is created with a copy suffix (`INV-2026-001-C1`, then `C2`, etc.)
+- The original invoice is automatically **cancelled** (so it stops counting in totals)
+- The copy opens pre-filled with all original line items, dates, and notes — you can edit before saving
+- Cannot copy an invoice that has payments already recorded (to protect payment history)
+
+#### 4.5.7 Invoice Actions by Status
+
+| Status | Available Actions |
+|--------|-------------------|
+| Draft | Edit, Mark as Issued, Copy, PDF, Delete |
+| Issued | Record Payment, Mark as Paid, Remind, Edit, Copy, PDF, Email, WhatsApp |
+| Partial | Record Payment, Mark as Paid, Remind, Edit, PDF, Email, WhatsApp |
+| **Overdue** | **Record Payment, Mark as Paid**, Remind, Edit, PDF |
+| Paid | PDF, CSV, Email, WhatsApp |
+| Cancelled | View only |
+
+> **Note (v1.1):** Mark as Paid and Copy are now available from both the table row AND the invoice detail panel. Previously they were only in the row buttons.
 
 **Where to find it:** Dashboard → Invoices → "Generate Invoice" button
 
@@ -416,13 +458,15 @@ For Overdue, Partial, or Issued invoices — send reminder via:
 ### Invoice Status Summary
 
 | Status | Balance? | Actions Available |
-|---|---|---|
-| Draft | Full amount | Send, Edit, Delete |
-| Issued | Full amount | Record Payment, Remind, Mark Paid, Edit |
-| Partial | Partial amount remaining | Record Payment, Remind, Mark Paid, Edit |
+|--------|----------|-------------------|
+| Draft | Full amount | Send (Mark Issued), Edit, Copy, Delete |
+| Issued | Full amount | Record Payment, Remind, Mark Paid, Edit, Copy |
+| Partial | Partial remaining | Record Payment, Remind, Mark Paid, Edit |
 | Paid | ₹0 | PDF, CSV, Email, WhatsApp |
-| Overdue | Amount pending | Record Payment, Remind, Mark Paid |
+| Overdue | Amount pending | Record Payment, Remind, **Mark Paid** |
 | Cancelled | N/A | View only |
+
+> **v1.1 change:** Overdue invoices now show a "Mark as Paid" button directly — previously only possible from the global Invoices page.
 
 ### Quotation Status Summary
 
@@ -697,16 +741,54 @@ Staff clicks "Mark as Issued" → client is billed
 
 ### In-App Notifications
 
-Triggered automatically on:
+Triggered automatically on every major CRM action:
 
-| Event | Notification |
-|---|---|
-| Quotation created | "Quotation #QUOTE-2026-003 created" |
-| Quotation approved | "Quotation approved" |
-| Invoice generated | "Invoice INV-2026-001 created for ₹X" |
-| Invoice sent | "Invoice sent to client" |
-| Invoice paid | "Payment complete" |
-| Payment received | "Payment of ₹X recorded" |
+| Event | Notification Title | Trigger |
+|-------|--------------------|---------|
+| Client created | "New Client Added" | POST /clients/ |
+| Project created | "Project Created" | POST /clients/:id/projects/ |
+| Project status changed | "Project Status Updated" | PUT /clients/:id/projects/:id (status field) |
+| Quotation created | "Quotation Created" | POST /quotations/ |
+| Quotation approved | "Quotation Approved" | POST /quotations/:id/approve/ |
+| Quotation sent | "Quotation Sent to Client" | POST /quotations/:id/send/ |
+| Quotation revised | "Quotation Revised" | POST /quotations/:id/revise/ |
+| Quotation rejected | "Quotation Rejected" | PUT /quotations/:id/ with status=rejected |
+| Quotation copied | "Quotation Copied" | POST /quotations/:id/copy/ |
+| Invoice generated | "Invoice Generated" | POST /invoices/generate/ |
+| Invoice created (direct) | "Invoice Generated" | POST /invoices/direct/ |
+| Invoice copied | "Invoice Copied" | POST /invoices/:id/copy/ |
+| Invoice sent | "Invoice Sent" | POST /invoices/:id/send/ |
+| Invoice paid | "Payment Complete" | POST /invoices/:id/mark_paid/ |
+| Payment received | "Payment Received" | POST /payments/ |
+| Proposal created | "Proposal Created" | POST /proposals/ |
+| Proposal sent | "Proposal Sent" | PATCH /proposals/:id/status/ (sent) |
+| Proposal accepted | "Proposal Accepted" | PATCH /proposals/:id/status/ (accepted) |
+| Proposal rejected | "Proposal Rejected" | PATCH /proposals/:id/status/ (rejected) |
+| Service created | "New Service Added" | POST /services/ |
+| Portfolio entry created | "Portfolio Entry Created" | POST /portfolio/ |
+| New website enquiry | "New Website Enquiry" | Public contact form |
+| Career application | "New Career Application" | Public job application |
+| User created | "New User Added" | POST /rbac/users/ |
+| Access granted | "Access Granted" | PATCH /rbac/:id/grant |
+| Access revoked | "Access Revoked" | PATCH /rbac/:id/revoke |
+| Access updated | "Page Access Updated" | PATCH /rbac/:id/access |
+
+### Notification Bell (Top Bar)
+
+- Shows unread count badge (gold dot)
+- Refreshes count automatically every 30 seconds
+- Click bell → dropdown shows 10 most recent notifications
+- Click any notification → marks it as read
+- "Mark all as read" button clears count
+- "View all notifications" → full notifications page
+
+### Notifications Page (`/dashboard/notifications`)
+
+Full paginated list with:
+- **Filter by type:** Clients, Invoices, Quotations, Payments, Proposals, Projects, Services, Portfolio
+- **Filter by read status:** All / Unread / Read
+- Per-notification delete button
+- Pagination (20 per page)
 
 ### Automated Reminders (Daily Cron — 9:00 AM)
 
@@ -720,14 +802,20 @@ Triggered automatically on:
 
 Staff can manually trigger reminders from:
 - **Payment Tracker** — "Remind" button → WhatsApp or Email
-- **Invoices page** — "Remind" button on each invoice
+- **Invoices page** — "Remind" button on each invoice detail panel
 
 ---
 
 ## 11. Known Fixes Applied
 
+This section records all bugs found and fixed. Split into **original fixes (v1.0)** and **v1.1 audit fixes** applied on 21 August 2026.
+
+---
+
+### v1.0 Fixes (Original)
+
 | # | Issue | Fix |
-|---|---|---|
+|---|-------|-----|
 | 1 | Invoice overdue status only updated by cron (once daily) | Added real-time overdue check on every `GET /invoices/` call |
 | 2 | `generate_invoice` required approved quotation — no direct invoicing | Added `POST /invoices/direct/` endpoint + `create_direct_invoice` service |
 | 3 | Invoice detail had no link to source quotation | Added "Linked Quotation" button in invoice detail panel |
@@ -737,7 +825,118 @@ Staff can manually trigger reminders from:
 | 7 | Invoice `balance_due` could go negative | Added `Math.max(0, balance)` in `update_balance()` |
 | 8 | Frontend token lookup inconsistent (`access` vs `access_token`) | Unified all token lookups to check all 3 storage keys |
 | 9 | Double-counting in dashboard stats for copied invoices | Cancelled invoices excluded from totals |
-| 10 | `partially_paid` status mismatch | Canonical enum is `partial`; frontend maps both for backwards compatibility |
+| 10 | `partially_paid` status mismatch | Canonical enum is `partial`; removed dead `partially_paid` alias from frontend config |
+
+---
+
+### v1.1 Fixes — CRUD Audit (21 August 2026)
+
+#### Critical / Startup
+
+| # | File | Bug | Fix |
+|---|------|-----|-----|
+| 1 | `backend/models/Notification.js` | TypeScript frontend file accidentally placed in backend models — would crash server on require | Deleted from backend |
+| 2 | `backend/routes/master_service_urls.js` | Both `/:id` and `/:id/` registered — double handler execution on every request, causing `Cannot set headers after they are sent` | Removed duplicate `/:id/` registration |
+| 3 | `backend/routes/portfolio_urls.js` | Same double-registration issue | Removed duplicate `/:id/` registration |
+
+#### Missing Error Handling
+
+| # | File | Bug | Fix |
+|---|------|-----|-----|
+| 4 | `backend/controllers/notification_controller.js` | 8 async handlers (`send_proposal_email`, `send_invoice_whatsapp`, `send_quotation_whatsapp`, `send_proposal_whatsapp`, `send_invoice_email`, `send_quotation_email`, `send_both_reminders`, `get_notification_logs`) had no try/catch | All 8 wrapped in try/catch with correct status codes |
+
+#### Wrong Field Names / Queries
+
+| # | File | Bug | Fix |
+|---|------|-----|-----|
+| 5 | `backend/controllers/master_service_controller.js` | `populate('assigned_by', 'name')` — User model field is `full_name` not `name`. `assigned_by` always returned `{}` | Changed to `populate('assigned_by', 'full_name')` |
+| 6 | `backend/controllers/client_controller.js` | `get_client_detail` used `$or [{ _id: pk }, { id: pk }]` — `id` is a Mongoose virtual, not a real DB field | Replaced with `findById(pk)` |
+
+#### Missing 404 Checks
+
+| # | File | Bug | Fix |
+|---|------|-----|-----|
+| 7 | `backend/controllers/quotation_controller.js` | `delete_quotation` always returned 204 even if record didn't exist | Now checks result and returns 404 if null |
+| 8 | `backend/controllers/in_app_notification_controller.js` | `deleteNotification` always returned 204 | Returns 404 if notification not found |
+
+#### Status Machine / Business Logic
+
+| # | File | Bug | Fix |
+|---|------|-----|-----|
+| 9 | `backend/controllers/quotation_controller.js` | `send_quotation` had no status guard — could reset approved/superseded quotation back to sent | Added guard: only draft or sent quotations can be sent |
+| 10 | `backend/controllers/invoice_controller.js` | `mark_invoice_paid` set status=paid but never updated `amount_paid` or `balance_due`; also allowed marking cancelled invoice as paid | Added cancelled guard; now sets `amount_paid = grand_total`, `balance_due = 0` |
+
+#### Security / Required Fields
+
+| # | File | Bug | Fix |
+|---|------|-----|-----|
+| 11 | `backend/controllers/master_service_controller.js` | `created_by` and `assigned_by` could be null despite `required: true` in schema | Added `if (!req.user) return 401` guard before create |
+
+#### Data Leakage / Performance
+
+| # | File | Bug | Fix |
+|---|------|-----|-----|
+| 12 | `backend/controllers/web_blog_controller.js` | Public blog had no `status:'published'` filter — drafts visible on website; `.slice()` in JS instead of DB `.limit()` | Added published filter; moved limit to DB query |
+| 13 | `backend/controllers/web_leads_controller.js` | `get_overview` fetched all Portfolio/Blog/Enquiry/Application records into memory then `.slice(5)` | Added `.limit(5)` to all 4 DB queries |
+
+---
+
+### v1.1 Fixes — Invoice System Audit (21 August 2026)
+
+#### Backend
+
+| # | File | Bug | Fix |
+|---|------|-----|-----|
+| 14 | `backend/services/invoice_service.js` | `generate_invoice_from_quotation` omitted `category` field when copying items from quotation — blank categories on all generated invoices | Added `category: q_item.category \|\| ''` to item map |
+| 15 | `backend/services/invoice_service.js` | No duplicate invoice guard — could generate two active invoices for same quotation | Added check for existing non-cancelled invoice before creating |
+| 16 | `backend/controllers/invoice_controller.js` | `update_invoice` always set `balance_due = grand_total`, ignoring existing `amount_paid` — editing line items wiped payment history from balance | Changed to `balance_due = grand_total - amount_paid` |
+| 17 | `backend/controllers/invoice_controller.js` | `mark_invoice_paid` set status=paid but `amount_paid` stayed 0 and `balance_due` stayed at full amount | Now sets `amount_paid = grand_total`, `balance_due = 0` |
+| 18 | `backend/controllers/invoice_controller.js` | `delete_invoice` did not delete associated `InvoiceItem` records — orphaned documents accumulated in DB | Added `InvoiceItem.deleteMany({ invoice: id })` |
+| 19 | `backend/controllers/invoice_controller.js` | `get_invoices` response did not include `client_id` — row-click to client page navigation always fell back to opening detail panel | Added `obj.client_id = inv.project?.client?._id ?? null` to response |
+
+#### Frontend — `invoices/page.tsx`
+
+| # | Bug | Fix |
+|---|-----|-----|
+| 20 | Dead `partially_paid` status in `statusConfig` (not a real backend enum value) — filter returned zero results | Removed `partially_paid` from `statusConfig` |
+| 21 | "Amount Received" stat summed `grand_total` of paid invoices instead of `amount_paid` | Changed to use `amount_paid` field |
+| 22 | "Balance Pending" stat excluded overdue invoices | Added `"overdue"` to the pending filter |
+| 23 | Copy modal Cancel button only closed modal — `copySourceInvoice` and `copyForm` state leaked to next open | Created `closeCopyModal()` that resets all copy state |
+| 24 | Copy modal header hardcoded `-C1` regardless of existing copies | Removed hardcoded suffix |
+| 25 | `openCopyModal` had no loading guard — double-clicks fired multiple requests | Added `copyLoading` state; Copy button disabled while loading |
+| 26 | `handleMarkPaid` and `handleSend` showed only "Failed" on error — no backend error detail | Changed to show `err?.detail \|\| err?.message` |
+| 27 | "Mark Paid" button not shown for overdue invoices in row or detail panel | Added `"overdue"` to the status condition |
+
+#### Frontend — `invoices/generate/page.tsx`
+
+| # | Bug | Fix |
+|---|-----|-----|
+| 28 | Could submit Generate Invoice form with a non-approved quotation — backend would reject but UX was poor | Button disabled + validation error when quotation is not approved |
+| 29 | Fixed amount > grand total not validated — could generate invoice worth more than quotation | Added validation: `fixedAmount > qGrandTotal` blocks submission |
+| 30 | Client filter fallback showed ALL quotations when client had none — misleading and data-leaking | Removed fallback; shows empty if client has no quotations |
+
+#### Frontend — `clients/[id]/page.tsx`
+
+| # | Bug | Fix |
+|---|-----|-----|
+| 31 | `submitInvoiceEdit` called `updateInvoice()` with `items` passed as `as any` — wrong function, type error hidden | Changed to `updateInvoiceFull()` with correct typing; added to imports |
+| 32 | `submitInvoiceEdit` used `viewingInvoice?.id` at submit time — if detail view was cleared during edit, submit silently did nothing | Added `editingInvoiceId` state; set on `openInvoiceEdit(iid)`; used independently in `submitInvoiceEdit` |
+| 33 | "Mark Paid" button not shown for overdue invoices (row and detail panel) | Added `\|\| inv.status === "overdue"` to both conditions |
+| 34 | No Copy button in invoice detail panel — only in table row | Added Copy button to detail panel actions |
+| 35 | `handleInvoiceSubmit` sent request even when no quotation was selected | Added `if (!invoiceForm.quotation_id)` validation before submit |
+| 36 | Quotation select in generate invoice modal listed all quotations in a flat list | Added `<optgroup>` — Approved quotations first, others clearly labelled as "not approved" |
+| 37 | `invoiceStats.pending` (client detail balance card) excluded overdue invoices | Added `"overdue"` to the filter |
+
+---
+
+### v1.1 UI Improvements (21 August 2026)
+
+| # | Change | Description |
+|---|--------|-------------|
+| 1 | Generate Invoice modal — price preview | When selecting a milestone percentage (Advance/Milestone/Final), the exact rupee amount is now shown live next to the % input. For Full (100%), a summary card shows the full amount. Uses `en-IN` locale formatting. |
+| 2 | Quotation modal — category column width | Category dropdown was showing truncated text ("Fu" instead of "Furniture"). Column span increased from 1 to 2 in the 12-column line item grid. |
+| 3 | Quotation modal — discount row | Discount row now hidden when no discount is applied (was showing -₹0.00 which looked like an error). When shown, includes the percentage in the label: "Discount (10%)". |
+| 4 | Quotation Edit History — Restore | History cards are now clickable. Clicking a version (R1, R2, etc.) restores that snapshot into the edit form. An amber banner confirms the restore. Editing any field clears the restore indicator. Saving creates a new history entry automatically. |
 
 ---
 
@@ -746,12 +945,40 @@ Staff can manually trigger reminders from:
 ### Invoice Lifecycle (Quick View)
 
 ```
-CREATE →  draft
-SEND   →  issued
-PART-PAY→ partial
-FULL-PAY→ paid
-OVERDUE →  overdue (auto, when due_date passes)
-COPY   →  new draft (original gets cancelled)
+CREATE  →  draft
+SEND    →  issued
+PART-PAY→  partial
+FULL-PAY→  paid
+OVERDUE →  overdue  (auto, when due_date passes)
+COPY    →  new draft (original auto-cancelled)
+MARK PAID → paid (available from issued, partial, overdue)
+```
+
+### Generate Invoice — Quick Steps (From Quotation)
+
+```
+1. Open Client → Quotations tab
+2. Ensure quotation status is "Approved"
+3. Click Invoices tab → Generate Invoice
+4. Select "From Quotation"
+5. Choose quotation from dropdown (approved shown first)
+6. Select invoice type (Advance / Full / Milestone / Final)
+7. Set percentage — live ₹ amount preview shown next to input
+8. Set invoice date and due days
+9. Click "Generate Invoice"
+10. Invoice appears as "Draft" — click "Mark as Issued" to send
+```
+
+### Restore Quotation History — Quick Steps
+
+```
+1. Open Client → Quotations tab → click Edit on any quotation
+2. Click "History" button in modal header (top right)
+3. History panel opens on the right showing R1, R2, R3 etc.
+4. Click any version card — form restores to that state
+5. Amber banner confirms: "Snapshot restored"
+6. Edit as needed
+7. Click "Update Quotation" — saved as new history entry
 ```
 
 ### Payment Entry Checklist
@@ -761,27 +988,12 @@ COPY   →  new draft (original gets cancelled)
 □ Enter exact amount received
 □ Set correct payment date
 □ Choose payment mode
-□ Enter reference number (UTR/UPI ID/Cheque no.)
+□ Enter reference number (UTR / UPI ID / Cheque no.)
 □ Add notes if needed
 □ Click "Record Payment"
 □ Verify balance updates on screen
 ```
 
-### Quotation to Invoice — Quick Steps
-
-```
-1. Open Client → Quotations tab
-2. Ensure quotation is "Approved"
-3. Click Invoices tab → Generate Invoice
-4. Select "From Quotation"
-5. Choose quotation from dropdown
-6. Select invoice type (Advance/Full/Milestone/Final)
-7. Set percentage if not Full
-8. Set invoice date and due days
-9. Click "Generate Invoice"
-10. Invoice appears as "Draft" — click "Mark as Issued" to send
-```
-
 ---
 
-*This document covers The Design Space CRM system as built on the current codebase. For technical queries contact the development team.*
+*This document covers The Design Space CRM system. Version 1.1 — Updated 21 August 2026.*
