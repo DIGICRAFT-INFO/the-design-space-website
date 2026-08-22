@@ -1709,6 +1709,10 @@ const handleProjectEditClick = (proj: any) => {
       );
       return;
     }
+
+    // Prevent double-open while loading
+    if (isCopyModalOpen) return;
+
     // Fetch full detail (with items)
     const full = await getInvoiceById(inv.id);
     setCopySourceInvoice(full);
@@ -1730,6 +1734,12 @@ const handleProjectEditClick = (proj: any) => {
       })),
     });
     setIsCopyModalOpen(true);
+  };
+
+  const closeCopyInvoiceModal = () => {
+    setIsCopyModalOpen(false);
+    setCopySourceInvoice(null);
+    setCopyForm({ invoice_type: "full", invoice_date: "", due_date: "", notes: "", items: [] });
   };
 
   const updateCopyItem = (key: string, field: string, value: string) => {
@@ -1781,13 +1791,12 @@ const handleProjectEditClick = (proj: any) => {
           rate: it.rate,
         })),
       });
-      setIsCopyModalOpen(false);
-      setCopySourceInvoice(null);
+      closeCopyInvoiceModal();
       await fetchInvoices();
       // Auto-open the newly created copy in the detail panel
       if (newInv?.id) await fetchInvoiceDetail(newInv.id);
     } catch (e: any) {
-      alert(e?.message || "Copy failed");
+      alert(e?.detail || e?.message || "Copy failed. Please try again.");
     } finally {
       setCopySubmitting(false);
     }
@@ -3469,19 +3478,28 @@ const handleProjectEditClick = (proj: any) => {
                                   )}
                                 </button>
 
-                                {/* ── COPY button ── */}
-                                {/* Hidden for paid/partial invoices — copying */}
-                                {/* would create a second live invoice for */}
-                                {/* money that's already been collected. */}
-                                {!["paid", "partial"].includes(inv.status) && (
-                                  <button
-                                    onClick={() => openCopyModal(inv)}
-                                    title="Copy & Edit Invoice"
-                                    className="p-1.5 bg-amber-50 text-amber-700 rounded-md hover:bg-amber-100"
-                                  >
-                                    <Copy size={13} />
-                                  </button>
-                                )}
+                                {/* ── COPY button — always visible, disabled for paid/partial ── */}
+                                <button
+                                  onClick={() => {
+                                    if (["paid", "partial"].includes(inv.status)) {
+                                      alert("This invoice has payments recorded and cannot be copied. Create a new invoice instead.");
+                                      return;
+                                    }
+                                    openCopyModal(inv);
+                                  }}
+                                  title={
+                                    ["paid", "partial"].includes(inv.status)
+                                      ? "Cannot copy — payments already recorded"
+                                      : "Copy & Edit Invoice"
+                                  }
+                                  className={`p-1.5 rounded-md transition-colors ${
+                                    ["paid", "partial"].includes(inv.status)
+                                      ? "bg-gray-50 text-gray-300 cursor-not-allowed"
+                                      : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                  }`}
+                                >
+                                  <Copy size={13} />
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -5164,15 +5182,11 @@ const handleProjectEditClick = (proj: any) => {
                   <span className="font-semibold text-[#C8922A]">
                     {copySourceInvoice.invoice_number}
                   </span>{" "}
-                  → will create{" "}
-                  <span className="font-semibold text-[#C8922A]">
-                    {copySourceInvoice.invoice_number}-C1
-                  </span>{" "}
-                  (or next suffix)
+                  → a new draft copy will be created with the next available suffix
                 </p>
               </div>
               <button
-                onClick={() => setIsCopyModalOpen(false)}
+                onClick={closeCopyInvoiceModal}
                 className="text-[#9A8F82] hover:text-red-500"
               >
                 <X size={18} />
@@ -5448,7 +5462,7 @@ const handleProjectEditClick = (proj: any) => {
             {/* Footer */}
             <div className="px-6 py-4 border-t border-[#EDE8DF] flex justify-end gap-3 bg-[#FAF8F5] rounded-b-2xl">
               <button
-                onClick={() => setIsCopyModalOpen(false)}
+                onClick={closeCopyInvoiceModal}
                 className="px-4 py-2 rounded-lg border border-[#EDE8DF] text-[13px] font-semibold text-[#6B6259] hover:bg-[#F5F2ED]"
               >
                 Cancel

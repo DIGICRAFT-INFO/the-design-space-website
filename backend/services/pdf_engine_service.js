@@ -99,8 +99,8 @@ const draw_footer = (doc, brand) => {
 // ── Info boxes ────────────────────────────────────────────────────────────────
 const draw_info_boxes = (doc, left_title, left_lines, right_title, right_lines, y) => {
   const col1 = 36, col2 = 302;
-  const lh   = left_lines.length  * 14 + 24;
-  const rh   = right_lines.length * 14 + 24;
+  const lh   = left_lines.length  * 14 + 28;
+  const rh   = right_lines.length * 14 + 28;
 
   doc.rect(col1, y, 250, lh).fillAndStroke(BGALT, LGREY).lineWidth(0.5);
   doc.rect(col2, y, 257, rh).fillAndStroke(BGALT, LGREY).lineWidth(0.5);
@@ -112,7 +112,8 @@ const draw_info_boxes = (doc, left_title, left_lines, right_title, right_lines, 
   let ly = y + 24;
   left_lines.forEach(([label, value]) => {
     doc.fontSize(8.5).fillColor(GREY).font('Helvetica').text(label + ':', col1 + 8, ly);
-    doc.fontSize(8.5).fillColor(DARK).font('Helvetica-Bold').text(String(value || '—'), col1 + 78, ly);
+    doc.fontSize(8.5).fillColor(DARK).font('Helvetica-Bold')
+       .text(String(value || '—'), col1 + 78, ly, { width: 172 });
     ly += 14;
   });
 
@@ -123,7 +124,8 @@ const draw_info_boxes = (doc, left_title, left_lines, right_title, right_lines, 
   let ry = y + 24;
   right_lines.forEach(([label, value]) => {
     doc.fontSize(8.5).fillColor(GREY).font('Helvetica').text(label + ':', col2 + 8, ry);
-    doc.fontSize(8.5).fillColor(DARK).font('Helvetica-Bold').text(String(value || '—'), col2 + 84, ry);
+    doc.fontSize(8.5).fillColor(DARK).font('Helvetica-Bold')
+       .text(String(value || '—'), col2 + 84, ry, { width: 165 });
     ry += 14;
   });
 
@@ -227,6 +229,8 @@ exports.render_quotation_pdf = async (quotation) => {
       ['Client',  (client && client.full_name) || '—'],
       ['Email',   (client && client.email)     || '—'],
       ['Phone',   (client && client.phone)     || '—'],
+      ['Address', (client && (client.billing_address || client.site_address)) || '—'],
+      ...(client && client.gstin ? [['GSTIN', client.gstin]] : []),
       ['Project', (quotation.project && quotation.project.name) || '—'],
     ],
     'Quotation Details',
@@ -358,6 +362,8 @@ exports.render_invoice_pdf = async (invoice) => {
       ['Client',  client && client.full_name],
       ['Email',   client && client.email],
       ['Phone',   client && client.phone],
+      ['Address', client && (client.billing_address || client.site_address)],
+      ...(client && client.gstin ? [['GSTIN', client.gstin]] : []),
       ['Project', invoice.project && invoice.project.name],
     ],
     'Invoice Details',
