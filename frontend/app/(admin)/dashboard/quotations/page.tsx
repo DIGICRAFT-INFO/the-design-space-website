@@ -382,6 +382,7 @@ export default function QuotationsPage() {
   const [formMeta, setFormMeta] = useState({
     valid_until: "", discount_type: "fixed", discount_value: "0",
     cgst_rate: "9", sgst_rate: "9", igst_rate: "0", notes: "", taxMode: "cgst_sgst",
+    billing_address: "", site_address: "",
   });
   const [gstEnabled, setGstEnabled] = useState(true);
 
@@ -440,7 +441,18 @@ export default function QuotationsPage() {
   function handleClientChange(clientId: string) {
     setSelectedClientId(clientId);
     setSelectedProjectId("");
-    setSelectedClient(clients.find(c => c.id === clientId) || null);
+    const c = clients.find(c => c.id === clientId) || null;
+    setSelectedClient(c);
+    // Auto-fill addresses from client
+    if (c) {
+      setFormMeta(prev => ({
+        ...prev,
+        billing_address: c.billing_address || "",
+        site_address: (c as any).site_address || "",
+      }));
+    } else {
+      setFormMeta(prev => ({ ...prev, billing_address: "", site_address: "" }));
+    }
   }
 
   function handleClientCreated(client: Client) {
@@ -538,7 +550,7 @@ export default function QuotationsPage() {
     setEditingId(null);
     setSelectedClientId(""); setSelectedClient(null); setSelectedProjectId("");
     setItems([{ ...EMPTY_ITEM }]);
-    setFormMeta({ valid_until: "", discount_type: "fixed", discount_value: "0", cgst_rate: "9", sgst_rate: "9", igst_rate: "18", notes: "", taxMode: "cgst_sgst" });
+    setFormMeta({ valid_until: "", discount_type: "fixed", discount_value: "0", cgst_rate: "9", sgst_rate: "9", igst_rate: "18", notes: "", taxMode: "cgst_sgst", billing_address: "", site_address: "" });
     setIsModalOpen(true);
   }
 
@@ -585,6 +597,8 @@ export default function QuotationsPage() {
         cgst_rate: String(cgstR), sgst_rate: String(sgstR), igst_rate: String(igstR || 18),
         notes: q.notes || "",
         taxMode,
+        billing_address: (q as any).billing_address || "",
+        site_address:    (q as any).site_address    || "",
       });
       setItems(q.items?.length ? q.items.map(it => ({
         id: it.id, service: it.service || "", service_image_url: it.service_image_url || "",
@@ -617,6 +631,8 @@ export default function QuotationsPage() {
         sgst_rate:  noGst || useIgst ? 0 : parseFloat(formMeta.sgst_rate) || 0,
         igst_rate:  noGst || !useIgst ? 0 : parseFloat(formMeta.igst_rate) || 0,
         notes: formMeta.notes,
+        billing_address: formMeta.billing_address || "",
+        site_address:    formMeta.site_address    || "",
         items: items.filter(it => it.description.trim() || it.service).map((it, idx) => ({
           ...(it.id ? { id: it.id } : {}),
           service: it.service || null,
@@ -889,6 +905,34 @@ export default function QuotationsPage() {
                   <label className="block text-[10px] font-black text-[#9A8F82] uppercase mb-1">Valid Until <span className="font-normal text-[#C8B89C] normal-case">(optional)</span></label>
                   <input type="date" value={formMeta.valid_until} onChange={e => setFormMeta({...formMeta, valid_until: e.target.value})}
                     className="w-full border border-[#EDE8DF] rounded-lg p-2 text-[13px] outline-none focus:border-[#C8922A] bg-[#FAF8F5]"/>
+                </div>
+              </div>
+
+              {/* Row 1b: Billing Address + Site Address */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-[#9A8F82] uppercase mb-1">
+                    Billing Address <span className="font-normal text-[#C8B89C] normal-case">(auto-filled from client)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formMeta.billing_address}
+                    onChange={e => setFormMeta({...formMeta, billing_address: e.target.value})}
+                    placeholder="e.g. 12, MG Road, Raipur"
+                    className="w-full border border-[#EDE8DF] rounded-lg p-2 text-[13px] outline-none focus:border-[#C8922A] bg-[#FAF8F5]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-[#9A8F82] uppercase mb-1">
+                    Site Address <span className="font-normal text-[#C8B89C] normal-case">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formMeta.site_address}
+                    onChange={e => setFormMeta({...formMeta, site_address: e.target.value})}
+                    placeholder="e.g. Bhavna Nagar, Raipur"
+                    className="w-full border border-[#EDE8DF] rounded-lg p-2 text-[13px] outline-none focus:border-[#C8922A] bg-[#FAF8F5]"
+                  />
                 </div>
               </div>
 

@@ -139,6 +139,8 @@ export type DirectInvoicePayload = {
   invoice_date: string;
   due_days?: number;
   notes?: string;
+  billing_address?: string;
+  site_address?: string;
   cgst_rate?: number;
   sgst_rate?: number;
   igst_rate?: number;

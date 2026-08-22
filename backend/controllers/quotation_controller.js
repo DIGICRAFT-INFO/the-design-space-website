@@ -421,6 +421,8 @@ exports.copy_quotation = async (req, res) => {
       sgst_rate:      source.sgst_rate,
       igst_rate:      source.igst_rate,
       notes:          req.body.notes !== undefined ? req.body.notes : source.notes,
+      billing_address: req.body.billing_address !== undefined ? req.body.billing_address : (source.billing_address || ''),
+      site_address:    req.body.site_address    !== undefined ? req.body.site_address    : (source.site_address    || ''),
     }], { session });
 
     // ── Clone line items (with any edits from req.body.items) ───────────────

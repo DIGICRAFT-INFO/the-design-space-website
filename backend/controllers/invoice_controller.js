@@ -419,6 +419,8 @@ exports.copy_invoice = async (req, res) => {
       balance_due:        source.grand_total,
       amount_paid:        0,
       notes:              req.body.notes !== undefined ? req.body.notes : source.notes,
+      billing_address:    source.billing_address || '',
+      site_address:       source.site_address    || '',
     }], { session });
 
     // ── Clone line items (with any edits from req.body.items) ───────────────

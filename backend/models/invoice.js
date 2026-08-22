@@ -38,6 +38,10 @@ const invoiceSchema = new mongoose.Schema(
     balance_due: { type: Number, default: 0 },
     
     notes: { type: String, default: '' },
+
+    // Address fields (auto-filled from client, editable per invoice)
+    billing_address: { type: String, default: '' },
+    site_address:    { type: String, default: '' },
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

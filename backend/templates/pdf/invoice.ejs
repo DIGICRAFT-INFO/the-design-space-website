@@ -279,17 +279,24 @@
         <% if (client.phone) { %>
           <p><span class="label">Phone:</span> <%= client.phone %></p>
         <% } %>
-        <% if (client.billing_address) { %>
-          <p><span class="label">Address:</span> <%= client.billing_address %></p>
-        <% } else if (client.site_address) { %>
-          <p><span class="label">Address:</span> <%= client.site_address %></p>
-        <% } %>
-        <% if (client.city || client.state) { %>
-          <p><span class="label"></span> <%= [client.city, client.state, client.country].filter(Boolean).join(', ') %></p>
-        <% } %>
         <% if (client.gstin) { %>
           <p><span class="label">GSTIN:</span> <%= client.gstin %></p>
         <% } %>
+      <% } %>
+      <%
+        // Use invoice-level address if set, else fall back to client address
+        var billAddr = (invoice.billing_address && invoice.billing_address.trim())
+          ? invoice.billing_address
+          : (client && client.billing_address ? client.billing_address : null);
+        var siteAddr = (invoice.site_address && invoice.site_address.trim())
+          ? invoice.site_address
+          : (client && client.site_address ? client.site_address : null);
+      %>
+      <% if (billAddr) { %>
+        <p style="margin-top:4px;"><span class="label">Billing Addr:</span> <%= billAddr %></p>
+      <% } %>
+      <% if (siteAddr) { %>
+        <p><span class="label">Site Addr:</span> <%= siteAddr %></p>
       <% } %>
       <% if (invoice.project) { %>
         <p style="margin-top:6px;"><span class="label">Project:</span> <%= invoice.project.name %></p>

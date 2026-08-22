@@ -234,17 +234,24 @@
         <% if (client.phone) { %>
           <p><span class="label">Phone:</span> <%= client.phone %></p>
         <% } %>
-        <% if (client.billing_address) { %>
-          <p><span class="label">Address:</span> <%= client.billing_address %></p>
-        <% } else if (client.site_address) { %>
-          <p><span class="label">Address:</span> <%= client.site_address %></p>
-        <% } %>
-        <% if (client.city || client.state) { %>
-          <p><span class="label"></span> <%= [client.city, client.state, client.country].filter(Boolean).join(', ') %></p>
-        <% } %>
         <% if (client.gstin) { %>
           <p><span class="label">GSTIN:</span> <%= client.gstin %></p>
         <% } %>
+      <% } %>
+      <%
+        // Use quotation-level address if set, else fall back to client address
+        var billAddr = (quotation.billing_address && quotation.billing_address.trim())
+          ? quotation.billing_address
+          : (client && client.billing_address ? client.billing_address : null);
+        var siteAddr = (quotation.site_address && quotation.site_address.trim())
+          ? quotation.site_address
+          : (client && client.site_address ? client.site_address : null);
+      %>
+      <% if (billAddr) { %>
+        <p style="margin-top:4px;"><span class="label">Billing Addr:</span> <%= billAddr %></p>
+      <% } %>
+      <% if (siteAddr) { %>
+        <p><span class="label">Site Addr:</span> <%= siteAddr %></p>
       <% } %>
       <% if (quotation.project) { %>
         <p style="margin-top:6px;"><span class="label">Project:</span> <%= quotation.project.name %></p>

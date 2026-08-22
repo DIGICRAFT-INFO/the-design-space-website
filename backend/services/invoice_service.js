@@ -26,7 +26,7 @@ exports.generate_invoice_from_quotation = async (data) => {
   session.startTransaction(); // Django @transaction.atomic
   
   try {
-    const { quotation_id, invoice_type = 'full', milestone_label = '', milestone_percentage = 100, invoice_date, due_days = 15, notes = '' } = data;
+    const { quotation_id, invoice_type = 'full', milestone_label = '', milestone_percentage = 100, invoice_date, due_days = 15, notes = '', billing_address = '', site_address = '' } = data;
     
     const quotation = await Quotation.findById(quotation_id).populate('items').session(session);
     if (!quotation) throw new Error('Quotation not found');
@@ -74,7 +74,9 @@ exports.generate_invoice_from_quotation = async (data) => {
       milestone_label,
       milestone_percentage,
       subtotal, taxable_amount, cgst_amount, sgst_amount, igst_amount, total_tax, grand_total, balance_due: grand_total,
-      notes
+      notes,
+      billing_address: billing_address || quotation.billing_address || '',
+      site_address:    site_address    || quotation.site_address    || '',
     }], { session });
 
     // Copy line items (scaled) — includes category field (was missing before)
@@ -122,6 +124,8 @@ exports.create_direct_invoice = async (data) => {
       cgst_rate = 0,
       sgst_rate = 0,
       igst_rate = 0,
+      billing_address = '',
+      site_address = '',
     } = data;
 
     if (!project_id && !client_id) {
@@ -173,6 +177,8 @@ exports.create_direct_invoice = async (data) => {
       grand_total: grandTotal,
       balance_due: grandTotal,
       notes,
+      billing_address: billing_address || '',
+      site_address:    site_address    || '',
     }], { session });
 
     if (items.length > 0) {

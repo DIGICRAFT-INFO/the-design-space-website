@@ -75,10 +75,12 @@ export default function GenerateInvoicePage() {
     milestone_label: string; milestone_percentage: number;
     invoice_date: string; due_days: number; notes: string;
     cgst_rate: string; sgst_rate: string; igst_rate: string; tax_mode: "cgst_sgst" | "igst" | "none";
+    billing_address: string; site_address: string;
   }>({
     client_id: "", project_id: "", invoice_type: "full", milestone_label: "",
     milestone_percentage: 100, invoice_date: new Date().toISOString().split("T")[0],
     due_days: 15, notes: "", cgst_rate: "0", sgst_rate: "0", igst_rate: "0", tax_mode: "none",
+    billing_address: "", site_address: "",
   });
   const [dItems, setDItems] = useState([EMPTY_ITEM()]);
   const [dErrors, setDErrors] = useState<Record<string, string>>({});
@@ -221,6 +223,8 @@ export default function GenerateInvoicePage() {
         invoice_date: dForm.invoice_date,
         due_days: dForm.due_days,
         notes: dForm.notes || undefined,
+        billing_address: dForm.billing_address || undefined,
+        site_address:    dForm.site_address    || undefined,
         cgst_rate: dForm.tax_mode === "cgst_sgst" ? parseFloat(dForm.cgst_rate) || 0 : 0,
         sgst_rate: dForm.tax_mode === "cgst_sgst" ? parseFloat(dForm.sgst_rate) || 0 : 0,
         igst_rate: dForm.tax_mode === "igst"       ? parseFloat(dForm.igst_rate) || 0 : 0,
@@ -493,8 +497,16 @@ export default function GenerateInvoicePage() {
                       <label className="block text-[11px] font-bold text-[#9A8F82] uppercase tracking-wide mb-1.5">Client *</label>
                       <select value={dForm.client_id}
                         onChange={e => {
-                          setDForm(f => ({ ...f, client_id: e.target.value, project_id: "" }));
-                          fetchProjects(e.target.value);
+                          const cid = e.target.value;
+                          const selClient = clients.find(c => c.id === cid);
+                          setDForm(f => ({
+                            ...f,
+                            client_id: cid,
+                            project_id: "",
+                            billing_address: selClient ? (selClient as any).billing_address || "" : "",
+                            site_address:    selClient ? (selClient as any).site_address    || "" : "",
+                          }));
+                          fetchProjects(cid);
                         }}
                         className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none bg-[#FAF8F5] ${dErrors.project_id ? "border-red-300" : "border-[#EDE8DF] focus:border-[#C8922A]"}`}>
                         <option value="">— Select client —</option>
@@ -509,6 +521,33 @@ export default function GenerateInvoicePage() {
                         <option value="">— Auto-select first project —</option>
                         {projectsLoading ? <option disabled>Loading…</option> : projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
+                    </div>
+                  </div>
+                  {/* Address fields — auto-filled from client, editable */}
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#9A8F82] uppercase tracking-wide mb-1.5">
+                        Billing Address <span className="font-normal normal-case text-[#C8B89C]">(auto-filled)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={dForm.billing_address}
+                        onChange={e => setDForm(f => ({ ...f, billing_address: e.target.value }))}
+                        placeholder="e.g. 12, MG Road, Raipur"
+                        className="w-full border border-[#EDE8DF] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C8922A] bg-[#FAF8F5]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#9A8F82] uppercase tracking-wide mb-1.5">
+                        Site Address <span className="font-normal normal-case text-[#C8B89C]">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={dForm.site_address}
+                        onChange={e => setDForm(f => ({ ...f, site_address: e.target.value }))}
+                        placeholder="e.g. Bhavna Nagar, Raipur"
+                        className="w-full border border-[#EDE8DF] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C8922A] bg-[#FAF8F5]"
+                      />
                     </div>
                   </div>
                 </div>
