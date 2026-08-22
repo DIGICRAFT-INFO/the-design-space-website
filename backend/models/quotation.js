@@ -32,6 +32,10 @@ const quotationSchema = new mongoose.Schema(
 
     notes: { type: String, default: '' }, //
 
+    // Snapshot fields — stored at creation so they survive client/project deletion
+    client_name_snapshot:  { type: String, default: '' },
+    project_name_snapshot: { type: String, default: '' },
+
     // Address fields (auto-filled from client, editable per quotation)
     billing_address: { type: String, default: '' },
     site_address:    { type: String, default: '' },

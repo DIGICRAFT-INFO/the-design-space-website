@@ -1,7 +1,21 @@
 const Invoice = require('../models/invoice');
 const InvoiceItem = require('../models/invoice_item');
-const Quotation = require('../models/quotation'); // Assumed quotation model
+const Quotation = require('../models/quotation');
 const mongoose = require('mongoose');
+
+// Resolve client + project name snapshots from a project id
+const resolveSnapshots = async (projectId, session) => {
+  if (!projectId) return { client_name_snapshot: '', project_name_snapshot: '' };
+  try {
+    const Project = require('../models/project');
+    const q = session ? Project.findById(projectId).populate('client').session(session) : Project.findById(projectId).populate('client');
+    const proj = await q;
+    return {
+      project_name_snapshot: proj ? (proj.name || '') : '',
+      client_name_snapshot:  proj && proj.client ? (proj.client.full_name || '') : '',
+    };
+  } catch { return { client_name_snapshot: '', project_name_snapshot: '' }; }
+};
 
 // Generate sequential invoice number
 exports.generate_invoice_number = async () => {
@@ -63,6 +77,9 @@ exports.generate_invoice_from_quotation = async (data) => {
 
     const invoice_number = await exports.generate_invoice_number();
 
+    // Resolve name snapshots from quotation's project
+    const snaps = await resolveSnapshots(quotation.project, session);
+
     const invoice = await Invoice.create([{
       project: quotation.project,
       quotation: quotation._id,
@@ -77,6 +94,8 @@ exports.generate_invoice_from_quotation = async (data) => {
       notes,
       billing_address: billing_address || quotation.billing_address || '',
       site_address:    site_address    || quotation.site_address    || '',
+      client_name_snapshot:  snaps.client_name_snapshot,
+      project_name_snapshot: snaps.project_name_snapshot,
     }], { session });
 
     // Copy line items (scaled) — includes category field (was missing before)
@@ -158,6 +177,9 @@ exports.create_direct_invoice = async (data) => {
 
     const invoice_number = await exports.generate_invoice_number();
 
+    // Resolve name snapshots from project
+    const snaps = await resolveSnapshots(projectId, session);
+
     const [invoice] = await Invoice.create([{
       project: projectId,
       quotation: null,
@@ -179,6 +201,8 @@ exports.create_direct_invoice = async (data) => {
       notes,
       billing_address: billing_address || '',
       site_address:    site_address    || '',
+      client_name_snapshot:  snaps.client_name_snapshot,
+      project_name_snapshot: snaps.project_name_snapshot,
     }], { session });
 
     if (items.length > 0) {

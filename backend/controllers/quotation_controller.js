@@ -5,10 +5,25 @@ const quoteService = require('../services/quotation_service');
 const pdfEngine = require('../services/pdf_engine_service'); // From previous setup
 const { createNotification, deleteNotificationsByReference } = require('../services/in_app_notification_service');
 
+// Resolve client_name and project_name snapshots from a project id
+const resolveSnapshots = async (projectId) => {
+  if (!projectId) return { client_name_snapshot: '', project_name_snapshot: '' };
+  try {
+    const Project = require('../models/project');
+    const proj = await Project.findById(projectId).populate('client');
+    return {
+      project_name_snapshot: proj ? (proj.name || '') : '',
+      client_name_snapshot:  proj && proj.client ? (proj.client.full_name || '') : '',
+    };
+  } catch { return { client_name_snapshot: '', project_name_snapshot: '' }; }
+};
+
 const formatQuotation = (q) => {
   const obj = q.toJSON();
-  obj.project_name = q.project ? q.project.name : null; //
-  obj.client_name = q.project && q.project.client ? q.project.client.full_name : null; //
+  obj.project_name = q.project ? q.project.name : (q.project_name_snapshot || null);
+  obj.client_name  = (q.project && q.project.client)
+    ? q.project.client.full_name
+    : (q.client_name_snapshot || null);
   return obj;
 };
 
@@ -104,6 +119,13 @@ exports.create_quotation = async (req, res) => {
     const generatedNumber = await quoteService.generate_quote_number();
     data.quote_number = generatedNumber;
 
+    // Resolve and store client/project name snapshots
+    if (data.project) {
+      const snaps = await resolveSnapshots(data.project);
+      data.client_name_snapshot  = snaps.client_name_snapshot;
+      data.project_name_snapshot = snaps.project_name_snapshot;
+    }
+
     // Create the parent
     const quotation = await Quotation.create(data);
 
@@ -176,6 +198,13 @@ exports.update_quotation = async (req, res) => {
 
     // project is optional — allow null/empty
     if (data.project === '') data.project = null;
+
+    // Refresh name snapshots if project field is being changed
+    if (data.project !== undefined) {
+      const snaps = await resolveSnapshots(data.project);
+      data.client_name_snapshot  = snaps.client_name_snapshot;
+      data.project_name_snapshot = snaps.project_name_snapshot;
+    }
 
     // Clean up valid_until — remove empty strings so Mongoose uses default (null)
     if (data.valid_until === '' || data.valid_until === undefined) {
@@ -423,6 +452,8 @@ exports.copy_quotation = async (req, res) => {
       notes:          req.body.notes !== undefined ? req.body.notes : source.notes,
       billing_address: req.body.billing_address !== undefined ? req.body.billing_address : (source.billing_address || ''),
       site_address:    req.body.site_address    !== undefined ? req.body.site_address    : (source.site_address    || ''),
+      client_name_snapshot:  source.client_name_snapshot  || '',
+      project_name_snapshot: source.project_name_snapshot || '',
     }], { session });
 
     // ── Clone line items (with any edits from req.body.items) ───────────────

@@ -4,7 +4,17 @@ const invoiceService = require('../services/invoice_service');
 const pdfEngine = require('../services/pdf_engine_service');
 const { createNotification, deleteNotificationsByReference } = require('../services/in_app_notification_service');
 
-exports.get_invoice_pdf = async (req, res) => {
+const formatInvoice = (inv) => {
+  const obj = inv.toJSON ? inv.toJSON() : { ...inv };
+  obj.project_name = inv.project ? inv.project.name  : (inv.project_name_snapshot || null);
+  obj.client_name  = (inv.project && inv.project.client)
+    ? inv.project.client.full_name
+    : (inv.client_name_snapshot || null);
+  obj.client_id    = (inv.project && inv.project.client) ? inv.project.client._id : null;
+  return obj;
+};
+
+
   try {
     const invoice = await Invoice.findById(req.params.pk)
       .populate({ path: 'project', populate: { path: 'client' } })
@@ -76,9 +86,10 @@ exports.get_invoices = async (req, res) => {
 
     const formatted = filtered.map(inv => {
       const obj = inv.toJSON();
-      obj.project_name = inv.project ? inv.project.name : null;
-      obj.client_name  = inv.project && inv.project.client ? inv.project.client.full_name : null;
-      // Expose client_id so frontend can navigate to the client page on row click
+      obj.project_name = inv.project ? inv.project.name : (inv.project_name_snapshot || null);
+      obj.client_name  = (inv.project && inv.project.client)
+        ? inv.project.client.full_name
+        : (inv.client_name_snapshot || null);
       obj.client_id    = inv.project && inv.project.client ? inv.project.client._id : null;
       return obj;
     });
@@ -175,8 +186,10 @@ exports.get_invoice_detail = async (req, res) => {
     if (!invoice) return res.status(404).json({ detail: 'Not found.' });
     
     const obj = invoice.toJSON();
-    obj.project_name = invoice.project ? invoice.project.name : null; //
-    obj.client_name = invoice.project && invoice.project.client ? invoice.project.client.full_name : null; //
+    obj.project_name = invoice.project ? invoice.project.name : (invoice.project_name_snapshot || null);
+    obj.client_name  = (invoice.project && invoice.project.client)
+      ? invoice.project.client.full_name
+      : (invoice.client_name_snapshot || null);
     
     res.json(obj);
   } catch (error) {
@@ -284,8 +297,10 @@ exports.update_invoice = async (req, res) => {
       .populate('quotation')
       .populate('items');
     const obj = populated.toJSON();
-    obj.project_name = populated.project ? populated.project.name : null;
-    obj.client_name  = populated.project?.client?.full_name ?? null;
+    obj.project_name = populated.project ? populated.project.name : (populated.project_name_snapshot || null);
+    obj.client_name  = (populated.project && populated.project.client)
+      ? populated.project.client.full_name
+      : (populated.client_name_snapshot || null);
     // Expose tax rates for frontend display
     obj.cgst_rate = cgstRate;
     obj.sgst_rate = sgstRate;
@@ -421,6 +436,8 @@ exports.copy_invoice = async (req, res) => {
       notes:              req.body.notes !== undefined ? req.body.notes : source.notes,
       billing_address:    source.billing_address || '',
       site_address:       source.site_address    || '',
+      client_name_snapshot:  source.client_name_snapshot  || '',
+      project_name_snapshot: source.project_name_snapshot || '',
     }], { session });
 
     // ── Clone line items (with any edits from req.body.items) ───────────────
@@ -521,8 +538,10 @@ exports.copy_invoice = async (req, res) => {
       .populate('items');
 
     const obj = populated.toJSON();
-    obj.project_name = populated.project ? populated.project.name : null;
-    obj.client_name  = populated.project?.client?.full_name ?? null;
+    obj.project_name = populated.project ? populated.project.name : (populated.project_name_snapshot || null);
+    obj.client_name  = (populated.project && populated.project.client)
+      ? populated.project.client.full_name
+      : (populated.client_name_snapshot || null);
 
     const { createNotification } = require('../services/in_app_notification_service');
     await createNotification({
