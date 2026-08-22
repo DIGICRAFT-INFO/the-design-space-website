@@ -14,7 +14,7 @@ const formatInvoice = (inv) => {
   return obj;
 };
 
-
+exports.get_invoice_pdf = async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.pk)
       .populate({ path: 'project', populate: { path: 'client' } })

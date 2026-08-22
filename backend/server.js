@@ -26,14 +26,22 @@ const app = express();
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
+
+    // Build allowed list — split comma-separated env vars into individual origins
     const allowed = [
       'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:3200',
       'https://the-design-space-websiteadmin.vercel.app',
       'https://websitethedesignspace.vercel.app',
-      process.env.FRONTEND_URL,
-      process.env.CORS_ORIGIN,
+      // FRONTEND_URL may be a single value or comma-separated
+      ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(s => s.trim()) : []),
+      // CORS_ORIGIN may be comma-separated list
+      ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(s => s.trim()) : []),
+      // Always explicitly allow production domains (hardcoded fallback)
+      'https://thedesignspace.in',
+      'https://www.thedesignspace.in',
+      'https://api.thedesignspace.in',
     ].filter(Boolean);
 
     if (allowed.includes(origin)) return callback(null, true);
@@ -49,25 +57,23 @@ const corsOptions = {
         return callback(null, true);
       }
     }
-    callback(null, true); // Allow all for now
+    // Log blocked origin for debugging
+    console.warn(`⚠️  CORS blocked origin: ${origin}`);
+    callback(null, false, new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'X-CSRF-Token', 'X-Requested-With', 'Accept', 'Accept-Version',
+    'Content-Length', 'Content-MD5', 'Content-Type', 'Date',
+    'X-Api-Version', 'Authorization',
+  ],
+  preflightContinue: false,
+  optionsSuccessStatus: 200,
 };
 
-// Enable CORS for all routes
+// Enable CORS for all routes — handles OPTIONS preflight automatically
 app.use(cors(corsOptions));
-
-// Handle preflight requests explicitly
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.header('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    return res.sendStatus(200);
-  }
-  next();
-});
 app.use(express.json()); // Body parser to read JSON data
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
