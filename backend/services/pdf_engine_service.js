@@ -338,10 +338,14 @@ exports.render_quotation_pdf = async (quotation) => {
 // 2. INVOICE PDF
 // ─────────────────────────────────────────────────────────────────────────────
 exports.render_invoice_pdf = async (invoice) => {
-  const brand    = await BrandTheme.findOne();
-  const bank     = await BankDetails.findOne();
-  const termsDoc = await TermsTemplate.findOne();
+  const brand      = await BrandTheme.findOne();
+  const bank       = await BankDetails.findOne();
+  const termsDoc   = await TermsTemplate.findOne();
+  const PaymentRecord = require('../models/payment_record');
   await invoice.populate('items');
+
+  // Fetch all payment records for this invoice
+  const payments = await PaymentRecord.find({ invoice: invoice._id }).sort({ payment_date: 1 }).lean();
 
   const color  = brand_color(brand);
   const client = invoice.project && invoice.project.client;
@@ -350,7 +354,7 @@ exports.render_invoice_pdf = async (invoice) => {
 
   let y = draw_header(doc, brand, 'INVOICE', invoice.invoice_number);
 
-  // Status badge — below invoice number, right-aligned, not overlapping doc title
+  // Status badge
   const sc = invoice.status === 'paid' ? GREEN : invoice.status === 'overdue' ? RED : color;
   doc.rect(484, 60, 75, 20).fill(sc);
   doc.fontSize(8.5).fillColor(WHITE).font('Helvetica-Bold')
@@ -362,7 +366,7 @@ exports.render_invoice_pdf = async (invoice) => {
       ['Client',  client && client.full_name],
       ['Email',   client && client.email],
       ['Phone',   client && client.phone],
-      ['Address', client && (client.billing_address || client.site_address)],
+      ['Address', client && (invoice.billing_address || client.billing_address || client.site_address)],
       ...(client && client.gstin ? [['GSTIN', client.gstin]] : []),
       ['Project', invoice.project && invoice.project.name],
     ],
@@ -371,6 +375,9 @@ exports.render_invoice_pdf = async (invoice) => {
       ['Invoice #',    invoice.invoice_number],
       ['Invoice Date', fmt_date(invoice.invoice_date)],
       ['Due Date',     fmt_date(invoice.due_date)],
+      ...(invoice.invoice_type !== 'full' && invoice.milestone_label
+        ? [['Milestone', `${invoice.milestone_label} (${invoice.milestone_percentage}%)`]]
+        : []),
       ['Status',       (invoice.status || '').toUpperCase()],
     ],
     y
@@ -379,24 +386,144 @@ exports.render_invoice_pdf = async (invoice) => {
   const items = invoice.items || [];
   y = draw_table(doc,
     ['#', 'Description', 'Qty', 'Unit', 'Rate', 'Amount'],
-    items.map((item, i) => [i + 1, item.description || '—', item.quantity, item.unit || '—', INR(item.rate), INR(item.amount || item.quantity * item.rate)]),
+    items.map((item, i) => [
+      i + 1,
+      item.description || '—',
+      item.quantity,
+      item.unit || '—',
+      INR(item.rate),
+      INR(item.amount || item.quantity * item.rate),
+    ]),
     [25, 198, 50, 55, 98, 97],
     y, color
   );
 
+  // Totals
   const tl = [['Subtotal', INR(invoice.subtotal)]];
   if (invoice.discount_amount > 0) tl.push(['Discount', `- ${INR(invoice.discount_amount)}`]);
   tl.push(['Taxable Amount', INR(invoice.taxable_amount)]);
   if (invoice.cgst_amount > 0) tl.push([`CGST @ ${invoice.cgst_rate}%`, INR(invoice.cgst_amount)]);
   if (invoice.sgst_amount > 0) tl.push([`SGST @ ${invoice.sgst_rate}%`, INR(invoice.sgst_amount)]);
   if (invoice.igst_amount > 0) tl.push([`IGST @ ${invoice.igst_rate}%`, INR(invoice.igst_amount)]);
-  if (invoice.amount_paid > 0) tl.push(['Amount Paid', `- ${INR(invoice.amount_paid)}`]);
 
-  y = draw_totals(doc, tl, INR(invoice.balance_due || invoice.grand_total), y, color);
+  // Grand total box — always show full invoice amount
+  y = draw_totals(doc, tl, INR(invoice.grand_total), y, color);
 
+  // ── Payment summary row (Amount Paid / Balance Due) ───────────────────────
+  if (invoice.amount_paid > 0 || payments.length > 0) {
+    const totalPaid   = payments.length > 0
+      ? payments.reduce((s, p) => s + Number(p.amount_paid || 0), 0)
+      : Number(invoice.amount_paid || 0);
+    const balanceDue  = Math.max(0, Number(invoice.grand_total) - totalPaid);
+
+    const sx = 318, sw = 241;
+    // Amount paid line (green)
+    doc.rect(sx, y, sw, 20).fill('#ECFDF5');
+    doc.fontSize(9.5).fillColor('#15803D').font('Helvetica-Bold')
+       .text('Amount Paid', sx + 6, y + 5, { width: sw - 95 });
+    doc.fontSize(9.5).fillColor('#15803D').font('Helvetica-Bold')
+       .text(`- ${INR(totalPaid)}`, sx + sw - 95, y + 5, { width: 89, align: 'right' });
+    y += 20;
+
+    // Balance due line
+    const bdColor = balanceDue <= 0 ? '#15803D' : '#C0392B';
+    const bdText  = balanceDue <= 0 ? 'FULLY PAID ✓' : INR(balanceDue);
+    doc.rect(sx, y, sw, 22).fill(balanceDue <= 0 ? '#ECFDF5' : '#FEF2F2');
+    doc.fontSize(10).fillColor(bdColor).font('Helvetica-Bold')
+       .text('Balance Due', sx + 6, y + 6, { width: sw - 95 });
+    doc.fontSize(10).fillColor(bdColor).font('Helvetica-Bold')
+       .text(bdText, sx + sw - 95, y + 6, { width: 89, align: 'right' });
+    y += 32;
+  }
+
+  // ── Payment History Section ───────────────────────────────────────────────
+  if (payments.length > 0) {
+    y += 6;
+    // Check if we have enough space, else new page
+    const needed = payments.length * 22 + 56;
+    if (y + needed > doc.page.height - 120) { doc.addPage(); y = 48; }
+
+    // Section header
+    doc.rect(36, y, 4, 20).fill(color);
+    doc.rect(40, y, 519, 20).fill(BGALT);
+    doc.fontSize(9).fillColor(GREY).font('Helvetica-Bold')
+       .text('PAYMENT HISTORY', 50, y + 6);
+    y += 20;
+
+    // Payment table header
+    const ph_cols = [30, 90, 100, 100, 110, 93];
+    const ph_hdrs = ['#', 'Date', 'Mode', 'Reference', 'Amount', 'Cumulative'];
+
+    doc.rect(36, y, 523, 20).fill(color);
+    let phx = 42;
+    ph_hdrs.forEach((h, i) => {
+      doc.fontSize(8).fillColor(WHITE).font('Helvetica-Bold')
+         .text(h, phx, y + 6, { width: ph_cols[i] - 4, align: i >= 4 ? 'right' : 'left' });
+      phx += ph_cols[i];
+    });
+    y += 20;
+
+    // Payment rows
+    const MODE_LABELS = {
+      bank_transfer: 'Bank Transfer',
+      upi:           'UPI',
+      cheque:        'Cheque',
+      cash:          'Cash',
+      neft:          'NEFT/RTGS',
+      other:         'Other',
+    };
+
+    let cumulative = 0;
+    payments.forEach((pmt, pi) => {
+      const rowH = pmt.notes ? 26 : 20;
+      if (pi % 2 === 1) doc.rect(36, y, 523, rowH).fill(BGALT);
+
+      cumulative += Number(pmt.amount_paid || 0);
+      const cells = [
+        String(pi + 1),
+        fmt_date(pmt.payment_date),
+        MODE_LABELS[pmt.payment_mode] || pmt.payment_mode || '—',
+        pmt.reference_number || '—',
+        INR(pmt.amount_paid),
+        INR(cumulative),
+      ];
+
+      let px = 42;
+      cells.forEach((cell, ci) => {
+        doc.fontSize(8.5).fillColor(DARK).font('Helvetica')
+           .text(cell, px, y + 6, { width: ph_cols[ci] - 4, align: ci >= 4 ? 'right' : 'left' });
+        px += ph_cols[ci];
+      });
+
+      // Notes below the row if present
+      if (pmt.notes) {
+        doc.fontSize(7.5).fillColor(GREY).font('Helvetica-Oblique')
+           .text(`Note: ${pmt.notes}`, 72, y + 17, { width: 445 });
+      }
+
+      doc.moveTo(36, y + rowH).lineTo(559, y + rowH).lineWidth(0.3).strokeColor(LGREY).stroke();
+      y += rowH;
+    });
+
+    // Total collected row
+    const totalPaid = payments.reduce((s, p) => s + Number(p.amount_paid || 0), 0);
+    doc.rect(36, y, 523, 22).fill(GREEN);
+    doc.fontSize(9).fillColor(WHITE).font('Helvetica-Bold')
+       .text('Total Collected', 42, y + 7, { width: 390 });
+    doc.fontSize(9).fillColor(WHITE).font('Helvetica-Bold')
+       .text(INR(totalPaid), 42 + 390, y + 7, { width: ph_cols[4] + ph_cols[5] - 8, align: 'right' });
+    y += 26;
+  }
+
+  // Bank details
   if (bank && (bank.bank_name || bank.account_number)) {
     y += 10;
-    const bl = [['Bank', bank.bank_name], ['Account', bank.account_number], ['IFSC', bank.ifsc_code], ['UPI', bank.upi_id]].filter(([, v]) => v);
+    const bl = [
+      ['Bank',    bank.bank_name],
+      ['Account', bank.account_number],
+      ['IFSC',    bank.ifsc_code],
+      ['UPI',     bank.upi_id],
+    ].filter(([, v]) => v);
     const bh = bl.length * 13 + 24;
     doc.rect(36, y, 4, bh).fill(color);
     doc.rect(40, y, 519, bh).fill(BGALT);
@@ -413,7 +540,7 @@ exports.render_invoice_pdf = async (invoice) => {
   y = draw_notes(doc, invoice.notes, y + 6, color);
 
   const i_terms = (termsDoc && termsDoc.invoice_terms) ||
-    '1. Payment is due within 15 days of invoice date.\n2. Late payments may attract interest at 2% per month.\n3. Please quote invoice number in all payments.\n4. Cheques to be drawn in favour of The Design Space.';
+    '1. Payment is due within 15 days of invoice date.\n2. Cheques to be drawn in favour of The Design Space.';
   draw_terms(doc, i_terms, y + 10, color);
 
   draw_footer(doc, brand);
