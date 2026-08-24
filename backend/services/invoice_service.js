@@ -98,15 +98,15 @@ exports.generate_invoice_from_quotation = async (data) => {
       project_name_snapshot: snaps.project_name_snapshot,
     }], { session });
 
-    // Copy line items (scaled) — includes category field (was missing before)
+    // Copy line items — keep original rate, scale only the amount
     const invoiceItems = quotation.items.map(q_item => ({
       invoice: invoice[0]._id,
       description: q_item.description,
       category:    q_item.category || '',
       quantity: q_item.quantity,
       unit: q_item.unit,
-      rate: round2(q_item.rate * percentage),
-      amount: round2(q_item.amount * percentage)
+      rate: q_item.rate,                              // original rate — not scaled
+      amount: round2(q_item.amount * percentage)      // amount scaled by milestone %
     }));
 
     await InvoiceItem.insertMany(invoiceItems, { session });
