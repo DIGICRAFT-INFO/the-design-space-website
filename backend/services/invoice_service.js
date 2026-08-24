@@ -60,9 +60,11 @@ exports.generate_invoice_from_quotation = async (data) => {
 
     const today = invoice_date ? new Date(invoice_date) : new Date();
     const due_date = new Date(today);
-    due_date.setDate(today.getDate() + due_days); //
-    
-    const percentage = milestone_percentage / 100; //
+    due_date.setDate(today.getDate() + due_days);
+
+    // For 'full' invoice type, always use 100% regardless of what was passed
+    const effectivePercentage = invoice_type === 'full' ? 100 : milestone_percentage;
+    const percentage = effectivePercentage / 100;
 
     // Scaled financials
     const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
@@ -88,8 +90,8 @@ exports.generate_invoice_from_quotation = async (data) => {
       invoice_date: today,
       due_date,
       status: 'draft',
-      milestone_label,
-      milestone_percentage,
+      milestone_label: invoice_type === 'full' ? '' : milestone_label,
+      milestone_percentage: effectivePercentage,
       subtotal, taxable_amount, cgst_amount, sgst_amount, igst_amount, total_tax, grand_total, balance_due: grand_total,
       notes,
       billing_address: billing_address || quotation.billing_address || '',
