@@ -5,7 +5,7 @@ import {
   Mail, CheckCircle, Search,
   UserPlus, FolderPlus, Library,
   Save, Package, Copy, ChevronDown, Download,
-  Image as ImgIcon,
+  Image as ImgIcon, FileText, ExternalLink,
 } from "lucide-react";
 import { getGstEnabledLocal } from "@/lib/gstToggle";
 import API_BASE_URL from "@/lib/config";
@@ -385,6 +385,9 @@ export default function QuotationsPage() {
     billing_address: "", site_address: "",
   });
   const [gstEnabled, setGstEnabled] = useState(true);
+  // ── Invoice summary for the quotation being edited ──────────────────────
+  const [quotationInvoices, setQuotationInvoices] = useState<any[]>([]);
+  const [quotationInvoicesLoading, setQuotationInvoicesLoading] = useState(false);
 
   useEffect(() => {
     setGstEnabled(getGstEnabledLocal(true));
@@ -551,7 +554,26 @@ export default function QuotationsPage() {
     setSelectedClientId(""); setSelectedClient(null); setSelectedProjectId("");
     setItems([{ ...EMPTY_ITEM }]);
     setFormMeta({ valid_until: "", discount_type: "fixed", discount_value: "0", cgst_rate: "9", sgst_rate: "9", igst_rate: "18", notes: "", taxMode: "cgst_sgst", billing_address: "", site_address: "" });
+    setQuotationInvoices([]);
     setIsModalOpen(true);
+  }
+
+  // ── Fetch invoices for this quotation ─────────────────────────────────────
+  async function fetchQuotationInvoices(quotationId: string) {
+    setQuotationInvoicesLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/invoices/`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const d = await res.json();
+        const all: any[] = d.results ?? d ?? [];
+        // Filter by quotation reference
+        const filtered = all.filter(inv =>
+          inv.quotation === quotationId || inv.quotation_id === quotationId
+        );
+        setQuotationInvoices(filtered);
+      }
+    } catch { setQuotationInvoices([]); }
+    finally { setQuotationInvoicesLoading(false); }
   }
 
   // ── Open edit ────────────────────────────────────────────────────────────
@@ -606,6 +628,8 @@ export default function QuotationsPage() {
         quantity: String(it.quantity), unit: it.unit || "lot", rate: String(it.rate), sort_order: it.sort_order || 0,
       })) : [{ ...EMPTY_ITEM }]);
       setIsModalOpen(true);
+      // Fetch invoices for this quotation to show summary
+      fetchQuotationInvoices(id);
     } catch { showToast("Failed to load quotation", "error"); }
   }
 
@@ -1140,6 +1164,131 @@ export default function QuotationsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* ── Invoice Summary (only when editing existing quotation) ── */}
+              {editingId && (
+                <div className="border border-[#EDE8DF] rounded-xl overflow-hidden">
+                  <div className="bg-[#FAF8F5] px-4 py-3 flex items-center justify-between border-b border-[#EDE8DF]">
+                    <div className="flex items-center gap-2">
+                      <FileText size={14} className="text-[#C8922A]" />
+                      <p className="text-[12px] font-black text-[#1C1C1C] uppercase tracking-wide">Invoices for this Quotation</p>
+                    </div>
+                    <a
+                      href="/dashboard/invoices/generate"
+                      target="_blank"
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-[#C8922A] hover:underline"
+                    >
+                      <ExternalLink size={11} /> New Invoice
+                    </a>
+                  </div>
+
+                  {quotationInvoicesLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-6 text-[13px] text-[#9A8F82]">
+                      <Loader2 size={14} className="animate-spin text-[#C8922A]" /> Loading invoices…
+                    </div>
+                  ) : quotationInvoices.length === 0 ? (
+                    <div className="py-6 text-center text-[13px] text-[#9A8F82]">
+                      No invoices generated yet for this quotation
+                    </div>
+                  ) : (
+                    <>
+                      {/* Invoice rows */}
+                      <div className="divide-y divide-[#F5F2ED]">
+                        {quotationInvoices.map(inv => {
+                          const statusColors: Record<string, { color: string; bg: string }> = {
+                            draft:     { color: "#6B7280", bg: "#F3F4F6" },
+                            issued:    { color: "#3B82F6", bg: "#EFF6FF" },
+                            partial:   { color: "#F59E0B", bg: "#FEF3C7" },
+                            paid:      { color: "#10B981", bg: "#ECFDF5" },
+                            overdue:   { color: "#EF4444", bg: "#FEF2F2" },
+                            cancelled: { color: "#9CA3AF", bg: "#F9FAFB" },
+                          };
+                          const sc = statusColors[inv.status] || statusColors.draft;
+                          const grandTotal  = parseFloat(inv.grand_total  || "0");
+                          const amountPaid  = parseFloat(inv.amount_paid  || "0");
+                          const balanceDue  = parseFloat(inv.balance_due  || "0");
+                          const paidPct     = grandTotal > 0 ? Math.min(100, (amountPaid / grandTotal) * 100) : 0;
+
+                          return (
+                            <div key={inv.id} className="px-4 py-3">
+                              {/* Invoice header row */}
+                              <div className="flex items-start justify-between gap-3 mb-2">
+                                <div>
+                                  <p className="text-[12px] font-bold text-[#1C1C1C]">#{inv.invoice_number}</p>
+                                  {inv.milestone_label && (
+                                    <p className="text-[11px] text-[#9A8F82]">{inv.milestone_label} ({inv.milestone_percentage}%)</p>
+                                  )}
+                                  <p className="text-[11px] text-[#9A8F82]">
+                                    {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                    {" · "}Due: {inv.due_date ? new Date(inv.due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                  </p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <p className="text-[13px] font-bold text-[#1C1C1C]">
+                                    ₹{grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                  </p>
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                    style={{ color: sc.color, backgroundColor: sc.bg }}>
+                                    {inv.status.toUpperCase()}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Payment progress bar */}
+                              <div className="h-1.5 bg-[#F5F2ED] rounded-full overflow-hidden mb-1.5">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{ width: `${paidPct}%`, backgroundColor: paidPct >= 100 ? "#10B981" : "#C8922A" }}
+                                />
+                              </div>
+
+                              {/* Collected / Balance */}
+                              <div className="grid grid-cols-3 text-center">
+                                <div>
+                                  <p className="text-[9px] text-[#9A8F82] uppercase font-bold">Total</p>
+                                  <p className="text-[11px] font-bold text-[#1C1C1C]">₹{grandTotal.toLocaleString("en-IN")}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[9px] text-[#10B981] uppercase font-bold">Collected</p>
+                                  <p className="text-[11px] font-bold text-[#10B981]">₹{amountPaid.toLocaleString("en-IN")}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[9px] text-[#EF4444] uppercase font-bold">Balance</p>
+                                  <p className={`text-[11px] font-bold ${balanceDue > 0 ? "text-[#EF4444]" : "text-[#10B981]"}`}>
+                                    {balanceDue > 0 ? `₹${balanceDue.toLocaleString("en-IN")}` : "Paid ✓"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Summary totals row */}
+                      <div className="bg-[#FAF8F5] px-4 py-3 border-t border-[#EDE8DF] grid grid-cols-3 text-center">
+                        <div>
+                          <p className="text-[9px] text-[#9A8F82] uppercase font-bold">Total Invoiced</p>
+                          <p className="text-[12px] font-bold text-[#1C1C1C]">
+                            ₹{quotationInvoices.reduce((s, i) => s + parseFloat(i.grand_total || "0"), 0).toLocaleString("en-IN")}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-[#10B981] uppercase font-bold">Collected</p>
+                          <p className="text-[12px] font-bold text-[#10B981]">
+                            ₹{quotationInvoices.reduce((s, i) => s + parseFloat(i.amount_paid || "0"), 0).toLocaleString("en-IN")}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-[#EF4444] uppercase font-bold">Balance</p>
+                          <p className="text-[12px] font-bold text-[#EF4444]">
+                            ₹{quotationInvoices.reduce((s, i) => s + parseFloat(i.balance_due || "0"), 0).toLocaleString("en-IN")}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* Submit */}
               <div className="flex justify-end gap-3 pt-2">

@@ -193,18 +193,36 @@ const draw_notes = (doc, notes, y, color) => {
 // ── Terms & Conditions ────────────────────────────────────────────────────────
 const draw_terms = (doc, terms_text, y, color) => {
   if (!terms_text) return y;
-  const lines = terms_text.split('\n').filter(l => l.trim());
-  const bh    = lines.length * 13 + 24;
+  const lines   = terms_text.split('\n').filter(l => l.trim());
+  const lineGap = 4;                         // extra gap between items
+  const CONTENT_W = 467;                     // text width inside box (50+padding to 559)
+
+  // Measure actual rendered height for each term line (handles wrapping)
+  const lineHeights = lines.map(line =>
+    doc.fontSize(8.5).font('Helvetica').heightOfString(line.trim(), { width: CONTENT_W }) + lineGap
+  );
+  const totalContentH = lineHeights.reduce((s, h) => s + h, 0);
+  const bh = totalContentH + 26;             // 26 = header row height
+
+  // If whole block fits on current page — render here, else start fresh page
   if (y + bh > doc.page.height - 56) { doc.addPage(); y = 48; }
+
   doc.rect(36, y, 4, bh).fill(color);
   doc.rect(40, y, 519, bh).fill(BGALT);
   doc.fontSize(8).fillColor(GREY).font('Helvetica-Bold').text('TERMS & CONDITIONS', 50, y + 7);
-  let ty = y + 19;
-  lines.forEach(line => {
-    doc.fontSize(8.5).fillColor(DARK).font('Helvetica').text(line.trim(), 50, ty, { width: 497 });
-    ty += 13;
+
+  let ty = y + 22;
+  lines.forEach((line, i) => {
+    // Mid-block page break: if this line won't fit, add a page and continue
+    if (ty + lineHeights[i] > doc.page.height - 56) {
+      doc.addPage();
+      ty = 48;
+    }
+    doc.fontSize(8.5).fillColor(DARK).font('Helvetica')
+       .text(line.trim(), 50, ty, { width: CONTENT_W });
+    ty += lineHeights[i];
   });
-  return ty + 10;
+  return ty + 8;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -53,6 +53,8 @@ export default function GenerateInvoicePage() {
   const [quotations, setQuotations] = useState<any[]>([]);
   const [quotationsLoading, setQuotationsLoading] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedQDetail, setSelectedQDetail] = useState<any>(null); // full quotation with items
+  const [selectedQDetailLoading, setSelectedQDetailLoading] = useState(false);
   const [qForm, setQForm] = useState<{
     quotation_id: string; invoice_type: InvoiceType;
     milestone_label: string; milestone_percentage: number;
@@ -117,6 +119,17 @@ export default function GenerateInvoicePage() {
     } catch {
       setQuotations([]);
     } finally { setQuotationsLoading(false); }
+  };
+
+  // Fetch full quotation detail (with items) when user selects a quotation
+  const fetchQuotationDetail = async (quotationId: string) => {
+    if (!quotationId) { setSelectedQDetail(null); return; }
+    setSelectedQDetailLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/quotations/${quotationId}/`, { headers: getAuthHeaders() });
+      if (res.ok) { setSelectedQDetail(await res.json()); }
+    } catch { setSelectedQDetail(null); }
+    finally { setSelectedQDetailLoading(false); }
   };
 
   const handleQTypeChange = (type: InvoiceType) => {
@@ -316,7 +329,7 @@ export default function GenerateInvoicePage() {
                     <div>
                       <label className="block text-[11px] font-bold text-[#9A8F82] uppercase tracking-wide mb-1.5">Filter by Client</label>
                       <select value={selectedClientId}
-                        onChange={e => { setSelectedClientId(e.target.value); fetchQuotations(e.target.value); setQForm(f => ({ ...f, quotation_id: "" })); }}
+                        onChange={e => { setSelectedClientId(e.target.value); fetchQuotations(e.target.value); setQForm(f => ({ ...f, quotation_id: "" })); setSelectedQDetail(null); }}
                         className="w-full border border-[#EDE8DF] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#C8922A] bg-[#FAF8F5]">
                         <option value="">— All clients —</option>
                         {clientsLoading ? <option disabled>Loading…</option> : clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
@@ -332,7 +345,7 @@ export default function GenerateInvoicePage() {
                         </div>
                       ) : (
                         <select value={qForm.quotation_id}
-                          onChange={e => setQForm(f => ({ ...f, quotation_id: e.target.value }))}
+                          onChange={e => { setQForm(f => ({ ...f, quotation_id: e.target.value })); fetchQuotationDetail(e.target.value); }}
                           className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none bg-[#FAF8F5] ${qErrors.quotation_id ? "border-red-300" : "border-[#EDE8DF] focus:border-[#C8922A]"}`}>
                           <option value="">— Select quotation —</option>
                           {approvedQs.length > 0 && (
@@ -718,20 +731,113 @@ export default function GenerateInvoicePage() {
 
           {/* ── RIGHT: Preview + Submit ── */}
           <div className="space-y-5">
-            {/* Amount preview */}
+
+            {/* ── Quotation Detail Preview (From Quotation mode) ── */}
+            {mode === "from_quotation" && selectedQDetail && (
+              <div className="bg-white border border-[#EDE8DF] rounded-2xl shadow-sm overflow-hidden">
+                {/* Header */}
+                <div className="bg-[#FAF8F5] px-4 py-3 border-b border-[#EDE8DF]">
+                  <p className="text-[11px] font-black text-[#9A8F82] uppercase tracking-wider">Quotation Preview</p>
+                  <p className="text-[13px] font-bold text-[#1C1C1C] mt-0.5">#{selectedQDetail.quote_number} v{selectedQDetail.version}</p>
+                </div>
+                {/* Client + Project */}
+                <div className="px-4 py-3 border-b border-[#F5F2ED] space-y-1">
+                  <div className="flex justify-between text-[12px]">
+                    <span className="text-[#9A8F82]">Client</span>
+                    <span className="font-medium text-[#1C1C1C]">{selectedQDetail.client_name || "—"}</span>
+                  </div>
+                  <div className="flex justify-between text-[12px]">
+                    <span className="text-[#9A8F82]">Project</span>
+                    <span className="font-medium text-[#1C1C1C] text-right max-w-[160px]">{selectedQDetail.project_name || "—"}</span>
+                  </div>
+                  {selectedQDetail.billing_address && (
+                    <div className="flex justify-between text-[12px]">
+                      <span className="text-[#9A8F82]">Billing Addr</span>
+                      <span className="font-medium text-[#1C1C1C] text-right max-w-[160px]">{selectedQDetail.billing_address}</span>
+                    </div>
+                  )}
+                  {selectedQDetail.site_address && (
+                    <div className="flex justify-between text-[12px]">
+                      <span className="text-[#9A8F82]">Site Addr</span>
+                      <span className="font-medium text-[#1C1C1C] text-right max-w-[160px]">{selectedQDetail.site_address}</span>
+                    </div>
+                  )}
+                </div>
+                {/* Line Items */}
+                {selectedQDetail.items && selectedQDetail.items.length > 0 && (
+                  <div className="px-4 py-3 border-b border-[#F5F2ED]">
+                    <p className="text-[10px] font-black text-[#9A8F82] uppercase tracking-wider mb-2">Line Items</p>
+                    <div className="space-y-1.5">
+                      {selectedQDetail.items.map((it: any, i: number) => (
+                        <div key={it.id || i} className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-medium text-[#1C1C1C] truncate">{it.description}</p>
+                            <p className="text-[10px] text-[#9A8F82]">{it.quantity} {it.unit} × {fmt(it.rate)}</p>
+                          </div>
+                          <span className="text-[12px] font-bold text-[#1C1C1C] whitespace-nowrap">{fmt(it.amount || Number(it.quantity) * Number(it.rate))}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Totals */}
+                <div className="px-4 py-3 space-y-1">
+                  <div className="flex justify-between text-[12px]">
+                    <span className="text-[#9A8F82]">Subtotal</span>
+                    <span className="font-medium">{fmt(selectedQDetail.subtotal)}</span>
+                  </div>
+                  {parseFloat(selectedQDetail.discount_amount) > 0 && (
+                    <div className="flex justify-between text-[12px]">
+                      <span className="text-[#9A8F82]">Discount</span>
+                      <span className="text-red-500">- {fmt(selectedQDetail.discount_amount)}</span>
+                    </div>
+                  )}
+                  {parseFloat(selectedQDetail.cgst_amount) > 0 && (
+                    <div className="flex justify-between text-[12px]">
+                      <span className="text-[#9A8F82]">CGST @ {selectedQDetail.cgst_rate}%</span>
+                      <span>{fmt(selectedQDetail.cgst_amount)}</span>
+                    </div>
+                  )}
+                  {parseFloat(selectedQDetail.sgst_amount) > 0 && (
+                    <div className="flex justify-between text-[12px]">
+                      <span className="text-[#9A8F82]">SGST @ {selectedQDetail.sgst_rate}%</span>
+                      <span>{fmt(selectedQDetail.sgst_amount)}</span>
+                    </div>
+                  )}
+                  {parseFloat(selectedQDetail.igst_amount) > 0 && (
+                    <div className="flex justify-between text-[12px]">
+                      <span className="text-[#9A8F82]">IGST @ {selectedQDetail.igst_rate}%</span>
+                      <span>{fmt(selectedQDetail.igst_amount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-[14px] pt-2 border-t border-[#EDE8DF] mt-1">
+                    <span className="text-[#1C1C1C]">Grand Total</span>
+                    <span className="text-[#C8922A]">{fmt(selectedQDetail.grand_total)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Loading state for quotation detail */}
+            {mode === "from_quotation" && selectedQDetailLoading && (
+              <div className="bg-white border border-[#EDE8DF] rounded-2xl p-6 flex items-center justify-center gap-2 text-[13px] text-[#9A8F82]">
+                <Loader2 size={14} className="animate-spin text-[#C8922A]" /> Loading quotation details…
+              </div>
+            )}
+
+            {/* Amount preview card */}
             <div className="bg-[#1C1C1C] text-white p-7 rounded-2xl shadow-xl relative overflow-hidden">
               <div className="relative z-10">
                 <p className="text-[11px] text-white/50 uppercase tracking-widest mb-1">Invoice Amount</p>
                 <h2 className="text-[30px] font-bold leading-none">
                   {mode === "from_quotation" ? fmt(qAmount) : fmt(dTotals.grand)}
                 </h2>
-
                 <div className="mt-5 pt-5 border-t border-white/10 space-y-2">
                   {mode === "from_quotation" && selectedQ && (
                     <>
                       <div className="flex justify-between text-[12px]"><span className="text-white/50">Quotation</span><span>#{selectedQ.quote_number} v{selectedQ.version}</span></div>
                       <div className="flex justify-between text-[12px]"><span className="text-white/50">Project</span><span className="text-right max-w-[140px] truncate">{selectedQ.project_name}</span></div>
-                      <div className="flex justify-between text-[12px]"><span className="text-white/50">Client</span><span>{selectedQ.client_name}</span></div>
+                      <div className="flex justify-between text-[12px]"><span className="text-white/50">Client</span><span>{selectedQ.client_name || "—"}</span></div>
                     </>
                   )}
                   {mode === "direct" && (
