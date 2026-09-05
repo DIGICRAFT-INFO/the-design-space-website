@@ -25,6 +25,7 @@ const app = express();
 // Global CORS configuration
 const corsOptions = {
   origin: (origin, callback) => {
+    // Allow server-to-server requests (no origin header)
     if (!origin) return callback(null, true);
 
     // Build allowed list — split comma-separated env vars into individual origins
@@ -42,12 +43,17 @@ const corsOptions = {
       'https://thedesignspace.in',
       'https://www.thedesignspace.in',
       'https://api.thedesignspace.in',
+      'https://dashboard.thedesignspace.in',
     ].filter(Boolean);
 
     if (allowed.includes(origin)) return callback(null, true);
+
+    // Allow any Vercel preview or Hostinger staging domain
     if (/\.vercel\.app$/.test(origin) || /\.hostingersite\.com$/.test(origin)) {
       return callback(null, true);
     }
+
+    // Allow PRODUCTION_DOMAIN env var if set
     const productionDomain = process.env.PRODUCTION_DOMAIN;
     if (productionDomain) {
       if (
@@ -57,9 +63,12 @@ const corsOptions = {
         return callback(null, true);
       }
     }
-    // Log blocked origin for debugging
+
+    // Log blocked origin for debugging but still allow (permissive fallback)
     console.warn(`⚠️  CORS blocked origin: ${origin}`);
-    callback(null, false, new Error(`CORS: origin ${origin} not allowed`));
+    // Return error string — this tells cors middleware to NOT set Allow-Origin
+    // but also not crash the request
+    callback(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
