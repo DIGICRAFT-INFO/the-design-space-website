@@ -22,11 +22,11 @@ services:
       - key: BACKEND_URL
         value: https://thedesignspace-backend.onrender.com
       - key: FRONTEND_URL
-        value: https://the-design-space-websiteadmin.vercel.app
+        value: https://thedesignspace.in,https://www.thedesignspace.in,https://the-design-space-websiteadmin.vercel.app
       - key: CORS_ORIGIN
-        value: https://the-design-space-websiteadmin.vercel.app
+        value: https://thedesignspace.in,https://www.thedesignspace.in,https://the-design-space-websiteadmin.vercel.app
       - key: PRODUCTION_DOMAIN
-        value: onrender.com
+        value: thedesignspace.in
       - key: FIRM_NAME
         value: The Design Space
       - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
