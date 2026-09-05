@@ -194,9 +194,10 @@ const draw_notes = (doc, notes, y, color) => {
 const draw_terms = (doc, terms_text, y, color) => {
   if (!terms_text) return y;
   const lines   = terms_text.split('\n').filter(l => l.trim());
-  const lineGap = 2.5;                       // tighter gap to fit on one page
-  const CONTENT_W = 467;                     // text width inside box
-  const FONT_SIZE = 7.5;                     // slightly smaller to fit 12 terms
+  const lineGap = 3;
+  const CONTENT_W = 467;
+  const FONT_SIZE = 8;
+  const BOTTOM_MARGIN = 64;
 
   // Measure actual rendered height for each term line (handles wrapping)
   const lineHeights = lines.map(line =>
@@ -205,14 +206,13 @@ const draw_terms = (doc, terms_text, y, color) => {
   const totalContentH = lineHeights.reduce((s, h) => s + h, 0);
   const bh = totalContentH + 26;             // 26 = header row height
 
-  // Reserve space for footer (44px) + safe margin (20px) = 64px bottom margin
-  const BOTTOM_MARGIN = 64;
-  // If whole block fits on current page — render here, else start fresh page
-  if (y + bh > doc.page.height - BOTTOM_MARGIN) { doc.addPage(); y = 48; }
+  // T&C always starts on a fresh page — bill content stays on page 1
+  doc.addPage();
+  y = 48;
 
   doc.rect(36, y, 4, bh).fill(color);
   doc.rect(40, y, 519, bh).fill(BGALT);
-  doc.fontSize(8).fillColor(GREY).font('Helvetica-Bold').text('TERMS & CONDITIONS', 50, y + 7);
+  doc.fontSize(8.5).fillColor(GREY).font('Helvetica-Bold').text('TERMS & CONDITIONS', 50, y + 7);
 
   let ty = y + 22;
   lines.forEach((line, i) => {
