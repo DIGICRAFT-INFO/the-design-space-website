@@ -429,6 +429,9 @@ export default function ClientDetails() {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [invoiceSubmitting, setInvoiceSubmitting] = useState(false);
   const [invoiceError, setInvoiceError] = useState<any>(null);
+  // Amount mode for milestone invoices: "percent" or "fixed"
+  const [invoiceMilestoneMode, setInvoiceMilestoneMode] = useState<"percent" | "fixed">("percent");
+  const [invoiceFixedAmount, setInvoiceFixedAmount] = useState<string>("");
 
   const [invoiceForm, setInvoiceForm] = useState({
     quotation_id: "",
@@ -1507,12 +1510,16 @@ const handleProjectEditClick = (proj: any) => {
       due_days: 15,
       notes: "",
     });
+    setInvoiceMilestoneMode("percent");
+    setInvoiceFixedAmount("");
     setInvoiceError(null);
     setIsInvoiceModalOpen(true);
   };
 
   const closeInvoiceModal = () => {
     setIsInvoiceModalOpen(false);
+    setInvoiceMilestoneMode("percent");
+    setInvoiceFixedAmount("");
     setInvoiceError(null);
   };
 
@@ -1549,14 +1556,38 @@ const handleProjectEditClick = (proj: any) => {
       setInvoiceError({ error: "Please select a quotation first." });
       return;
     }
+
+    // Validate fixed amount when in fixed mode
+    if (invoiceForm.invoice_type !== "full" && invoiceMilestoneMode === "fixed") {
+      const selQ = quotations.find((q: any) => q.id === invoiceForm.quotation_id);
+      const grandTotal = selQ ? parseFloat(selQ.grand_total) || 0 : 0;
+      const fixed = parseFloat(invoiceFixedAmount) || 0;
+      if (fixed <= 0) {
+        setInvoiceError({ error: "Fixed amount must be greater than 0." });
+        return;
+      }
+      if (grandTotal > 0 && fixed > grandTotal) {
+        setInvoiceError({ error: `Fixed amount ₹${fixed.toLocaleString("en-IN")} exceeds quotation total ₹${grandTotal.toLocaleString("en-IN")}.` });
+        return;
+      }
+    }
+
     setInvoiceSubmitting(true);
     setInvoiceError(null);
+
+    // Compute effective percentage for API (backend only accepts milestone_percentage)
+    const selQ = quotations.find((q: any) => q.id === invoiceForm.quotation_id);
+    const grandTotal = selQ ? parseFloat(selQ.grand_total) || 0 : 0;
+    const effectivePct =
+      invoiceForm.invoice_type !== "full" && invoiceMilestoneMode === "fixed" && grandTotal > 0
+        ? Math.round(((parseFloat(invoiceFixedAmount) || 0) / grandTotal) * 100 * 100) / 100
+        : invoiceForm.milestone_percentage;
 
     const payload = {
       quotation_id: invoiceForm.quotation_id,
       invoice_type: invoiceForm.invoice_type as any,
       milestone_label: invoiceForm.milestone_label || undefined,
-      milestone_percentage: invoiceForm.milestone_percentage,
+      milestone_percentage: effectivePct,
       invoice_date: invoiceForm.invoice_date,
       due_days: invoiceForm.due_days,
       notes: invoiceForm.notes || undefined,
@@ -4767,41 +4798,99 @@ const handleProjectEditClick = (proj: any) => {
             )}
 
             {invoiceForm.invoice_type !== "full" && (
-              <FF label="Milestone Percentage (%)">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={invoiceForm.milestone_percentage}
-                    onChange={(e) =>
-                      setInvoiceForm((p: any) => ({
-                        ...p,
-                        milestone_percentage: Number(e.target.value),
-                      }))
-                    }
-                    className={`${inputCls} w-28 flex-shrink-0`}
-                  />
-                  {/* Live price preview — calculated from selected quotation grand_total */}
-                  {(() => {
-                    const selQ = quotations.find((q: any) => q.id === invoiceForm.quotation_id);
-                    const base = selQ ? parseFloat(selQ.grand_total) || 0 : 0;
-                    const pct  = Math.min(Math.max(Number(invoiceForm.milestone_percentage) || 0, 0), 100);
-                    const amt  = (base * pct) / 100;
-                    return base > 0 ? (
-                      <div className="flex-1 flex items-center justify-between bg-[#FDF3E3] border border-[#C8922A]/30 rounded-xl px-4 py-2.5">
-                        <span className="text-[11px] text-[#9A8F82] font-medium">Invoice Amount</span>
-                        <span className="text-[15px] font-bold text-[#C8922A]">
-                          ₹{amt.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                    ) : null;
-                  })()}
+              <div>
+                <label className="text-[11px] font-bold text-[#6B6259] uppercase tracking-wide block mb-2">
+                  Amount Mode
+                </label>
+                {/* Toggle */}
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setInvoiceMilestoneMode("percent")}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold border-2 transition-all ${
+                      invoiceMilestoneMode === "percent"
+                        ? "border-[#C8922A] bg-[#FDF3E3] text-[#C8922A]"
+                        : "border-[#EDE8DF] bg-white text-[#6B6259]"
+                    }`}
+                  >
+                    % Percentage
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInvoiceMilestoneMode("fixed")}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold border-2 transition-all ${
+                      invoiceMilestoneMode === "fixed"
+                        ? "border-[#C8922A] bg-[#FDF3E3] text-[#C8922A]"
+                        : "border-[#EDE8DF] bg-white text-[#6B6259]"
+                    }`}
+                  >
+                    ₹ Fixed Amount
+                  </button>
                 </div>
-                <p className="text-[11px] text-[#9A8F82] mt-1">
-                  This % of quotation grand total will be invoiced.
-                </p>
-              </FF>
+
+                {/* Percentage mode */}
+                {invoiceMilestoneMode === "percent" && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={invoiceForm.milestone_percentage}
+                      onChange={(e) =>
+                        setInvoiceForm((p: any) => ({
+                          ...p,
+                          milestone_percentage: Number(e.target.value),
+                        }))
+                      }
+                      className={`${inputCls} w-28 flex-shrink-0`}
+                    />
+                    {(() => {
+                      const selQ = quotations.find((q: any) => q.id === invoiceForm.quotation_id);
+                      const base = selQ ? parseFloat(selQ.grand_total) || 0 : 0;
+                      const pct  = Math.min(Math.max(Number(invoiceForm.milestone_percentage) || 0, 0), 100);
+                      const amt  = (base * pct) / 100;
+                      return base > 0 ? (
+                        <div className="flex-1 flex items-center justify-between bg-[#FDF3E3] border border-[#C8922A]/30 rounded-xl px-4 py-2.5">
+                          <span className="text-[11px] text-[#9A8F82] font-medium">Invoice Amount</span>
+                          <span className="text-[15px] font-bold text-[#C8922A]">
+                            ₹{amt.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
+
+                {/* Fixed amount mode */}
+                {invoiceMilestoneMode === "fixed" && (
+                  <div className="flex items-center gap-2">
+                    <div className="relative w-36 flex-shrink-0">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A8F82] text-[13px] font-semibold">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={invoiceFixedAmount}
+                        onChange={(e) => setInvoiceFixedAmount(e.target.value)}
+                        placeholder="e.g. 50000"
+                        className={`${inputCls} pl-7`}
+                      />
+                    </div>
+                    {(() => {
+                      const selQ = quotations.find((q: any) => q.id === invoiceForm.quotation_id);
+                      const base = selQ ? parseFloat(selQ.grand_total) || 0 : 0;
+                      const fixed = parseFloat(invoiceFixedAmount) || 0;
+                      return base > 0 && fixed > 0 ? (
+                        <div className="flex-1 flex items-center justify-between bg-[#FDF3E3] border border-[#C8922A]/30 rounded-xl px-4 py-2.5">
+                          <span className="text-[11px] text-[#9A8F82] font-medium">Invoice Amount</span>
+                          <span className="text-[15px] font-bold text-[#C8922A]">
+                            ₹{fixed.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Price summary for Full (100%) type */}

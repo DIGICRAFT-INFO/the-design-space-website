@@ -49,6 +49,7 @@ exports.render_invoice_pdf = async (invoice) => {
     brand: brand,
     bank: bank,
     tax_cfg: tax_cfg,
+    terms_text: (await require('../models/settings').TermsTemplate.findOne().catch(() => null))?.invoice_terms || null,
     base_url: process.env.BASE_DIR || __dirname //
   });
 

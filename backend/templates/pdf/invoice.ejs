@@ -362,26 +362,37 @@
           <td>- Rs. <%= Number(invoice.discount_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
         </tr>
         <% } %>
+        <%
+          var hasGST = Number(invoice.cgst_amount) > 0 || Number(invoice.sgst_amount) > 0 || Number(invoice.igst_amount) > 0;
+        %>
+        <% if (hasGST) { %>
         <tr>
           <td>Taxable Amount</td>
           <td>Rs. <%= Number(invoice.taxable_amount || invoice.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
         </tr>
+        <% } %>
         <% if (Number(invoice.cgst_amount) > 0) { %>
         <tr>
-          <td>CGST @ <%= invoice.cgst_rate %>%</td>
+          <td>CGST @ <%= Number(invoice.cgst_rate || 0) %>%</td>
           <td>Rs. <%= Number(invoice.cgst_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
         </tr>
         <% } %>
         <% if (Number(invoice.sgst_amount) > 0) { %>
         <tr>
-          <td>SGST @ <%= invoice.sgst_rate %>%</td>
+          <td>SGST @ <%= Number(invoice.sgst_rate || 0) %>%</td>
           <td>Rs. <%= Number(invoice.sgst_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
         </tr>
         <% } %>
         <% if (Number(invoice.igst_amount) > 0) { %>
         <tr>
-          <td>IGST @ <%= invoice.igst_rate %>%</td>
+          <td>IGST @ <%= Number(invoice.igst_rate || 0) %>%</td>
           <td>Rs. <%= Number(invoice.igst_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
+        </tr>
+        <% } %>
+        <% if (hasGST) { %>
+        <tr>
+          <td><strong>Total Tax</strong></td>
+          <td>Rs. <%= Number(invoice.total_tax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) %></td>
         </tr>
         <% } %>
         <tr class="grand-total">
@@ -429,10 +440,28 @@
   <!-- ── TERMS & CONDITIONS ── -->
   <div class="terms-section">
     <h4>Terms &amp; Conditions</h4>
-    <ol>
-      <li>Payment is due within 15 days of invoice date.</li>
-      <li>Cheques to be drawn in favour of <%= brand && brand.firm_name ? brand.firm_name : 'The Design Space' %>.</li>
-    </ol>
+    <% if (terms_text) { %>
+      <ol>
+        <% terms_text.split('\n').filter(function(l){ return l.trim(); }).forEach(function(line){ %>
+          <li><%= line.replace(/^\d+\.\s*/, '') %></li>
+        <% }); %>
+      </ol>
+    <% } else { %>
+      <ol>
+        <li>This invoice covers only the services specifically mentioned herein and/or in the approved quotation/proposal. Any additional services shall be charged separately.</li>
+        <li>Payment shall be made within the due date mentioned on the invoice. Delay in payment may result in suspension of services and/or corresponding extension of the project timeline.</li>
+        <li>The quoted fee includes only the agreed scope of work. Additional revisions, changes in requirements, or work outside the approved scope may attract additional charges.</li>
+        <li>Project timelines are subject to timely receipt of required information, approvals, drawings, selections and decisions from the client.</li>
+        <li>All drawings, designs, concepts, 3D views, specifications and related documents prepared by <%= brand && brand.firm_name ? brand.firm_name : 'The Design Space' %> remain its intellectual property unless otherwise agreed in writing.</li>
+        <li>Design documents shall be used only for the project for which they are issued and shall not be reproduced, modified or reused for another project without written permission.</li>
+        <li>Any additional site visits, travel, statutory approvals, specialist consultants, testing, printing or third-party expenses not specifically included in the agreed scope shall be charged separately.</li>
+        <li>Design and execution decisions are based on the information and site conditions available at the time. Unforeseen site conditions or changes by other agencies may require additional work and charges.</li>
+        <li>Applicable GST and other statutory taxes/charges shall be levied as per prevailing regulations.</li>
+        <li>In case of cancellation or termination of the project, fees for all services completed or work in progress up to the date of termination shall remain payable.</li>
+        <li>Any invoice-related discrepancy should be communicated within 7 days of receipt of the invoice.</li>
+        <li>This invoice shall be read together with the approved quotation/proposal/agreement governing the project. In case of conflict, the terms of the signed agreement shall prevail.</li>
+      </ol>
+    <% } %>
   </div>
 
   <!-- ── FOOTER ── -->

@@ -416,13 +416,16 @@ exports.render_invoice_pdf = async (invoice) => {
     y, color
   );
 
-  // Totals
+  // Totals — build lines conditionally
+  const hasGST = (invoice.cgst_amount > 0) || (invoice.sgst_amount > 0) || (invoice.igst_amount > 0);
   const tl = [['Subtotal', INR(invoice.subtotal)]];
   if (invoice.discount_amount > 0) tl.push(['Discount', `- ${INR(invoice.discount_amount)}`]);
-  tl.push(['Taxable Amount', INR(invoice.taxable_amount)]);
-  if (invoice.cgst_amount > 0) tl.push([`CGST @ ${invoice.cgst_rate}%`, INR(invoice.cgst_amount)]);
-  if (invoice.sgst_amount > 0) tl.push([`SGST @ ${invoice.sgst_rate}%`, INR(invoice.sgst_amount)]);
-  if (invoice.igst_amount > 0) tl.push([`IGST @ ${invoice.igst_rate}%`, INR(invoice.igst_amount)]);
+  // Taxable Amount only shown when GST applies (non-GST invoices: subtotal = grand total, no need)
+  if (hasGST) tl.push(['Taxable Amount', INR(invoice.taxable_amount)]);
+  if (invoice.cgst_amount > 0) tl.push([`CGST @ ${Number(invoice.cgst_rate || 0)}%`, INR(invoice.cgst_amount)]);
+  if (invoice.sgst_amount > 0) tl.push([`SGST @ ${Number(invoice.sgst_rate || 0)}%`, INR(invoice.sgst_amount)]);
+  if (invoice.igst_amount > 0) tl.push([`IGST @ ${Number(invoice.igst_rate || 0)}%`, INR(invoice.igst_amount)]);
+  if (hasGST) tl.push(['Total Tax', INR(invoice.total_tax)]);
 
   // Grand total box — always show full invoice amount
   y = draw_totals(doc, tl, INR(invoice.grand_total), y, color);

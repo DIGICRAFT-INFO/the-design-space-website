@@ -29,6 +29,10 @@ const invoiceSchema = new mongoose.Schema(
     // Financials
     subtotal: { type: Number, default: 0 },
     taxable_amount: { type: Number, default: 0 },
+    // Tax rates — stored at invoice creation so PDF never shows "undefined%"
+    cgst_rate: { type: Number, default: 0 },
+    sgst_rate: { type: Number, default: 0 },
+    igst_rate: { type: Number, default: 0 },
     cgst_amount: { type: Number, default: 0 },
     sgst_amount: { type: Number, default: 0 },
     igst_amount: { type: Number, default: 0 },

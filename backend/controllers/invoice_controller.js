@@ -274,6 +274,9 @@ exports.update_invoice = async (req, res) => {
       Object.assign(invoiceFields, {
         subtotal,
         taxable_amount: subtotal,
+        cgst_rate:      cgstRate,
+        sgst_rate:      sgstRate,
+        igst_rate:      igstRate,
         cgst_amount:    cgstAmt,
         sgst_amount:    sgstAmt,
         igst_amount:    igstAmt,
@@ -505,6 +508,9 @@ exports.copy_invoice = async (req, res) => {
     await Invoice.findByIdAndUpdate(newInvoice._id, {
       subtotal:       newSubtotal,
       taxable_amount: newSubtotal,
+      cgst_rate:      cgstRate,
+      sgst_rate:      sgstRate,
+      igst_rate:      igstRate,
       cgst_amount:    cgstAmt,
       sgst_amount:    sgstAmt,
       igst_amount:    igstAmt,
