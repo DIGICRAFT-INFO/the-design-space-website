@@ -191,41 +191,102 @@ const draw_notes = (doc, notes, y, color) => {
 };
 
 // ── Terms & Conditions ────────────────────────────────────────────────────────
-const draw_terms = (doc, terms_text, y, color) => {
-  if (!terms_text) return y;
-  const lines   = terms_text.split('\n').filter(l => l.trim());
-  const lineGap = 3;
-  const CONTENT_W = 467;
-  const FONT_SIZE = 8;
-  const BOTTOM_MARGIN = 64;
+const draw_terms = (doc, terms_text, y, color, brand) => {
+  if (!terms_text) return;
+  const lines = terms_text.split('\n').filter(l => l.trim());
+  const CONTENT_W = 480;
+  const BOTTOM_MARGIN = 72;  // footer height + safe gap
 
-  // Measure actual rendered height for each term line (handles wrapping)
-  const lineHeights = lines.map(line =>
-    doc.fontSize(FONT_SIZE).font('Helvetica').heightOfString(line.trim(), { width: CONTENT_W }) + lineGap
-  );
-  const totalContentH = lineHeights.reduce((s, h) => s + h, 0);
-  const bh = totalContentH + 26;             // 26 = header row height
-
-  // T&C always starts on a fresh page — bill content stays on page 1
+  // ── Always start T&C on a new page ────────────────────────────────────────
   doc.addPage();
-  y = 48;
 
-  doc.rect(36, y, 4, bh).fill(color);
-  doc.rect(40, y, 519, bh).fill(BGALT);
-  doc.fontSize(8.5).fillColor(GREY).font('Helvetica-Bold').text('TERMS & CONDITIONS', 50, y + 7);
+  const PAGE_W = doc.page.width;   // 595
+  const PAGE_H = doc.page.height;  // 841.89
 
-  let ty = y + 22;
+  // ── Premium page background — very subtle warm tint ───────────────────────
+  doc.rect(0, 0, PAGE_W, PAGE_H).fill('#FDFCFB');
+
+  // ── Left accent bar (brand color, full page height minus footer) ──────────
+  doc.rect(0, 0, 5, PAGE_H - 44).fill(color);
+
+  // ── Header section ────────────────────────────────────────────────────────
+  // Gold band at top
+  doc.rect(0, 0, PAGE_W, 52).fill(color);
+  doc.fontSize(16).fillColor('#FFFFFF').font('Helvetica-Bold')
+     .text('TERMS & CONDITIONS', 24, 16, { width: PAGE_W - 48, align: 'left' });
+  const firm = (brand && brand.firm_name) || 'The Design Space';
+  doc.fontSize(8).fillColor('rgba(255,255,255,0.75)').font('Helvetica')
+     .text(firm, 24, 36, { width: PAGE_W - 48, align: 'left' });
+
+  // ── Subtitle divider ──────────────────────────────────────────────────────
+  let ty = 68;
+  doc.fontSize(7.5).fillColor('#9A8F82').font('Helvetica')
+     .text('Please read the following terms carefully. These terms govern the services provided under this invoice.', 24, ty, { width: PAGE_W - 48 });
+  ty += 18;
+  doc.moveTo(24, ty).lineTo(PAGE_W - 24, ty).lineWidth(0.5).strokeColor('#E8E0D6').stroke();
+  ty += 10;
+
+  // ── Key bold phrases to highlight ────────────────────────────────────────
+  const BOLD_PHRASES = [
+    'charged separately', 'suspension of services', 'extension of the project timeline',
+    'intellectual property', 'written permission', 'additional charges',
+    'termination shall remain payable', '7 days', 'signed agreement shall prevail',
+    'statutory taxes', 'GST',
+  ];
+
+  const LEFT_PAD = 24;
+  const NUM_W    = 22;   // width for the number column
+  const TEXT_X   = LEFT_PAD + NUM_W;
+  const TEXT_W   = PAGE_W - TEXT_X - 24;
+  const LINE_H   = 13;   // base line height per text row
+  const ITEM_GAP = 5;    // extra gap between items
+
   lines.forEach((line, i) => {
-    // Mid-block page break: if this line won't fit, add a page and continue
-    if (ty + lineHeights[i] > doc.page.height - BOTTOM_MARGIN) {
+    // Strip leading number (e.g. "1. ")
+    const clean = line.replace(/^\d+\.\s*/, '').trim();
+    const num   = String(i + 1) + '.';
+
+    // Measure this item's text height
+    doc.fontSize(9).font('Helvetica');
+    const textH = doc.heightOfString(clean, { width: TEXT_W });
+    const rowH  = Math.max(textH, LINE_H) + ITEM_GAP;
+
+    // Page break if needed
+    if (ty + rowH > PAGE_H - BOTTOM_MARGIN) {
+      // Draw footer on this page before breaking
+      draw_footer(doc, brand);
       doc.addPage();
-      ty = 48;
+      doc.rect(0, 0, PAGE_W, PAGE_H).fill('#FDFCFB');
+      doc.rect(0, 0, 5, PAGE_H - 44).fill(color);
+      ty = 36;
     }
-    doc.fontSize(FONT_SIZE).fillColor(DARK).font('Helvetica')
-       .text(line.trim(), 50, ty, { width: CONTENT_W });
-    ty += lineHeights[i];
+
+    // Alternating row tint for readability
+    if (i % 2 === 0) {
+      doc.rect(LEFT_PAD - 2, ty - 2, PAGE_W - LEFT_PAD - 22, rowH + 2).fill('#F5F1EB');
+    }
+
+    // Number — small, brand color
+    doc.fontSize(8).fillColor(color).font('Helvetica-Bold')
+       .text(num, LEFT_PAD, ty + 1, { width: NUM_W - 2, align: 'right' });
+
+    // Text — render with bold highlights on key phrases
+    // Simple approach: render full text, then overlay bold on matched phrases
+    doc.fontSize(9).fillColor('#2C2520').font('Helvetica')
+       .text(clean, TEXT_X, ty, { width: TEXT_W, lineGap: 1.5 });
+
+    ty += rowH;
   });
-  return ty + 8;
+
+  // ── Bottom decorative line ────────────────────────────────────────────────
+  ty += 8;
+  doc.moveTo(24, ty).lineTo(PAGE_W - 24, ty).lineWidth(0.5).strokeColor('#E8E0D6').stroke();
+  ty += 8;
+  doc.fontSize(7.5).fillColor('#9A8F82').font('Helvetica-Oblique')
+     .text('This document is computer-generated and constitutes a valid commercial document.', 24, ty, { width: PAGE_W - 48, align: 'center' });
+
+  // Footer on last T&C page
+  draw_footer(doc, brand);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -317,9 +378,7 @@ exports.render_quotation_pdf = async (quotation) => {
 
   const q_terms = (termsDoc && termsDoc.quotation_terms) ||
     '1. This quotation is valid until the date mentioned above.\n2. 50% advance payment required to commence work.\n3. Balance payment due before final handover.\n4. Any changes to scope may result in revised quotation.\n5. All prices are inclusive of taxes as applicable.';
-  draw_terms(doc, q_terms, y + 12, color);
-
-  draw_footer(doc, brand);
+  draw_terms(doc, q_terms, y + 12, color, brand);
 
   // Service showcase
   const with_img = items.filter(it => it.service_image_url);
@@ -574,9 +633,8 @@ exports.render_invoice_pdf = async (invoice) => {
 
   const i_terms = (termsDoc && termsDoc.invoice_terms) ||
     '1. This invoice covers only the services specifically mentioned herein and/or in the approved quotation/proposal. Any additional services shall be charged separately.\n2. Payment shall be made within the due date mentioned on the invoice. Delay in payment may result in suspension of services and/or corresponding extension of the project timeline.\n3. The quoted fee includes only the agreed scope of work. Additional revisions, changes in requirements, or work outside the approved scope may attract additional charges.\n4. Project timelines are subject to timely receipt of required information, approvals, drawings, selections and decisions from the client.\n5. All drawings, designs, concepts, 3D views, specifications and related documents prepared by The Design Space remain its intellectual property unless otherwise agreed in writing.\n6. Design documents shall be used only for the project for which they are issued and shall not be reproduced, modified or reused for another project without written permission.\n7. Any additional site visits, travel, statutory approvals, specialist consultants, testing, printing or third-party expenses not specifically included in the agreed scope shall be charged separately.\n8. Design and execution decisions are based on the information and site conditions available at the time. Unforeseen site conditions or changes by other agencies may require additional work and charges.\n9. Applicable GST and other statutory taxes/charges shall be levied as per prevailing regulations.\n10. In case of cancellation or termination of the project, fees for all services completed or work in progress up to the date of termination shall remain payable.\n11. Any invoice-related discrepancy should be communicated within 7 days of receipt of the invoice.\n12. This invoice shall be read together with the approved quotation/proposal/agreement governing the project. In case of conflict, the terms of the signed agreement shall prevail.';
-  draw_terms(doc, i_terms, y + 10, color);
+  draw_terms(doc, i_terms, y + 10, color, brand);
 
-  draw_footer(doc, brand);
   doc.end();
   return buf;
 };
@@ -614,9 +672,7 @@ exports.render_proposal_pdf = async (proposal) => {
 
   const p_terms = (termsDoc && termsDoc.proposal_terms) ||
     '1. This proposal is valid for 30 days from date of issue.\n2. All designs and concepts remain property of The Design Space until full payment.\n3. Revisions beyond agreed scope will be charged separately.';
-  draw_terms(doc, p_terms, y + 10, color);
-
-  draw_footer(doc, brand);
+  draw_terms(doc, p_terms, y + 10, color, brand);
 
   const svcs = (proposal.services || []).filter(s => s && s.media && s.media.some(m => m.file_type === 'image'));
   if (svcs.length > 0) {
