@@ -200,6 +200,7 @@ export default function GenerateInvoicePage() {
         invoice_type: qForm.invoice_type,
         milestone_label: qForm.invoice_type !== "full" ? qForm.milestone_label : undefined,
         milestone_percentage: effectivePct,
+        milestone_fixed_amount: qMilestoneMode === "fixed" ? (parseFloat(qFixedAmount) || 0) : 0,
         invoice_date: qForm.invoice_date,
         due_days: qForm.due_days,
         notes: qForm.notes || undefined,

@@ -1588,6 +1588,7 @@ const handleProjectEditClick = (proj: any) => {
       invoice_type: invoiceForm.invoice_type as any,
       milestone_label: invoiceForm.milestone_label || undefined,
       milestone_percentage: effectivePct,
+      milestone_fixed_amount: invoiceMilestoneMode === "fixed" ? (parseFloat(invoiceFixedAmount) || 0) : 0,
       invoice_date: invoiceForm.invoice_date,
       due_days: invoiceForm.due_days,
       notes: invoiceForm.notes || undefined,

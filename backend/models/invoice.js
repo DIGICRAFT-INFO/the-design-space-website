@@ -25,6 +25,8 @@ const invoiceSchema = new mongoose.Schema(
     // Milestone billing
     milestone_label: { type: String, default: '' },
     milestone_percentage: { type: Number, default: 0 },
+    // Stored when invoice is created in Fixed Amount mode (for PDF display)
+    milestone_fixed_amount: { type: Number, default: 0 },
 
     // Financials
     subtotal: { type: Number, default: 0 },

@@ -40,7 +40,7 @@ exports.generate_invoice_from_quotation = async (data) => {
   session.startTransaction(); // Django @transaction.atomic
   
   try {
-    const { quotation_id, invoice_type = 'full', milestone_label = '', milestone_percentage = 100, invoice_date, due_days = 15, notes = '', billing_address = '', site_address = '' } = data;
+    const { quotation_id, invoice_type = 'full', milestone_label = '', milestone_percentage = 100, milestone_fixed_amount = 0, invoice_date, due_days = 15, notes = '', billing_address = '', site_address = '' } = data;
     
     const quotation = await Quotation.findById(quotation_id).populate('items').session(session);
     if (!quotation) throw new Error('Quotation not found');
@@ -92,6 +92,7 @@ exports.generate_invoice_from_quotation = async (data) => {
       status: 'draft',
       milestone_label: invoice_type === 'full' ? '' : milestone_label,
       milestone_percentage: effectivePercentage,
+      milestone_fixed_amount: invoice_type !== 'full' ? (parseFloat(milestone_fixed_amount) || 0) : 0,
       subtotal, taxable_amount, cgst_rate: quotation.cgst_rate || 0, sgst_rate: quotation.sgst_rate || 0, igst_rate: quotation.igst_rate || 0, cgst_amount, sgst_amount, igst_amount, total_tax, grand_total, balance_due: grand_total,
       notes,
       billing_address: billing_address || quotation.billing_address || '',

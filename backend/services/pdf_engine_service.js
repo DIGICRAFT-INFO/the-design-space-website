@@ -397,7 +397,16 @@ exports.render_invoice_pdf = async (invoice) => {
       ['Invoice Date', fmt_date(invoice.invoice_date)],
       ['Due Date',     fmt_date(invoice.due_date)],
       ...(invoice.invoice_type !== 'full' && invoice.milestone_label
-        ? [['Milestone', `${invoice.milestone_label} (${invoice.milestone_percentage}%)`]]
+        ? (() => {
+            // Show rupee amount if invoice was created in fixed-amount mode
+            // (detected by checking if grand_total matches a round figure vs % of quotation)
+            // Best signal: if milestone_fixed_amount is stored, use it; else show %
+            const fixedAmt = invoice.milestone_fixed_amount;
+            const milestoneDisplay = fixedAmt && fixedAmt > 0
+              ? `${invoice.milestone_label} (${INR(fixedAmt)})`
+              : `${invoice.milestone_label} (${invoice.milestone_percentage}%)`;
+            return [['Milestone', milestoneDisplay]];
+          })()
         : []),
       ['Status',       (invoice.status || '').toUpperCase()],
     ],
