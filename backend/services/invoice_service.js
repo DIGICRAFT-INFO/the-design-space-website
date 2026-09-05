@@ -49,13 +49,35 @@ exports.generate_invoice_from_quotation = async (data) => {
       throw new Error('Only APPROVED quotations can generate invoices.'); //
     }
 
-    // Guard: prevent duplicate invoices for the same quotation (non-cancelled)
-    const existing = await Invoice.findOne({
+    // Guard: prevent duplicate invoices for the same quotation
+    // - 'full' type: only one active invoice allowed per quotation
+    // - 'advance'/'final': only one active invoice of same type allowed
+    // - 'milestone': multiple allowed BUT block exact duplicate label
+    const dupQuery: any = {
       quotation: quotation_id,
-      status: { $nin: ['cancelled'] }
-    }).session(session);
-    if (existing) {
-      throw new Error(`An active invoice (${existing.invoice_number}) already exists for this quotation. Cancel it first or create a copy.`);
+      status: { $nin: ['cancelled'] },
+    };
+    if (invoice_type === 'full') {
+      // Full invoice — block any existing active invoice for this quotation
+      const existing = await Invoice.findOne(dupQuery).session(session);
+      if (existing) {
+        throw new Error(`An active invoice (${existing.invoice_number}) already exists for this quotation. Cancel it first or create a copy.`);
+      }
+    } else if (invoice_type === 'advance' || invoice_type === 'final') {
+      // Advance/Final — only one of each type allowed
+      dupQuery.invoice_type = invoice_type;
+      const existing = await Invoice.findOne(dupQuery).session(session);
+      if (existing) {
+        throw new Error(`An active ${invoice_type} invoice (${existing.invoice_number}) already exists for this quotation.`);
+      }
+    } else if (invoice_type === 'milestone' && milestone_label && milestone_label.trim()) {
+      // Milestone — block exact duplicate label only
+      dupQuery.invoice_type = 'milestone';
+      dupQuery.milestone_label = milestone_label.trim();
+      const existing = await Invoice.findOne(dupQuery).session(session);
+      if (existing) {
+        throw new Error(`A milestone invoice with label "${milestone_label}" (${existing.invoice_number}) already exists. Use a different milestone label.`);
+      }
     }
 
     const today = invoice_date ? new Date(invoice_date) : new Date();
