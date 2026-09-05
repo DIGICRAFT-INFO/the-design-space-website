@@ -28,46 +28,23 @@ const corsOptions = {
     // Allow server-to-server requests (no origin header)
     if (!origin) return callback(null, true);
 
-    // Build allowed list — split comma-separated env vars into individual origins
+    // Allowed origins — Hostinger production + local dev
     const allowed = [
       'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:3200',
-      'https://the-design-space-websiteadmin.vercel.app',
-      'https://websitethedesignspace.vercel.app',
-      // FRONTEND_URL may be a single value or comma-separated
-      ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(s => s.trim()) : []),
-      // CORS_ORIGIN may be comma-separated list
-      ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(s => s.trim()) : []),
-      // Always explicitly allow production domains (hardcoded fallback)
+      // Hostinger production
       'https://thedesignspace.in',
       'https://www.thedesignspace.in',
       'https://api.thedesignspace.in',
-      'https://dashboard.thedesignspace.in',
+      // Extra domains from env (comma-separated)
+      ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(s => s.trim()) : []),
+      ...(process.env.CORS_ORIGIN  ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())  : []),
     ].filter(Boolean);
 
     if (allowed.includes(origin)) return callback(null, true);
 
-    // Allow any Vercel preview or Hostinger staging domain
-    if (/\.vercel\.app$/.test(origin) || /\.hostingersite\.com$/.test(origin)) {
-      return callback(null, true);
-    }
-
-    // Allow PRODUCTION_DOMAIN env var if set
-    const productionDomain = process.env.PRODUCTION_DOMAIN;
-    if (productionDomain) {
-      if (
-        origin === `https://${productionDomain}` ||
-        origin === `https://www.${productionDomain}`
-      ) {
-        return callback(null, true);
-      }
-    }
-
-    // Log blocked origin for debugging but still allow (permissive fallback)
     console.warn(`⚠️  CORS blocked origin: ${origin}`);
-    // Return error string — this tells cors middleware to NOT set Allow-Origin
-    // but also not crash the request
     callback(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
