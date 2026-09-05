@@ -54,6 +54,7 @@ export type GenerateInvoicePayload = {
   invoice_type: InvoiceType;
   milestone_label?: string;
   milestone_percentage: number;
+  milestone_fixed_amount?: number;
   invoice_date: string;
   due_days: number;
   notes?: string;
