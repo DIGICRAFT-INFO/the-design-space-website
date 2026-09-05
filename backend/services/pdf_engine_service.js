@@ -93,7 +93,9 @@ const draw_footer = (doc, brand) => {
   doc.rect(0, y - 2, 595, 50).fill('#F5F3EF');
   doc.moveTo(36, y - 2).lineTo(559, y - 2).lineWidth(0.5).strokeColor(LGREY).stroke();
   doc.fontSize(8).fillColor(GREY).font('Helvetica')
-     .text(`This is a computer-generated document. | ${firm}`, 36, y + 6, { width: 523, align: 'center' });
+     .text(`This is a computer-generated document. | ${firm}`, 36, y + 6, { width: 523, align: 'center', lineBreak: false });
+  // Reset Y cursor to avoid PDFKit adding a blank extra page after footer
+  doc.y = y;
 };
 
 // ── Info boxes ────────────────────────────────────────────────────────────────
