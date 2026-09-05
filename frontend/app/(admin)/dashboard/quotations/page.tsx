@@ -566,10 +566,13 @@ export default function QuotationsPage() {
       if (res.ok) {
         const d = await res.json();
         const all: any[] = d.results ?? d ?? [];
-        // Filter by quotation reference
-        const filtered = all.filter(inv =>
-          inv.quotation === quotationId || inv.quotation_id === quotationId
-        );
+        // inv.quotation may be a populated object or a plain string ID
+        const filtered = all.filter(inv => {
+          const qRef = inv.quotation;
+          if (!qRef) return false;
+          const qId = typeof qRef === "object" ? (qRef.id || qRef._id) : qRef;
+          return String(qId) === String(quotationId);
+        });
         setQuotationInvoices(filtered);
       }
     } catch { setQuotationInvoices([]); }
