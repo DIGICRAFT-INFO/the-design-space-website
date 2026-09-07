@@ -407,9 +407,16 @@ exports.render_quotation_pdf = async (quotation) => {
   ];
 
   const ROW_H = 14;
-  const left_box_h  = left_data.length  * ROW_H + 26;
-  const right_box_h = right_data.length * ROW_H + 26;
-  const box_h = Math.max(left_box_h, right_box_h);
+
+  // Pre-calculate dynamic row heights for left box (multiline support for Address & Project)
+  const left_row_heights_q = left_data.map(([, value]) => {
+    doc.fontSize(7.5).font('Helvetica-Bold');
+    const h = doc.heightOfString(String(value || '—'), { width: BOX_LEFT_W - 72 });
+    return Math.max(ROW_H, h + 4);
+  });
+  const left_box_h_dyn  = left_row_heights_q.reduce((a, b) => a + b, 0) + 26;
+  const right_box_h_dyn = right_data.length * ROW_H + 26;
+  const box_h = Math.max(left_box_h_dyn, right_box_h_dyn);
 
   // Left box
   doc.rect(BOX_LEFT_X, y, BOX_LEFT_W, box_h).fillAndStroke(BGALT, LGREY).lineWidth(0.4);
@@ -418,11 +425,12 @@ exports.render_quotation_pdf = async (quotation) => {
   doc.moveTo(BOX_LEFT_X + 8, y + 17).lineTo(BOX_LEFT_X + BOX_LEFT_W - 8, y + 17)
      .lineWidth(0.3).strokeColor(LGREY).stroke();
   let ly = y + 23;
-  left_data.forEach(([label, value]) => {
+  left_data.forEach(([label, value], idx) => {
+    const rh = left_row_heights_q[idx];
     doc.fontSize(7.5).fillColor(GREY).font('Helvetica').text(label + ':', BOX_LEFT_X + 8, ly, { width: 52 });
     doc.fontSize(7.5).fillColor(DARK).font('Helvetica-Bold')
-       .text(value, BOX_LEFT_X + 64, ly, { width: BOX_LEFT_W - 72, lineBreak: false, ellipsis: true });
-    ly += ROW_H;
+       .text(value, BOX_LEFT_X + 64, ly, { width: BOX_LEFT_W - 72, lineBreak: true });
+    ly += rh;
   });
 
   // Right box
@@ -828,9 +836,15 @@ exports.render_invoice_pdf = async (invoice) => {
   if (milestone_label_str) right_rows.push(['Milestone', milestone_label_str]);
   right_rows.push(['Status', status_str]);
 
-  const left_box_h  = left_rows.length  * ROW_H + 26;
-  const right_box_h = right_rows.length * ROW_H + 26;
-  const box_h = Math.max(left_box_h, right_box_h);
+  // Pre-calculate dynamic row heights for left box (multiline support for Address & Project)
+  const left_row_heights_inv = left_rows.map(([, value]) => {
+    doc.fontSize(7.5).font('Helvetica-Bold');
+    const h = doc.heightOfString(String(value || '—'), { width: BOX_L_W - 72 });
+    return Math.max(ROW_H, h + 4);
+  });
+  const left_box_h_dyn  = left_row_heights_inv.reduce((a, b) => a + b, 0) + 26;
+  const right_box_h_dyn = right_rows.length * ROW_H + 26;
+  const box_h = Math.max(left_box_h_dyn, right_box_h_dyn);
 
   // Draw left box
   doc.rect(BOX_L_X, y, BOX_L_W, box_h).fillAndStroke(BGALT, LGREY).lineWidth(0.4);
@@ -839,11 +853,12 @@ exports.render_invoice_pdf = async (invoice) => {
   doc.moveTo(BOX_L_X + 8, y + 17).lineTo(BOX_L_X + BOX_L_W - 8, y + 17)
      .lineWidth(0.3).strokeColor(LGREY).stroke();
   let ly = y + 23;
-  left_rows.forEach(([label, value]) => {
+  left_rows.forEach(([label, value], idx) => {
+    const rh = left_row_heights_inv[idx];
     doc.fontSize(7.5).fillColor(GREY).font('Helvetica').text(label + ':', BOX_L_X + 8, ly, { width: 52 });
     doc.fontSize(7.5).fillColor(DARK).font('Helvetica-Bold')
-       .text(String(value || '—'), BOX_L_X + 64, ly, { width: BOX_L_W - 72, lineBreak: false, ellipsis: true });
-    ly += ROW_H;
+       .text(String(value || '—'), BOX_L_X + 64, ly, { width: BOX_L_W - 72, lineBreak: true });
+    ly += rh;
   });
 
   // Draw right box
@@ -1272,9 +1287,15 @@ exports.render_proposal_pdf = async (proposal) => {
     ['Status',      status_str],
   ];
 
-  const left_box_h  = left_rows.length  * ROW_H + 26;
-  const right_box_h = right_rows.length * ROW_H + 26;
-  const box_h = Math.max(left_box_h, right_box_h);
+  // Pre-calculate dynamic row heights for left box (multiline support for Address & Project)
+  const left_row_heights = left_rows.map(([, value]) => {
+    doc.fontSize(7.5).font('Helvetica-Bold');
+    const h = doc.heightOfString(String(value || '—'), { width: BOX_L_W - 72 });
+    return Math.max(ROW_H, h + 4);
+  });
+  const left_box_h_dyn  = left_row_heights.reduce((a, b) => a + b, 0) + 26;
+  const right_box_h_dyn = right_rows.length * ROW_H + 26;
+  const box_h = Math.max(left_box_h_dyn, right_box_h_dyn);
 
   // Left box
   doc.rect(BOX_L_X, y, BOX_L_W, box_h).fillAndStroke(BGALT, LGREY).lineWidth(0.4);
@@ -1282,11 +1303,12 @@ exports.render_proposal_pdf = async (proposal) => {
   doc.moveTo(BOX_L_X + 8, y + 17).lineTo(BOX_L_X + BOX_L_W - 8, y + 17)
      .lineWidth(0.3).strokeColor(LGREY).stroke();
   let ly = y + 23;
-  left_rows.forEach(([label, value]) => {
+  left_rows.forEach(([label, value], idx) => {
+    const rh = left_row_heights[idx];
     doc.fontSize(7.5).fillColor(GREY).font('Helvetica').text(label + ':', BOX_L_X + 8, ly, { width: 52 });
     doc.fontSize(7.5).fillColor(DARK).font('Helvetica-Bold')
-       .text(String(value || '—'), BOX_L_X + 64, ly, { width: BOX_L_W - 72, lineBreak: false, ellipsis: true });
-    ly += ROW_H;
+       .text(String(value || '—'), BOX_L_X + 64, ly, { width: BOX_L_W - 72, lineBreak: true });
+    ly += rh;
   });
 
   // Right box
