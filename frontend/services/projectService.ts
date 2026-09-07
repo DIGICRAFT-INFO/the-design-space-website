@@ -76,10 +76,21 @@ export async function getProjectsByClient(clientId: string): Promise<Project[]> 
   return (data.results ?? data) as Project[];
 }
 
+// Sanitize area_sqft: empty string → null, otherwise parse as number
+function sanitizeProjectPayload(data: Partial<Project>): Partial<Project> {
+  return {
+    ...data,
+    area_sqft:
+      data.area_sqft !== "" && data.area_sqft != null
+        ? Number(data.area_sqft)
+        : null,
+  };
+}
+
 // ✅ POST /clients/:clientId/projects/
 export async function createProject(clientId: string, data: Project): Promise<Project> {
-  const payload ={
-    ...data,
+  const payload = {
+    ...sanitizeProjectPayload(data),
     client: clientId, // ✅ force include client always
   };
   const response = await fetch(`${API_BASE_URL}/clients/${clientId}/projects/`, {
@@ -106,10 +117,10 @@ export async function updateProject(
     ? (clientId as any).id 
     : clientId;
 
-  // 2. Ensure payload uses the clean ID string
-  const payload = { 
-    ...data, 
-    client: actualClientId 
+  // 2. Ensure payload uses the clean ID string + sanitize area_sqft
+  const payload = {
+    ...sanitizeProjectPayload(data),
+    client: actualClientId,
   };
 
   // 3. Use the clean string ID in the URL

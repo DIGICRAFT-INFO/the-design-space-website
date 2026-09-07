@@ -153,12 +153,39 @@ exports.mark_invoice_paid = async (req, res) => {
     if (invoice.status === 'cancelled') {
       return res.status(400).json({ detail: 'Cannot mark a cancelled invoice as paid.' });
     }
-    // Explicitly set paid status + sync balance fields so dashboard totals are correct.
-    // update_balance() would re-read PaymentRecords, but for a manual "mark paid" action
-    // we treat the full grand_total as collected and zero out the balance.
-    invoice.status      = 'paid';
-    invoice.amount_paid = parseFloat(invoice.grand_total) || 0;
-    invoice.balance_due = 0;
+
+    const grandTotal = parseFloat(invoice.grand_total) || 0;
+
+    // Auto-create a PaymentRecord for the remaining balance so the
+    // Summary panel (which aggregates PaymentRecord collection) stays
+    // in sync with the 4 summary cards (which read invoice.amount_paid).
+    const alreadyPaid = parseFloat(invoice.amount_paid) || 0;
+    const remaining   = Math.max(0, grandTotal - alreadyPaid);
+    if (remaining > 0) {
+      const PaymentRecord = require('../models/payment_record');
+      await PaymentRecord.create({
+        invoice:          invoice._id,
+        amount_paid:      remaining,
+        payment_date:     new Date(),
+        payment_mode:     'other',
+        reference_number: `MANUAL-PAID-${invoice.invoice_number}`,
+        notes:            'Auto-recorded when invoice was manually marked as paid',
+      });
+      // update_balance() fires via post('save') hook — no manual field-set needed.
+      // Re-fetch to get updated fields for the response.
+      const updated = await Invoice.findById(invoice._id);
+      await createNotification({
+        event_type: 'invoice_paid',
+        title: 'Payment Complete',
+        message: `Invoice ${invoice.invoice_number} marked as paid`,
+        reference_id: invoice._id,
+        reference_type: 'invoice'
+      });
+      return res.json(updated);
+    }
+
+    // Already fully paid — just set status to 'paid' (balance already 0)
+    invoice.status = 'paid';
     await invoice.save();
 
     await createNotification({

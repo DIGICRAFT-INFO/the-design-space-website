@@ -183,7 +183,7 @@ function ProjectCard({
         </div>
         <div className="flex items-center gap-1.5">
           <Maximize2 size={13} className="text-[#B0A89E] flex-shrink-0" />
-          <span>{p.area_sqft || "0"} sqft</span>
+          <span>{p.area_sqft ? `${p.area_sqft} sqft` : "—"}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Calendar size={13} className="text-[#B0A89E] flex-shrink-0" />

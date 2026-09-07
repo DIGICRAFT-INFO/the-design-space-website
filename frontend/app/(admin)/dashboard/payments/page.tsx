@@ -21,7 +21,7 @@ import RecordPaymentModal, {
   type Invoice,
 } from "@/components/RecordPaymentModal";
 import PaymentHistoryPanel from "@/components/PaymentHistoryModal";
-import { getAllInvoices, sendReminder } from "@/services/invoiceService";
+import { sendReminder } from "@/services/invoiceService";
 import API_BASE_URL from "@/lib/config";
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -154,13 +154,27 @@ export default function PaymentsPage() {
 
   const load = useCallback(() => {
     setLoading(true);
-    getAllInvoices()
-      .then((data) => {
-        setInvoices(data);
+    // Fetch only payment-relevant statuses — draft and cancelled invoices
+    // are not shown in the Payment Tracker and skipping them reduces payload.
+    // Backend supports multiple ?status= params in a single request.
+    const activeStatuses = ["issued", "partial", "overdue", "paid"];
+    const qs = activeStatuses.map((s) => `status=${s}`).join("&");
+    fetch(`${API_BASE_URL}/invoices/?${qs}`, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Invoices fetch failed: ${res.status}`);
+        return res.json();
+      })
+      .then((data: unknown) => {
+        const list = (Array.isArray(data) ? data : (data as { results?: Invoice[] }).results ?? []) as Invoice[];
+        setInvoices(list);
         // Also refresh the drawer invoice object if one is open
         setDrawerInvoice((prev) => {
           if (!prev) return null;
-          const updated = data.find((inv) => inv.id === prev.id);
+          const updated = list.find((inv) => inv.id === prev.id);
           return updated ?? prev;
         });
       })
@@ -193,25 +207,31 @@ export default function PaymentsPage() {
     return matchSearch && matchStatus;
   });
 
-  // Summary totals — only active invoices (exclude draft/cancelled)
+  // Summary cards — use PaymentRecord-based aggregates from /payments/summary/
+  // so they match the Summary panel exactly (single source of truth).
+  // Fall back to invoice-field math only while summary is still loading.
   const activeInvoices = invoices.filter(
     (inv) => inv.status !== "draft" && inv.status !== "cancelled"
   );
-  const totalCollected = activeInvoices.reduce(
-    (s, inv) => s + parseFloat(inv.amount_paid || "0"),
-    0,
-  );
-  const totalOutstanding = activeInvoices.reduce(
-    (s, inv) => s + Math.max(0, parseFloat(inv.balance_due || "0")),
-    0,
-  );
-  const totalInvoiced = activeInvoices.reduce(
-    (s, inv) => s + parseFloat(inv.grand_total),
-    0,
-  );
-  const overdueCount = activeInvoices.filter(
-    (inv) => inv.status === "overdue",
-  ).length;
+
+  const totalCollected = summary
+    ? summary.overall.total_collected
+    : activeInvoices.reduce((s, inv) => s + parseFloat(inv.amount_paid || "0"), 0);
+
+  const totalInvoiced = summary?.by_invoice_status
+    ? Object.values(summary.by_invoice_status).reduce((s, st) => s + st.total_grand, 0)
+    : activeInvoices.reduce((s, inv) => s + parseFloat(inv.grand_total), 0);
+
+  const totalOutstanding = summary?.by_invoice_status
+    ? (["issued", "partial", "overdue"] as const).reduce(
+        (s, status) => s + (summary.by_invoice_status![status]?.total_balance ?? 0),
+        0,
+      )
+    : activeInvoices.reduce((s, inv) => s + Math.max(0, parseFloat(inv.balance_due || "0")), 0);
+
+  const overdueCount = summary?.by_invoice_status
+    ? (summary.by_invoice_status["overdue"]?.count ?? 0)
+    : activeInvoices.filter((inv) => inv.status === "overdue").length;
 
   const fmt = (v: number) =>
     new Intl.NumberFormat("en-IN", {

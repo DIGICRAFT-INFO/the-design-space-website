@@ -569,8 +569,12 @@ exports.render_quotation_pdf = async (quotation) => {
     }
   }
 
+  // Determine total pages BEFORE drawing any footer
+  const with_img = (quotation.items || []).filter(it => it.service_image_url);
+  const total_pages = with_img.length > 0 ? 3 : 2;
+
   // Footer on page 1
-  draw_page_footer('Page 1 of 2');
+  draw_page_footer(`Page 1 of ${total_pages}`);
 
   // ─────────────────────────────────────────────────────────────────────────
   // PAGE 2 — TERMS & CONDITIONS (premium design)
@@ -665,20 +669,33 @@ exports.render_quotation_pdf = async (quotation) => {
      .text(`This is a computer-generated document. | ${firm_name}`,
            ML, fy2 + 4, { width: CW - 60, align: 'center', lineBreak: false });
   doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
-     .text('Page 2 of 2', PW - MR - 55, fy2 + 4, { width: 55, align: 'right', lineBreak: false });
+     .text(`Page 2 of ${total_pages}`, PW - MR - 55, fy2 + 4, { width: 55, align: 'right', lineBreak: false });
 
   // ─────────────────────────────────────────────────────────────────────────
   // SERVICE SHOWCASE (page 3+ only if service images exist)
   // ─────────────────────────────────────────────────────────────────────────
-  const with_img = items.filter(it => it.service_image_url);
   if (with_img.length > 0) {
     doc.addPage();
     let sy = 40;
+    let showcase_page = 3;
     doc.fontSize(14).fillColor(color).font('Helvetica-Bold').text('SERVICE SHOWCASE', ML, sy);
     doc.moveTo(ML, sy + 18).lineTo(PW - MR, sy + 18).lineWidth(1).strokeColor(color).stroke();
     sy += 28;
     for (const item of with_img) {
-      if (sy + 180 > PH - 60) { doc.addPage(); sy = 50; }
+      if (sy + 180 > PH - 60) {
+        // Footer before adding new page
+        const sfy_break = PH - 36;
+        doc.rect(0, sfy_break - 4, PW, 40).fill('#F5F3EF');
+        doc.moveTo(ML, sfy_break - 4).lineTo(PW - MR, sfy_break - 4).lineWidth(0.4).strokeColor(LGREY).stroke();
+        doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+           .text(`This is a computer-generated document. | ${firm_name}`,
+                 ML, sfy_break + 4, { width: CW, align: 'center', lineBreak: false });
+        doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+           .text(`Page ${showcase_page} of ${total_pages + (showcase_page - 3)}`, PW - MR - 55, sfy_break + 4, { width: 55, align: 'right', lineBreak: false });
+        doc.addPage();
+        showcase_page++;
+        sy = 50;
+      }
       doc.rect(ML, sy, CW, 3).fill(color); sy += 8;
       doc.fontSize(12).fillColor(DARK).font('Helvetica-Bold')
          .text(item.description || '—', ML, sy, { width: 280 }); sy += 16;
@@ -690,8 +707,11 @@ exports.render_quotation_pdf = async (quotation) => {
          .text(`Qty: ${item.quantity} ${item.unit || ''}  |  Rate: ${INR(item.rate)}  |  Amount: ${INR(item.amount || item.quantity * item.rate)}`, ML, sy, { width: 280 });
       sy += 14;
       if (item.service_image_url) {
-        const ip = path.isAbsolute(item.service_image_url) ? item.service_image_url
-                 : path.join(__dirname, '..', item.service_image_url.replace(/^\//, ''));
+        // Support both absolute paths and relative paths (uploads/services/...)
+        const raw = item.service_image_url;
+        const ip = path.isAbsolute(raw)
+          ? raw
+          : path.join(__dirname, '..', raw.replace(/^\//, ''));
         if (fs.existsSync(ip)) {
           try { doc.image(ip, 330, sy - 42, { width: 193, height: 120, fit: [193, 120] }); } catch (_) {}
         }
@@ -700,13 +720,15 @@ exports.render_quotation_pdf = async (quotation) => {
       doc.moveTo(ML, sy).lineTo(PW - MR, sy).lineWidth(0.3).strokeColor(LGREY).stroke();
       sy += 14;
     }
-    // Footer on showcase page
+    // Footer on last showcase page
     const sfy = PH - 36;
     doc.rect(0, sfy - 4, PW, 40).fill('#F5F3EF');
     doc.moveTo(ML, sfy - 4).lineTo(PW - MR, sfy - 4).lineWidth(0.4).strokeColor(LGREY).stroke();
     doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
        .text(`This is a computer-generated document. | ${firm_name}`,
              ML, sfy + 4, { width: CW, align: 'center', lineBreak: false });
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+       .text(`Page ${showcase_page} of ${showcase_page}`, PW - MR - 55, sfy + 4, { width: 55, align: 'right', lineBreak: false });
   }
 
   doc.end();
