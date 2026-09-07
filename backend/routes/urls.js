@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const { 
   token_obtain_pair, 
   token_refresh,
@@ -22,13 +23,22 @@ const {
 const { 
   is_authenticated, 
   is_owner, 
-  is_manager_or_above // 🚀 ADDED: Manager protection middleware
+  is_manager_or_above
 } = require('../middleware/permissions');
+
+// ── Rate limiter: max 10 login attempts per 15 minutes per IP ─────────────────
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { detail: 'Too many login attempts. Please try again after 15 minutes.' },
+});
 
 // ==========================================
 // 1. PUBLIC ROUTES
 // ==========================================
-router.post('/login/', token_obtain_pair);
+router.post('/login/', loginLimiter, token_obtain_pair);
 router.post('/token/refresh/', token_refresh);
 router.post('/register/', register);
 
