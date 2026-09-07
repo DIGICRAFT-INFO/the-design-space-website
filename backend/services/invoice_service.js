@@ -53,7 +53,7 @@ exports.generate_invoice_from_quotation = async (data) => {
     // - 'full' type: only one active invoice allowed per quotation
     // - 'advance'/'final': only one active invoice of same type allowed
     // - 'milestone': multiple allowed BUT block exact duplicate label
-    const dupQuery: any = {
+    const dupQuery = {
       quotation: quotation_id,
       status: { $nin: ['cancelled'] },
     };
