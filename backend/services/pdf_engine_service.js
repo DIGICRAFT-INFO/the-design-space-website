@@ -139,28 +139,39 @@ const draw_table = (doc, headers, rows, col_widths, y, color) => {
   const xs    = 36;
   const row_h = 22, head_h = 24;
   const tot_w = col_widths.reduce((a, b) => a + b, 0);
+  const BOTTOM_SAFE = doc.page.height - 72; // leave room for footer
 
-  doc.rect(xs, y, tot_w, head_h).fill(color);
-  let cx = xs + 6;
-  headers.forEach((h, i) => {
-    doc.fontSize(8.5).fillColor(WHITE).font('Helvetica-Bold')
-       .text(h, cx, y + 7, { width: col_widths[i] - 6, align: i >= 3 ? 'right' : 'left' });
-    cx += col_widths[i];
-  });
+  // Helper: draw header row
+  const draw_header_row = (at_y) => {
+    doc.rect(xs, at_y, tot_w, head_h).fill(color);
+    let cx = xs + 6;
+    headers.forEach((h, i) => {
+      doc.fontSize(8.5).fillColor(WHITE).font('Helvetica-Bold')
+         .text(h, cx, at_y + 7, { width: col_widths[i] - 6, align: i >= 3 ? 'right' : 'left' });
+      cx += col_widths[i];
+    });
+    return at_y + head_h;
+  };
 
-  let ry = y + head_h;
+  y = draw_header_row(y);
+
   rows.forEach((row, ri) => {
-    if (ri % 2 === 1) doc.rect(xs, ry, tot_w, row_h).fill(BGALT);
+    // Page break before row if it won't fit
+    if (y + row_h > BOTTOM_SAFE) {
+      doc.addPage();
+      y = draw_header_row(48); // redraw header on new page
+    }
+    if (ri % 2 === 1) doc.rect(xs, y, tot_w, row_h).fill(BGALT);
     let rx = xs + 6;
     row.forEach((cell, ci) => {
       doc.fontSize(8.5).fillColor(DARK).font('Helvetica')
-         .text(String(cell || ''), rx, ry + 6, { width: col_widths[ci] - 6, align: ci >= 3 ? 'right' : 'left' });
+         .text(String(cell || ''), rx, y + 6, { width: col_widths[ci] - 6, align: ci >= 3 ? 'right' : 'left' });
       rx += col_widths[ci];
     });
-    doc.moveTo(xs, ry + row_h).lineTo(xs + tot_w, ry + row_h).lineWidth(0.3).strokeColor(LGREY).stroke();
-    ry += row_h;
+    doc.moveTo(xs, y + row_h).lineTo(xs + tot_w, y + row_h).lineWidth(0.3).strokeColor(LGREY).stroke();
+    y += row_h;
   });
-  return ry + 10;
+  return y + 10;
 };
 
 // ── Totals ────────────────────────────────────────────────────────────────────
@@ -346,6 +357,21 @@ exports.render_quotation_pdf = async (quotation) => {
 
   items.forEach((item, ri) => {
     const row_h = 22;
+    // Page break if row won't fit
+    if (y + row_h > doc.page.height - 72) {
+      draw_footer(doc, brand);
+      doc.addPage();
+      y = 48;
+      // Redraw table header on new page
+      doc.rect(36, y, 523, 24).fill(color);
+      let hx = 42;
+      ['#', 'Description / Service', 'Category', 'Qty', 'Unit', 'Rate (Rs.)', 'Amount (Rs.)'].forEach((h, i) => {
+        doc.fontSize(8).fillColor(WHITE).font('Helvetica-Bold')
+           .text(h, hx, y + 8, { width: col_w[i] - 4, align: i >= 3 ? 'right' : 'left' });
+        hx += col_w[i];
+      });
+      y += 24;
+    }
     if (ri % 2 === 1) doc.rect(36, y, 523, row_h).fill(BGALT);
     let rx = 42;
     [
@@ -374,9 +400,20 @@ exports.render_quotation_pdf = async (quotation) => {
   if (quotation.sgst_amount > 0) total_lines.push([`SGST @ ${quotation.sgst_rate}%`, INR(quotation.sgst_amount)]);
   if (quotation.igst_amount > 0) total_lines.push([`IGST @ ${quotation.igst_rate}%`, INR(quotation.igst_amount)]);
 
+  // If totals won't fit, start a new page
+  const totals_h = total_lines.length * 17 + 38;
+  if (y + totals_h > doc.page.height - 100) {
+    draw_footer(doc, brand);
+    doc.addPage();
+    y = 48;
+  }
+
   y = draw_totals(doc, total_lines, INR(quotation.grand_total), y, color);
 
   if (quotation.notes) y = draw_notes(doc, quotation.notes, y + 10, color);
+
+  // Footer on quotation page 1 (before T&C page)
+  draw_footer(doc, brand);
 
   const q_terms = (termsDoc && termsDoc.quotation_terms) ||
     '1. This quotation is valid until the date mentioned above.\n2. 50% advance payment required to commence work.\n3. Balance payment due before final handover.\n4. Any changes to scope may result in revised quotation.\n5. All prices are inclusive of taxes as applicable.';
@@ -619,6 +656,8 @@ exports.render_invoice_pdf = async (invoice) => {
       ['UPI',     bank.upi_id],
     ].filter(([, v]) => v);
     const bh = bl.length * 13 + 24;
+    // Page break if bank details won't fit
+    if (y + bh > doc.page.height - 120) { doc.addPage(); y = 48; }
     doc.rect(36, y, 4, bh).fill(color);
     doc.rect(40, y, 519, bh).fill(BGALT);
     doc.fontSize(8).fillColor(GREY).font('Helvetica-Bold').text('BANK DETAILS', 50, y + 7);
@@ -632,6 +671,9 @@ exports.render_invoice_pdf = async (invoice) => {
   }
 
   y = draw_notes(doc, invoice.notes, y + 6, color);
+
+  // Footer on invoice page(s) before T&C
+  draw_footer(doc, brand);
 
   const i_terms = (termsDoc && termsDoc.invoice_terms) ||
     '1. This invoice covers only the services specifically mentioned herein and/or in the approved quotation/proposal. Any additional services shall be charged separately.\n2. Payment shall be made within the due date mentioned on the invoice. Delay in payment may result in suspension of services and/or corresponding extension of the project timeline.\n3. The quoted fee includes only the agreed scope of work. Additional revisions, changes in requirements, or work outside the approved scope may attract additional charges.\n4. Project timelines are subject to timely receipt of required information, approvals, drawings, selections and decisions from the client.\n5. All drawings, designs, concepts, 3D views, specifications and related documents prepared by The Design Space remain its intellectual property unless otherwise agreed in writing.\n6. Design documents shall be used only for the project for which they are issued and shall not be reproduced, modified or reused for another project without written permission.\n7. Any additional site visits, travel, statutory approvals, specialist consultants, testing, printing or third-party expenses not specifically included in the agreed scope shall be charged separately.\n8. Design and execution decisions are based on the information and site conditions available at the time. Unforeseen site conditions or changes by other agencies may require additional work and charges.\n9. Applicable GST and other statutory taxes/charges shall be levied as per prevailing regulations.\n10. In case of cancellation or termination of the project, fees for all services completed or work in progress up to the date of termination shall remain payable.\n11. Any invoice-related discrepancy should be communicated within 7 days of receipt of the invoice.\n12. This invoice shall be read together with the approved quotation/proposal/agreement governing the project. In case of conflict, the terms of the signed agreement shall prevail.';
@@ -666,11 +708,20 @@ exports.render_proposal_pdf = async (proposal) => {
   y += 30;
 
   if (proposal.content) {
+    // Long content may span multiple pages — PDFKit handles auto page break with lineBreak
     doc.fontSize(10).fillColor(DARK).font('Helvetica').text(proposal.content, 36, y, { width: 523, lineGap: 4 });
     y = doc.y + 15;
+    // Safety: if content pushed us too close to page bottom, start fresh
+    if (y > doc.page.height - 120) {
+      doc.addPage();
+      y = 48;
+    }
   }
 
   if (proposal.notes) y = draw_notes(doc, proposal.notes, y, color);
+
+  // Footer on proposal page(s) before T&C
+  draw_footer(doc, brand);
 
   const p_terms = (termsDoc && termsDoc.proposal_terms) ||
     '1. This proposal is valid for 30 days from date of issue.\n2. All designs and concepts remain property of The Design Space until full payment.\n3. Revisions beyond agreed scope will be charged separately.';
