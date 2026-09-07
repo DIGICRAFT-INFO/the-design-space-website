@@ -304,7 +304,7 @@ const draw_terms = (doc, terms_text, y, color, brand) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. QUOTATION PDF
+// 1. QUOTATION PDF  — Professional A4, max 2 pages
 // ─────────────────────────────────────────────────────────────────────────────
 exports.render_quotation_pdf = async (quotation) => {
   const brand    = await BrandTheme.findOne();
@@ -313,138 +313,392 @@ exports.render_quotation_pdf = async (quotation) => {
 
   const color  = brand_color(brand);
   const client = quotation.project && quotation.project.client;
+  const items  = quotation.items || [];
 
-  const doc = new PDFDocument({ margin: 36, size: 'A4', autoFirstPage: true });
+  const doc = new PDFDocument({ margin: 0, size: 'A4', autoFirstPage: true });
   const buf = to_buffer(doc);
 
-  let y = draw_header(doc, brand, 'QUOTATION', `${quotation.quote_number} (v${quotation.version || 1})`);
+  const PW = 595, PH = 841.89;
+  const ML = 36, MR = 36, MT = 0; // margins
+  const CW = PW - ML - MR;        // content width = 523
 
-  y = draw_info_boxes(doc,
-    'Prepared For',
-    [
-      ['Client',  (client && client.full_name) || '—'],
-      ['Email',   (client && client.email)     || '—'],
-      ['Phone',   (client && client.phone)     || '—'],
-      ['Address', (client && (client.billing_address || client.site_address)) || '—'],
-      ...(client && client.gstin ? [['GSTIN', client.gstin]] : []),
-      ['Project', (quotation.project && quotation.project.name) || '—'],
-    ],
-    'Quotation Details',
-    [
-      ['Ref #',       quotation.quote_number],
-      ['Date',        fmt_date(quotation.created_at)],
-      ['Valid Until', fmt_date(quotation.valid_until)],
-      ['Status',      (quotation.status || 'DRAFT').toUpperCase()],
-    ],
-    y
-  );
+  // ─────────────────────────────────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────────────────────────────────
+  const safe_text = (v) => (v === null || v === undefined || v === '') ? '—' : String(v);
 
-  y += 10;
-  doc.fontSize(10).fillColor(color).font('Helvetica-Bold').text('SCOPE OF WORK & PRICING', 36, y);
-  doc.moveTo(36, y + 13).lineTo(559, y + 13).lineWidth(1).strokeColor(color).stroke();
-  y += 22;
+  // Draw page 1 footer at fixed position — no cursor side-effects
+  const draw_page_footer = (page_of) => {
+    const fy = PH - 36;
+    const firm = (brand && brand.firm_name) || 'The Design Space';
+    doc.rect(0, fy - 4, PW, 40).fill('#F5F3EF');
+    doc.moveTo(ML, fy - 4).lineTo(PW - MR, fy - 4).lineWidth(0.4).strokeColor(LGREY).stroke();
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+       .text(`This is a computer-generated document. | ${firm}`, ML, fy + 4,
+             { width: CW - 60, align: 'center', lineBreak: false });
+    if (page_of) {
+      doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+         .text(page_of, PW - MR - 55, fy + 4, { width: 55, align: 'right', lineBreak: false });
+    }
+  };
 
-  const items = quotation.items || [];
-  const col_w = [25, 165, 75, 38, 45, 84, 91];
+  // ─────────────────────────────────────────────────────────────────────────
+  // PAGE 1 — HEADER
+  // ─────────────────────────────────────────────────────────────────────────
+  // Header band
+  doc.rect(0, 0, PW, 100).fill('#FAFAF8');
+  const logo_buf = get_logo_buffer(brand);
+  if (logo_buf) {
+    try { doc.image(logo_buf, ML, 14, { height: 64, fit: [70, 64] }); } catch (_) {}
+  }
+  const firm_name = (brand && brand.firm_name) || 'The Design Space';
+  doc.fontSize(19).fillColor(color).font('Helvetica-Bold')
+     .text(firm_name, 0, 22, { width: PW, align: 'center' });
+  if (brand && brand.tagline) {
+    doc.fontSize(8).fillColor(GREY).font('Helvetica')
+       .text(brand.tagline, 0, 46, { width: PW, align: 'center' });
+  }
+  // Right: doc type
+  doc.fontSize(22).fillColor(DARK).font('Helvetica-Bold')
+     .text('QUOTATION', 360, 18, { width: 199, align: 'right' });
+  doc.fontSize(9).fillColor(GREY).font('Helvetica')
+     .text(`${quotation.quote_number}  v${quotation.version || 1}`, 360, 44, { width: 199, align: 'right' });
 
-  doc.rect(36, y, 523, 24).fill(color);
-  let cx = 42;
-  ['#', 'Description / Service', 'Category', 'Qty', 'Unit', 'Rate (Rs.)', 'Amount (Rs.)'].forEach((h, i) => {
-    doc.fontSize(8).fillColor(WHITE).font('Helvetica-Bold')
-       .text(h, cx, y + 8, { width: col_w[i] - 4, align: i >= 3 ? 'right' : 'left' });
-    cx += col_w[i];
+  // Status badge
+  const status_str = (quotation.status || 'draft').toUpperCase();
+  const status_color = quotation.status === 'approved' ? '#15803D'
+                     : quotation.status === 'sent'     ? '#1D4ED8'
+                     : quotation.status === 'rejected' ? '#B91C1C'
+                     : color;
+  doc.rect(360, 58, 199, 18).fill(status_color);
+  doc.fontSize(8).fillColor(WHITE).font('Helvetica-Bold')
+     .text(status_str, 360, 62, { width: 199, align: 'center' });
+
+  // Gold divider
+  doc.moveTo(ML, 100).lineTo(PW - MR, 100).lineWidth(1.5).strokeColor(color).stroke();
+
+  let y = 110;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INFO BOXES — Prepared For | Quotation Details
+  // ─────────────────────────────────────────────────────────────────────────
+  const BOX_LEFT_W = 248, BOX_RIGHT_W = 259;
+  const BOX_LEFT_X = ML, BOX_RIGHT_X = ML + BOX_LEFT_W + 16;
+
+  // Build left lines
+  const left_data = [
+    ['Client',   safe_text(client && client.full_name)],
+    ['Email',    safe_text(client && client.email)],
+    ['Phone',    safe_text(client && client.phone)],
+    ['Address',  safe_text(client && (quotation.billing_address || client.billing_address || client.site_address))],
+  ];
+  if (client && client.gstin) left_data.push(['GSTIN', client.gstin]);
+  left_data.push(['Project', safe_text(quotation.project && quotation.project.name)]);
+  if (quotation.site_address && quotation.site_address !== (quotation.billing_address || '')) {
+    left_data.push(['Site Addr', quotation.site_address]);
+  }
+
+  const right_data = [
+    ['Ref #',       quotation.quote_number],
+    ['Date',        fmt_date(quotation.created_at)],
+    ['Valid Until', quotation.valid_until ? fmt_date(quotation.valid_until) : 'On request'],
+    ['Version',     `v${quotation.version || 1}`],
+    ['Status',      status_str],
+  ];
+
+  const ROW_H = 14;
+  const left_box_h  = left_data.length  * ROW_H + 26;
+  const right_box_h = right_data.length * ROW_H + 26;
+  const box_h = Math.max(left_box_h, right_box_h);
+
+  // Left box
+  doc.rect(BOX_LEFT_X, y, BOX_LEFT_W, box_h).fillAndStroke(BGALT, LGREY).lineWidth(0.4);
+  doc.fontSize(7).fillColor(GREY).font('Helvetica-Bold')
+     .text('PREPARED FOR', BOX_LEFT_X + 8, y + 7);
+  doc.moveTo(BOX_LEFT_X + 8, y + 17).lineTo(BOX_LEFT_X + BOX_LEFT_W - 8, y + 17)
+     .lineWidth(0.3).strokeColor(LGREY).stroke();
+  let ly = y + 23;
+  left_data.forEach(([label, value]) => {
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica').text(label + ':', BOX_LEFT_X + 8, ly, { width: 52 });
+    doc.fontSize(7.5).fillColor(DARK).font('Helvetica-Bold')
+       .text(value, BOX_LEFT_X + 64, ly, { width: BOX_LEFT_W - 72, lineBreak: false, ellipsis: true });
+    ly += ROW_H;
   });
-  y += 24;
+
+  // Right box
+  doc.rect(BOX_RIGHT_X, y, BOX_RIGHT_W, box_h).fillAndStroke(BGALT, LGREY).lineWidth(0.4);
+  doc.fontSize(7).fillColor(GREY).font('Helvetica-Bold')
+     .text('QUOTATION DETAILS', BOX_RIGHT_X + 8, y + 7);
+  doc.moveTo(BOX_RIGHT_X + 8, y + 17).lineTo(BOX_RIGHT_X + BOX_RIGHT_W - 8, y + 17)
+     .lineWidth(0.3).strokeColor(LGREY).stroke();
+  let ry = y + 23;
+  right_data.forEach(([label, value]) => {
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica').text(label + ':', BOX_RIGHT_X + 8, ry, { width: 64 });
+    doc.fontSize(7.5).fillColor(DARK).font('Helvetica-Bold')
+       .text(safe_text(value), BOX_RIGHT_X + 76, ry, { width: BOX_RIGHT_W - 84, lineBreak: false });
+    ry += ROW_H;
+  });
+
+  y += box_h + 12;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SCOPE OF WORK TABLE
+  // ─────────────────────────────────────────────────────────────────────────
+  doc.fontSize(9).fillColor(color).font('Helvetica-Bold')
+     .text('SCOPE OF WORK & PRICING', ML, y);
+  doc.moveTo(ML, y + 12).lineTo(PW - MR, y + 12).lineWidth(0.8).strokeColor(color).stroke();
+  y += 18;
+
+  // Col widths — total = 523: # | Description | Category | Qty | Unit | Rate | Amount
+  const CW_COLS = [22, 190, 70, 32, 38, 82, 89];
+  const COL_HDR = ['#', 'Description / Service', 'Category', 'Qty', 'Unit', 'Rate (₹)', 'Amount (₹)'];
+
+  const draw_table_header = (at_y) => {
+    doc.rect(ML, at_y, CW, 20).fill(color);
+    let cx = ML + 4;
+    COL_HDR.forEach((h, i) => {
+      doc.fontSize(7.5).fillColor(WHITE).font('Helvetica-Bold')
+         .text(h, cx, at_y + 6, { width: CW_COLS[i] - 4, align: i >= 3 ? 'right' : 'left' });
+      cx += CW_COLS[i];
+    });
+    return at_y + 20;
+  };
+
+  y = draw_table_header(y);
+
+  const ITEM_ROW_H = 20;
+  const FOOTER_SAFE = PH - 48; // don't cross into footer zone
 
   items.forEach((item, ri) => {
-    const row_h = 22;
-    // Page break if row won't fit
-    if (y + row_h > doc.page.height - 72) {
-      draw_footer(doc, brand);
+    if (y + ITEM_ROW_H > FOOTER_SAFE - 80) {
+      draw_page_footer('Page 1 of 2');
       doc.addPage();
       y = 48;
-      // Redraw table header on new page
-      doc.rect(36, y, 523, 24).fill(color);
-      let hx = 42;
-      ['#', 'Description / Service', 'Category', 'Qty', 'Unit', 'Rate (Rs.)', 'Amount (Rs.)'].forEach((h, i) => {
-        doc.fontSize(8).fillColor(WHITE).font('Helvetica-Bold')
-           .text(h, hx, y + 8, { width: col_w[i] - 4, align: i >= 3 ? 'right' : 'left' });
-        hx += col_w[i];
-      });
-      y += 24;
+      y = draw_table_header(y);
     }
-    if (ri % 2 === 1) doc.rect(36, y, 523, row_h).fill(BGALT);
-    let rx = 42;
-    [
+    if (ri % 2 === 1) doc.rect(ML, y, CW, ITEM_ROW_H).fill(BGALT);
+    let rx = ML + 4;
+    const cells = [
       String(ri + 1),
       item.description || '—',
-      item.category    || '—',
+      item.category    || '',
       String(item.quantity || 1),
-      item.unit || '—',
-      Number(item.rate   || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+      item.unit || '',
+      Number(item.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
       Number(item.amount || (item.quantity * item.rate) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
-    ].forEach((cell, ci) => {
-      doc.fontSize(8.5).fillColor(DARK).font('Helvetica')
-         .text(cell, rx, y + 6, { width: col_w[ci] - 4, align: ci >= 3 ? 'right' : 'left' });
-      rx += col_w[ci];
+    ];
+    cells.forEach((cell, ci) => {
+      doc.fontSize(8).fillColor(DARK).font('Helvetica')
+         .text(cell, rx, y + 6, { width: CW_COLS[ci] - 4, align: ci >= 3 ? 'right' : 'left',
+                                   lineBreak: false, ellipsis: ci === 1 ? true : false });
+      rx += CW_COLS[ci];
     });
-    doc.moveTo(36, y + row_h).lineTo(559, y + row_h).lineWidth(0.3).strokeColor(LGREY).stroke();
-    y += row_h;
+    doc.moveTo(ML, y + ITEM_ROW_H).lineTo(PW - MR, y + ITEM_ROW_H)
+       .lineWidth(0.25).strokeColor(LGREY).stroke();
+    y += ITEM_ROW_H;
   });
-  y += 10;
+  y += 6;
 
-  const total_lines = [['Subtotal', INR(quotation.subtotal)]];
-  if (quotation.discount_amount > 0)
-    total_lines.push([`Discount (${quotation.discount_type === 'percentage' ? quotation.discount_value + '%' : 'Fixed'})`, `- ${INR(quotation.discount_amount)}`]);
-  total_lines.push(['Taxable Amount', INR(quotation.taxable_amount)]);
-  if (quotation.cgst_amount > 0) total_lines.push([`CGST @ ${quotation.cgst_rate}%`, INR(quotation.cgst_amount)]);
-  if (quotation.sgst_amount > 0) total_lines.push([`SGST @ ${quotation.sgst_rate}%`, INR(quotation.sgst_amount)]);
-  if (quotation.igst_amount > 0) total_lines.push([`IGST @ ${quotation.igst_rate}%`, INR(quotation.igst_amount)]);
+  // ─────────────────────────────────────────────────────────────────────────
+  // TOTALS — right-aligned block (width 230)
+  // ─────────────────────────────────────────────────────────────────────────
+  const hasGST = (quotation.cgst_amount > 0) || (quotation.sgst_amount > 0) || (quotation.igst_amount > 0);
+  const t_rows = [];
+  t_rows.push(['Subtotal', INR(quotation.subtotal)]);
+  if (quotation.discount_amount > 0) {
+    const d_label = quotation.discount_type === 'percentage'
+      ? `Discount (${quotation.discount_value}%)`
+      : 'Discount';
+    t_rows.push([d_label, `- ${INR(quotation.discount_amount)}`]);
+  }
+  if (hasGST) t_rows.push(['Taxable Amount', INR(quotation.taxable_amount)]);
+  if (quotation.cgst_amount > 0) t_rows.push([`CGST @ ${quotation.cgst_rate}%`, INR(quotation.cgst_amount)]);
+  if (quotation.sgst_amount > 0) t_rows.push([`SGST @ ${quotation.sgst_rate}%`, INR(quotation.sgst_amount)]);
+  if (quotation.igst_amount > 0) t_rows.push([`IGST @ ${quotation.igst_rate}%`, INR(quotation.igst_amount)]);
 
-  // If totals won't fit, start a new page
-  const totals_h = total_lines.length * 17 + 38;
-  if (y + totals_h > doc.page.height - 100) {
-    draw_footer(doc, brand);
+  const T_X = ML + CW - 230, T_W = 230;
+  const T_ROW_H = 16;
+  const grand_box_h = 24;
+  const totals_block_h = t_rows.length * T_ROW_H + grand_box_h + 4;
+
+  // Ensure totals fit on this page
+  if (y + totals_block_h > FOOTER_SAFE - 10) {
+    draw_page_footer('Page 1 of 2');
     doc.addPage();
     y = 48;
   }
 
-  y = draw_totals(doc, total_lines, INR(quotation.grand_total), y, color);
+  let ty = y;
+  t_rows.forEach(([label, value]) => {
+    doc.fontSize(8.5).fillColor(GREY).font('Helvetica')
+       .text(label, T_X, ty, { width: T_W - 90 });
+    doc.fontSize(8.5).fillColor(DARK).font('Helvetica-Bold')
+       .text(value, T_X + T_W - 90, ty, { width: 86, align: 'right' });
+    doc.moveTo(T_X, ty + T_ROW_H - 2).lineTo(T_X + T_W, ty + T_ROW_H - 2)
+       .lineWidth(0.25).strokeColor(LGREY).stroke();
+    ty += T_ROW_H;
+  });
+  // Grand total bar
+  doc.rect(T_X, ty, T_W, grand_box_h).fill(color);
+  doc.fontSize(10).fillColor(WHITE).font('Helvetica-Bold')
+     .text('Grand Total', T_X + 6, ty + 7, { width: T_W - 90 });
+  doc.fontSize(10).fillColor(WHITE).font('Helvetica-Bold')
+     .text(INR(quotation.grand_total), T_X + T_W - 90, ty + 7, { width: 84, align: 'right' });
+  y = ty + grand_box_h + 10;
 
-  if (quotation.notes) y = draw_notes(doc, quotation.notes, y + 10, color);
+  // ─────────────────────────────────────────────────────────────────────────
+  // NOTES (if any)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (quotation.notes) {
+    const notes_h = Math.max(32, doc.heightOfString(quotation.notes, { width: CW - 16 }) + 18);
+    if (y + notes_h < FOOTER_SAFE - 10) {
+      doc.rect(ML, y, 3, notes_h).fill(color);
+      doc.rect(ML + 3, y, CW - 3, notes_h).fill(BGALT);
+      doc.fontSize(7).fillColor(GREY).font('Helvetica-Bold').text('NOTES', ML + 10, y + 6);
+      doc.fontSize(8).fillColor(DARK).font('Helvetica')
+         .text(quotation.notes, ML + 10, y + 16, { width: CW - 18 });
+      y += notes_h + 8;
+    }
+  }
 
-  const q_terms = (termsDoc && termsDoc.quotation_terms) ||
-    '1. This quotation is valid until the date mentioned above.\n2. 50% advance payment required to commence work.\n3. Balance payment due before final handover.\n4. Any changes to scope may result in revised quotation.\n5. All prices are inclusive of taxes as applicable.';
-  draw_terms(doc, q_terms, y + 12, color, brand);
+  // Footer on page 1
+  draw_page_footer('Page 1 of 2');
 
-  // Service showcase
+  // ─────────────────────────────────────────────────────────────────────────
+  // PAGE 2 — TERMS & CONDITIONS (premium design)
+  // ─────────────────────────────────────────────────────────────────────────
+  doc.addPage();
+
+  const q_terms_text = (termsDoc && termsDoc.quotation_terms)
+    || '1. This quotation is valid until the date mentioned above.\n2. 50% advance payment required to commence work.\n3. Balance payment due before final handover.\n4. Any changes to scope may result in revised quotation.\n5. All prices are inclusive of taxes as applicable.';
+
+  const q_lines = q_terms_text.split('\n').filter(l => l.trim());
+
+  // Page background
+  doc.rect(0, 0, PW, PH).fill('#FDFCFB');
+  // Left accent bar
+  doc.rect(0, 0, 5, PH - 40).fill(color);
+  // Header band
+  doc.rect(0, 0, PW, 50).fill(color);
+  doc.fontSize(15).fillColor(WHITE).font('Helvetica-Bold')
+     .text('TERMS & CONDITIONS', 22, 15, { width: PW - 44 });
+  doc.fontSize(7.5).fillColor('rgba(255,255,255,0.75)').font('Helvetica')
+     .text(firm_name, 22, 34, { width: PW - 44 });
+
+  let ty2 = 62;
+  doc.fontSize(7.5).fillColor('#9A8F82').font('Helvetica-Oblique')
+     .text('Please read the following terms carefully. These terms govern the services provided under this quotation.', 22, ty2, { width: PW - 44 });
+  ty2 += 16;
+  doc.moveTo(22, ty2).lineTo(PW - 22, ty2).lineWidth(0.4).strokeColor('#E0D8CE').stroke();
+  ty2 += 8;
+
+  const TERM_TXT_X = 22 + 20, TERM_TXT_W = PW - TERM_TXT_X - 22;
+  const TERM_BOTTOM = PH - 90; // leave room for acceptance section + footer
+
+  q_lines.forEach((line, i) => {
+    const clean = line.replace(/^\d+\.\s*/, '').trim();
+    const num   = String(i + 1) + '.';
+    doc.fontSize(8).font('Helvetica');
+    const textH = doc.heightOfString(clean, { width: TERM_TXT_W });
+    const rowH  = Math.max(textH, 11) + 4;
+
+    if (ty2 + rowH > TERM_BOTTOM) {
+      // If overflow, just stop — all 12 terms fit on A4 with 8pt font
+      return;
+    }
+
+    if (i % 2 === 0) {
+      doc.rect(20, ty2 - 1, PW - 42, rowH + 2).fill('#F5F1EB');
+    }
+    doc.fontSize(7.5).fillColor(color).font('Helvetica-Bold')
+       .text(num, 22, ty2 + 1, { width: 16, align: 'right' });
+    doc.fontSize(8).fillColor('#2C2520').font('Helvetica')
+       .text(clean, TERM_TXT_X, ty2, { width: TERM_TXT_W, lineGap: 1 });
+    ty2 += rowH;
+  });
+
+  // ── Acceptance / Approval section ────────────────────────────────────────
+  ty2 = Math.max(ty2 + 12, PH - 155);
+
+  doc.moveTo(22, ty2).lineTo(PW - 22, ty2).lineWidth(0.4).strokeColor('#E0D8CE').stroke();
+  ty2 += 10;
+
+  doc.fontSize(8.5).fillColor(color).font('Helvetica-Bold')
+     .text('ACCEPTANCE & AUTHORISATION', 22, ty2);
+  ty2 += 14;
+  doc.fontSize(8).fillColor(GREY).font('Helvetica')
+     .text('By signing below, the client confirms acceptance of all terms, scope and pricing mentioned in this quotation.', 22, ty2, { width: PW - 44 });
+  ty2 += 18;
+
+  // Signature boxes
+  const SIG_W = 220, SIG_H = 44;
+  const sig1_x = 22, sig2_x = PW - 22 - SIG_W;
+
+  [[sig1_x, 'Client Signature / Stamp'], [sig2_x, 'Authorised Signatory']].forEach(([sx, label]) => {
+    doc.rect(sx, ty2, SIG_W, SIG_H).fillAndStroke('#FAFAF8', LGREY).lineWidth(0.4);
+    doc.fontSize(7).fillColor(GREY).font('Helvetica').text(label, sx + 6, ty2 + 4);
+    // Signature line
+    doc.moveTo(sx + 10, ty2 + SIG_H - 8).lineTo(sx + SIG_W - 10, ty2 + SIG_H - 8)
+       .lineWidth(0.4).strokeColor(LGREY).stroke();
+  });
+
+  // Date line below signature boxes
+  doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+     .text('Date: ___________________________', 22, ty2 + SIG_H + 6);
+  doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+     .text(`Ref: ${quotation.quote_number}  |  Generated: ${fmt_date(new Date())}`,
+           PW - 22 - 200, ty2 + SIG_H + 6, { width: 200, align: 'right' });
+
+  // Footer on page 2
+  const fy2 = PH - 36;
+  doc.rect(0, fy2 - 4, PW, 40).fill('#F5F3EF');
+  doc.moveTo(ML, fy2 - 4).lineTo(PW - MR, fy2 - 4).lineWidth(0.4).strokeColor(LGREY).stroke();
+  doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+     .text(`This is a computer-generated document. | ${firm_name}`,
+           ML, fy2 + 4, { width: CW - 60, align: 'center', lineBreak: false });
+  doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+     .text('Page 2 of 2', PW - MR - 55, fy2 + 4, { width: 55, align: 'right', lineBreak: false });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SERVICE SHOWCASE (page 3+ only if service images exist)
+  // ─────────────────────────────────────────────────────────────────────────
   const with_img = items.filter(it => it.service_image_url);
   if (with_img.length > 0) {
-    doc.addPage(); y = 40;
-    doc.fontSize(16).fillColor(color).font('Helvetica-Bold').text('SERVICE SHOWCASE', 36, y);
-    doc.moveTo(36, y + 20).lineTo(559, y + 20).lineWidth(1.5).strokeColor(color).stroke();
-    y += 35;
+    doc.addPage();
+    let sy = 40;
+    doc.fontSize(14).fillColor(color).font('Helvetica-Bold').text('SERVICE SHOWCASE', ML, sy);
+    doc.moveTo(ML, sy + 18).lineTo(PW - MR, sy + 18).lineWidth(1).strokeColor(color).stroke();
+    sy += 28;
     for (const item of with_img) {
-      if (y + 200 > doc.page.height - 60) { doc.addPage(); y = 50; }
-      doc.rect(36, y, 523, 4).fill(color); y += 10;
-      doc.fontSize(13).fillColor(DARK).font('Helvetica-Bold').text(item.description || '—', 36, y, { width: 290 });
-      y += 18;
+      if (sy + 180 > PH - 60) { doc.addPage(); sy = 50; }
+      doc.rect(ML, sy, CW, 3).fill(color); sy += 8;
+      doc.fontSize(12).fillColor(DARK).font('Helvetica-Bold')
+         .text(item.description || '—', ML, sy, { width: 280 }); sy += 16;
       if (item.category) {
-        doc.fontSize(9).fillColor(color).font('Helvetica-Bold').text(item.category.toUpperCase(), 36, y);
-        y += 14;
+        doc.fontSize(8).fillColor(color).font('Helvetica-Bold')
+           .text(item.category.toUpperCase(), ML, sy); sy += 12;
       }
-      doc.fontSize(10).fillColor(GREY).font('Helvetica')
-         .text(`Qty: ${item.quantity} ${item.unit || ''}   |   Rate: ${INR(item.rate)}   |   Amount: ${INR(item.amount || item.quantity * item.rate)}`, 36, y, { width: 290 });
-      y += 16;
+      doc.fontSize(9).fillColor(GREY).font('Helvetica')
+         .text(`Qty: ${item.quantity} ${item.unit || ''}  |  Rate: ${INR(item.rate)}  |  Amount: ${INR(item.amount || item.quantity * item.rate)}`, ML, sy, { width: 280 });
+      sy += 14;
       if (item.service_image_url) {
-        const ip = path.isAbsolute(item.service_image_url) ? item.service_image_url : path.join(__dirname, '..', item.service_image_url.replace(/^\//, ''));
-        if (fs.existsSync(ip)) { try { doc.image(ip, 345, y - 50, { width: 200, height: 140, fit: [200, 140] }); } catch (_) {} }
+        const ip = path.isAbsolute(item.service_image_url) ? item.service_image_url
+                 : path.join(__dirname, '..', item.service_image_url.replace(/^\//, ''));
+        if (fs.existsSync(ip)) {
+          try { doc.image(ip, 330, sy - 42, { width: 193, height: 120, fit: [193, 120] }); } catch (_) {}
+        }
       }
-      y += 20;
-      doc.moveTo(36, y).lineTo(559, y).lineWidth(0.4).strokeColor(LGREY).stroke();
-      y += 16;
+      sy += 18;
+      doc.moveTo(ML, sy).lineTo(PW - MR, sy).lineWidth(0.3).strokeColor(LGREY).stroke();
+      sy += 14;
     }
-    draw_footer(doc, brand);
+    // Footer on showcase page
+    const sfy = PH - 36;
+    doc.rect(0, sfy - 4, PW, 40).fill('#F5F3EF');
+    doc.moveTo(ML, sfy - 4).lineTo(PW - MR, sfy - 4).lineWidth(0.4).strokeColor(LGREY).stroke();
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+       .text(`This is a computer-generated document. | ${firm_name}`,
+             ML, sfy + 4, { width: CW, align: 'center', lineBreak: false });
   }
 
   doc.end();
@@ -452,7 +706,7 @@ exports.render_quotation_pdf = async (quotation) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. INVOICE PDF
+// 2. INVOICE PDF  — Professional A4, max 2 pages
 // ─────────────────────────────────────────────────────────────────────────────
 exports.render_invoice_pdf = async (invoice) => {
   const brand      = await BrandTheme.findOne();
@@ -461,286 +715,801 @@ exports.render_invoice_pdf = async (invoice) => {
   const PaymentRecord = require('../models/payment_record');
   await invoice.populate('items');
 
-  // Fetch all payment records for this invoice
+  // Fetch payment records
   const payments = await PaymentRecord.find({ invoice: invoice._id }).sort({ payment_date: 1 }).lean();
 
-  const color  = brand_color(brand);
-  const client = invoice.project && invoice.project.client;
-  const doc    = new PDFDocument({ margin: 36, size: 'A4' });
-  const buf    = to_buffer(doc);
+  const color = brand_color(brand);
+  const firm_name = (brand && brand.firm_name) || 'The Design Space';
 
-  let y = draw_header(doc, brand, 'INVOICE', invoice.invoice_number);
+  // ── Resolve client — may be on invoice.project.client or snapshot ────────
+  const client = invoice.project && invoice.project.client
+                 ? invoice.project.client
+                 : null;
+  const client_name    = (client && client.full_name)  || invoice.client_name_snapshot  || '—';
+  const client_email   = (client && client.email)      || '—';
+  const client_phone   = (client && client.phone)      || '—';
+  const client_address = invoice.billing_address
+                      || (client && (client.billing_address || client.site_address))
+                      || '—';
+  const client_gstin   = client && client.gstin ? client.gstin : null;
+  const project_name   = (invoice.project && invoice.project.name)
+                      || invoice.project_name_snapshot || '—';
+
+  // ── Page constants ────────────────────────────────────────────────────────
+  const PW = 595, PH = 841.89;
+  const ML = 36, MR = 36;
+  const CW = PW - ML - MR; // 523
+
+  const doc = new PDFDocument({ margin: 0, size: 'A4', autoFirstPage: true });
+  const buf = to_buffer(doc);
+
+  // ── Page-number aware footer ───────────────────────────────────────────────
+  let _page_num = 1;
+  const draw_inv_footer = (page_of) => {
+    const fy = PH - 36;
+    doc.rect(0, fy - 4, PW, 40).fill('#F5F3EF');
+    doc.moveTo(ML, fy - 4).lineTo(PW - MR, fy - 4).lineWidth(0.4).strokeColor(LGREY).stroke();
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+       .text(`This is a computer-generated document. | ${firm_name}`,
+             ML, fy + 4, { width: CW - 60, align: 'center', lineBreak: false });
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+       .text(page_of, PW - MR - 55, fy + 4, { width: 55, align: 'right', lineBreak: false });
+    doc.y = fy;
+  };
+
+  const FOOTER_SAFE = PH - 48;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PAGE 1 — HEADER
+  // ─────────────────────────────────────────────────────────────────────────
+  doc.rect(0, 0, PW, 100).fill('#FAFAF8');
+
+  const logo_buf = get_logo_buffer(brand);
+  if (logo_buf) {
+    try { doc.image(logo_buf, ML, 14, { height: 64, fit: [70, 64] }); } catch (_) {}
+  }
+  doc.fontSize(19).fillColor(color).font('Helvetica-Bold')
+     .text(firm_name, 0, 22, { width: PW, align: 'center' });
+  if (brand && brand.tagline) {
+    doc.fontSize(8).fillColor(GREY).font('Helvetica')
+       .text(brand.tagline, 0, 46, { width: PW, align: 'center' });
+  }
+  doc.fontSize(22).fillColor(DARK).font('Helvetica-Bold')
+     .text('INVOICE', 360, 18, { width: 199, align: 'right' });
+  doc.fontSize(9).fillColor(GREY).font('Helvetica')
+     .text(invoice.invoice_number || '', 360, 44, { width: 199, align: 'right' });
 
   // Status badge
-  const sc = invoice.status === 'paid' ? GREEN : invoice.status === 'overdue' ? RED : color;
-  doc.rect(484, 60, 75, 20).fill(sc);
-  doc.fontSize(8.5).fillColor(WHITE).font('Helvetica-Bold')
-     .text((invoice.status || '').toUpperCase(), 484, 65, { width: 75, align: 'center' });
+  const status_str = (invoice.status || 'draft').toUpperCase();
+  const sc = invoice.status === 'paid'     ? '#15803D'
+           : invoice.status === 'overdue'  ? '#B91C1C'
+           : invoice.status === 'issued'   ? '#1D4ED8'
+           : invoice.status === 'partial'  ? '#92400E'
+           : color;
+  doc.rect(360, 58, 199, 18).fill(sc);
+  doc.fontSize(8).fillColor(WHITE).font('Helvetica-Bold')
+     .text(status_str, 360, 62, { width: 199, align: 'center' });
 
-  y = draw_info_boxes(doc,
-    'Bill To',
-    [
-      ['Client',  client && client.full_name],
-      ['Email',   client && client.email],
-      ['Phone',   client && client.phone],
-      ['Address', client && (invoice.billing_address || client.billing_address || client.site_address)],
-      ...(client && client.gstin ? [['GSTIN', client.gstin]] : []),
-      ['Project', invoice.project && invoice.project.name],
-    ],
-    'Invoice Details',
-    [
-      ['Invoice #',    invoice.invoice_number],
-      ['Invoice Date', fmt_date(invoice.invoice_date)],
-      ['Due Date',     fmt_date(invoice.due_date)],
-      ...(invoice.invoice_type !== 'full' && invoice.milestone_label
-        ? (() => {
-            // Show rupee amount if invoice was created in fixed-amount mode
-            // (detected by checking if grand_total matches a round figure vs % of quotation)
-            // Best signal: if milestone_fixed_amount is stored, use it; else show %
-            const fixedAmt = invoice.milestone_fixed_amount;
-            const milestoneDisplay = fixedAmt && fixedAmt > 0
-              ? `${invoice.milestone_label} (${INR(fixedAmt)})`
-              : `${invoice.milestone_label} (${invoice.milestone_percentage}%)`;
-            return [['Milestone', milestoneDisplay]];
-          })()
-        : []),
-      ['Status',       (invoice.status || '').toUpperCase()],
-    ],
-    y
-  );
+  doc.moveTo(ML, 100).lineTo(PW - MR, 100).lineWidth(1.5).strokeColor(color).stroke();
+  let y = 110;
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // INFO BOXES — Bill To | Invoice Details
+  // ─────────────────────────────────────────────────────────────────────────
+  const BOX_L_W = 248, BOX_R_W = 259;
+  const BOX_L_X = ML,  BOX_R_X = ML + BOX_L_W + 16;
+  const ROW_H = 14;
+
+  const left_rows = [
+    ['Client',  client_name],
+    ['Email',   client_email],
+    ['Phone',   client_phone],
+    ['Address', client_address],
+  ];
+  if (client_gstin) left_rows.push(['GSTIN', client_gstin]);
+  left_rows.push(['Project', project_name]);
+
+  // Invoice detail rows (right box)
+  const milestone_label_str = (() => {
+    if (invoice.invoice_type === 'full') return null;
+    if (!invoice.milestone_label) return null;
+    const fixedAmt = invoice.milestone_fixed_amount;
+    return fixedAmt && fixedAmt > 0
+      ? `${invoice.milestone_label} (${INR(fixedAmt)})`
+      : `${invoice.milestone_label} (${invoice.milestone_percentage}%)`;
+  })();
+
+  const right_rows = [
+    ['Invoice #',    invoice.invoice_number],
+    ['Invoice Date', fmt_date(invoice.invoice_date)],
+    ['Due Date',     fmt_date(invoice.due_date)],
+    ['Type',         (invoice.invoice_type || 'full').toUpperCase()],
+  ];
+  if (milestone_label_str) right_rows.push(['Milestone', milestone_label_str]);
+  right_rows.push(['Status', status_str]);
+
+  const left_box_h  = left_rows.length  * ROW_H + 26;
+  const right_box_h = right_rows.length * ROW_H + 26;
+  const box_h = Math.max(left_box_h, right_box_h);
+
+  // Draw left box
+  doc.rect(BOX_L_X, y, BOX_L_W, box_h).fillAndStroke(BGALT, LGREY).lineWidth(0.4);
+  doc.fontSize(7).fillColor(GREY).font('Helvetica-Bold')
+     .text('BILL TO', BOX_L_X + 8, y + 7);
+  doc.moveTo(BOX_L_X + 8, y + 17).lineTo(BOX_L_X + BOX_L_W - 8, y + 17)
+     .lineWidth(0.3).strokeColor(LGREY).stroke();
+  let ly = y + 23;
+  left_rows.forEach(([label, value]) => {
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica').text(label + ':', BOX_L_X + 8, ly, { width: 52 });
+    doc.fontSize(7.5).fillColor(DARK).font('Helvetica-Bold')
+       .text(String(value || '—'), BOX_L_X + 64, ly, { width: BOX_L_W - 72, lineBreak: false, ellipsis: true });
+    ly += ROW_H;
+  });
+
+  // Draw right box
+  doc.rect(BOX_R_X, y, BOX_R_W, box_h).fillAndStroke(BGALT, LGREY).lineWidth(0.4);
+  doc.fontSize(7).fillColor(GREY).font('Helvetica-Bold')
+     .text('INVOICE DETAILS', BOX_R_X + 8, y + 7);
+  doc.moveTo(BOX_R_X + 8, y + 17).lineTo(BOX_R_X + BOX_R_W - 8, y + 17)
+     .lineWidth(0.3).strokeColor(LGREY).stroke();
+  let ry = y + 23;
+  right_rows.forEach(([label, value]) => {
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica').text(label + ':', BOX_R_X + 8, ry, { width: 70 });
+    doc.fontSize(7.5).fillColor(DARK).font('Helvetica-Bold')
+       .text(String(value || '—'), BOX_R_X + 82, ry, { width: BOX_R_W - 90, lineBreak: false });
+    ry += ROW_H;
+  });
+
+  y += box_h + 12;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LINE ITEMS TABLE
+  // ─────────────────────────────────────────────────────────────────────────
   const items = invoice.items || [];
-  y = draw_table(doc,
-    ['#', 'Description', 'Qty', 'Unit', 'Rate', 'Amount'],
-    items.map((item, i) => [
-      i + 1,
-      item.description || '—',
-      item.quantity,
-      item.unit || '—',
-      INR(item.rate),
-      INR(item.amount || item.quantity * item.rate),
-    ]),
-    [25, 198, 50, 55, 98, 97],
-    y, color
-  );
+  const is_milestone = invoice.invoice_type !== 'full'
+                    && invoice.milestone_percentage > 0
+                    && invoice.milestone_percentage < 100;
 
-  // Totals — build lines conditionally
+  // Col layout
+  const is_direct = !invoice.quotation; // direct invoice has no quotation link
+  const COL_W = is_milestone
+    ? [22, 270, 50, 55, 126]    // milestone: # | Description | Qty | Unit | Amount Due
+    : [22, 200, 50, 55, 98, 98]; // standard:  # | Description | Qty | Unit | Rate | Amount
+
+  const COL_H_labels = is_milestone
+    ? ['#', 'Description', 'Qty', 'Unit', 'Amount Due']
+    : ['#', 'Description', 'Qty', 'Unit', 'Rate', 'Amount'];
+
+  doc.fontSize(9).fillColor(color).font('Helvetica-Bold').text('LINE ITEMS', ML, y);
+  doc.moveTo(ML, y + 12).lineTo(PW - MR, y + 12).lineWidth(0.8).strokeColor(color).stroke();
+  y += 18;
+
+  const TROW_H = 20;
+
+  const draw_tbl_header = (at_y) => {
+    doc.rect(ML, at_y, CW, 20).fill(color);
+    let cx = ML + 4;
+    COL_H_labels.forEach((h, i) => {
+      const align = i >= (is_milestone ? 2 : 2) ? 'right' : 'left';
+      doc.fontSize(7.5).fillColor(WHITE).font('Helvetica-Bold')
+         .text(h, cx, at_y + 6, { width: COL_W[i] - 4, align: i < 2 ? 'left' : 'right' });
+      cx += COL_W[i];
+    });
+    return at_y + 20;
+  };
+
+  y = draw_tbl_header(y);
+
+  items.forEach((item, ri) => {
+    if (y + TROW_H > FOOTER_SAFE - 80) {
+      draw_inv_footer('Page 1 of 2');
+      doc.addPage();
+      y = 48;
+      y = draw_tbl_header(y);
+    }
+    if (ri % 2 === 1) doc.rect(ML, y, CW, TROW_H).fill(BGALT);
+
+    let rx = ML + 4;
+    const cells = is_milestone
+      ? [
+          String(ri + 1),
+          item.description || '—',
+          String(item.quantity || 1),
+          item.unit || '',
+          Number(item.amount || item.quantity * item.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+        ]
+      : [
+          String(ri + 1),
+          item.description || '—',
+          String(item.quantity || 1),
+          item.unit || '',
+          Number(item.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+          Number(item.amount || item.quantity * item.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+        ];
+
+    cells.forEach((cell, ci) => {
+      doc.fontSize(8).fillColor(DARK).font('Helvetica')
+         .text(cell, rx, y + 6,
+               { width: COL_W[ci] - 4, align: ci < 2 ? 'left' : 'right',
+                 lineBreak: false, ellipsis: ci === 1 });
+      rx += COL_W[ci];
+    });
+    doc.moveTo(ML, y + TROW_H).lineTo(PW - MR, y + TROW_H)
+       .lineWidth(0.25).strokeColor(LGREY).stroke();
+    y += TROW_H;
+  });
+
+  // ── Milestone breakdown note ──────────────────────────────────────────────
+  if (is_milestone) {
+    y += 4;
+    const quot_total = invoice.subtotal && invoice.milestone_percentage > 0
+      ? Math.round((invoice.subtotal / (invoice.milestone_percentage / 100)) * 100) / 100
+      : 0;
+    const breakdown_lines = [
+      `Total Project Value: ${INR(quot_total > 0 ? quot_total : invoice.subtotal)}`,
+      `This Invoice: ${invoice.milestone_label || invoice.invoice_type} @ ${invoice.milestone_percentage}%`,
+      `Amount Due This Invoice: ${INR(invoice.grand_total)}`,
+    ];
+    const bh = 16 + breakdown_lines.length * 13;
+    doc.rect(ML, y, 4, bh).fill(color);
+    doc.rect(ML + 4, y, CW - 4, bh).fill('#FDF3E3');
+    doc.fontSize(7).fillColor(GREY).font('Helvetica-Bold').text('MILESTONE BREAKDOWN', ML + 10, y + 5);
+    breakdown_lines.forEach((line, li) => {
+      doc.fontSize(8).fillColor(DARK).font('Helvetica').text(line, ML + 10, y + 16 + li * 13);
+    });
+    y += bh + 6;
+  }
+
+  y += 4;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TOTALS — right-aligned
+  // ─────────────────────────────────────────────────────────────────────────
   const hasGST = (invoice.cgst_amount > 0) || (invoice.sgst_amount > 0) || (invoice.igst_amount > 0);
   const tl = [['Subtotal', INR(invoice.subtotal)]];
   if (invoice.discount_amount > 0) tl.push(['Discount', `- ${INR(invoice.discount_amount)}`]);
-  // Taxable Amount only shown when GST applies (non-GST invoices: subtotal = grand total, no need)
   if (hasGST) tl.push(['Taxable Amount', INR(invoice.taxable_amount)]);
   if (invoice.cgst_amount > 0) tl.push([`CGST @ ${Number(invoice.cgst_rate || 0)}%`, INR(invoice.cgst_amount)]);
   if (invoice.sgst_amount > 0) tl.push([`SGST @ ${Number(invoice.sgst_rate || 0)}%`, INR(invoice.sgst_amount)]);
   if (invoice.igst_amount > 0) tl.push([`IGST @ ${Number(invoice.igst_rate || 0)}%`, INR(invoice.igst_amount)]);
   if (hasGST) tl.push(['Total Tax', INR(invoice.total_tax)]);
 
-  // Grand total box — always show full invoice amount
-  y = draw_totals(doc, tl, INR(invoice.grand_total), y, color);
+  const T_X = ML + CW - 230, T_W = 230, T_ROW_H = 16, GT_H = 24;
+  const totals_h = tl.length * T_ROW_H + GT_H + 4;
 
-  // ── Payment summary row (Amount Paid / Balance Due) ───────────────────────
+  if (y + totals_h > FOOTER_SAFE - 20) {
+    draw_inv_footer('Page 1 of 2');
+    doc.addPage();
+    y = 48;
+  }
+
+  let ty = y;
+  tl.forEach(([label, value]) => {
+    doc.fontSize(8.5).fillColor(GREY).font('Helvetica').text(label, T_X, ty, { width: T_W - 90 });
+    doc.fontSize(8.5).fillColor(DARK).font('Helvetica-Bold')
+       .text(value, T_X + T_W - 90, ty, { width: 86, align: 'right' });
+    doc.moveTo(T_X, ty + T_ROW_H - 2).lineTo(T_X + T_W, ty + T_ROW_H - 2)
+       .lineWidth(0.25).strokeColor(LGREY).stroke();
+    ty += T_ROW_H;
+  });
+  doc.rect(T_X, ty, T_W, GT_H).fill(color);
+  doc.fontSize(10).fillColor(WHITE).font('Helvetica-Bold')
+     .text('Grand Total', T_X + 6, ty + 7, { width: T_W - 90 });
+  doc.fontSize(10).fillColor(WHITE).font('Helvetica-Bold')
+     .text(INR(invoice.grand_total), T_X + T_W - 90, ty + 7, { width: 84, align: 'right' });
+  y = ty + GT_H + 6;
+
+  // ── Amount Paid / Balance Due ─────────────────────────────────────────────
   if (invoice.amount_paid > 0 || payments.length > 0) {
-    const totalPaid   = payments.length > 0
+    const totalPaid  = payments.length > 0
       ? payments.reduce((s, p) => s + Number(p.amount_paid || 0), 0)
       : Number(invoice.amount_paid || 0);
-    const balanceDue  = Math.max(0, Number(invoice.grand_total) - totalPaid);
+    const balanceDue = Math.max(0, Number(invoice.grand_total) - totalPaid);
+    const bdColor    = balanceDue <= 0 ? '#15803D' : '#C0392B';
 
-    const sx = 318, sw = 241;
-    // Amount paid line (green)
-    doc.rect(sx, y, sw, 20).fill('#ECFDF5');
-    doc.fontSize(9.5).fillColor('#15803D').font('Helvetica-Bold')
-       .text('Amount Paid', sx + 6, y + 5, { width: sw - 95 });
-    doc.fontSize(9.5).fillColor('#15803D').font('Helvetica-Bold')
-       .text(`- ${INR(totalPaid)}`, sx + sw - 95, y + 5, { width: 89, align: 'right' });
-    y += 20;
+    doc.rect(T_X, y, T_W, 18).fill('#ECFDF5');
+    doc.fontSize(8.5).fillColor('#15803D').font('Helvetica-Bold')
+       .text('Amount Paid', T_X + 6, y + 4, { width: T_W - 90 });
+    doc.fontSize(8.5).fillColor('#15803D').font('Helvetica-Bold')
+       .text(`- ${INR(totalPaid)}`, T_X + T_W - 90, y + 4, { width: 84, align: 'right' });
+    y += 18;
 
-    // Balance due line
-    const bdColor = balanceDue <= 0 ? '#15803D' : '#C0392B';
-    const bdText  = balanceDue <= 0 ? 'FULLY PAID ✓' : INR(balanceDue);
-    doc.rect(sx, y, sw, 22).fill(balanceDue <= 0 ? '#ECFDF5' : '#FEF2F2');
-    doc.fontSize(10).fillColor(bdColor).font('Helvetica-Bold')
-       .text('Balance Due', sx + 6, y + 6, { width: sw - 95 });
-    doc.fontSize(10).fillColor(bdColor).font('Helvetica-Bold')
-       .text(bdText, sx + sw - 95, y + 6, { width: 89, align: 'right' });
-    y += 32;
+    doc.rect(T_X, y, T_W, 20).fill(balanceDue <= 0 ? '#ECFDF5' : '#FEF2F2');
+    doc.fontSize(9).fillColor(bdColor).font('Helvetica-Bold')
+       .text('Balance Due', T_X + 6, y + 5, { width: T_W - 90 });
+    doc.fontSize(9).fillColor(bdColor).font('Helvetica-Bold')
+       .text(balanceDue <= 0 ? 'FULLY PAID ✓' : INR(balanceDue),
+             T_X + T_W - 90, y + 5, { width: 84, align: 'right' });
+    y += 24;
   }
 
-  // ── Payment History Section ───────────────────────────────────────────────
+  // ── Payment History ───────────────────────────────────────────────────────
   if (payments.length > 0) {
     y += 6;
-    // Check if we have enough space, else new page
-    const needed = payments.length * 22 + 56;
-    if (y + needed > doc.page.height - 120) { doc.addPage(); y = 48; }
+    const needed = payments.length * 20 + 52;
+    if (y + needed > FOOTER_SAFE - 20) {
+      draw_inv_footer('Page 1 of 2');
+      doc.addPage();
+      y = 48;
+    }
+    doc.rect(ML, y, 4, 18).fill(color);
+    doc.rect(ML + 4, y, CW - 4, 18).fill(BGALT);
+    doc.fontSize(8.5).fillColor(GREY).font('Helvetica-Bold').text('PAYMENT HISTORY', ML + 10, y + 5);
+    y += 18;
 
-    // Section header
-    doc.rect(36, y, 4, 20).fill(color);
-    doc.rect(40, y, 519, 20).fill(BGALT);
-    doc.fontSize(9).fillColor(GREY).font('Helvetica-Bold')
-       .text('PAYMENT HISTORY', 50, y + 6);
-    y += 20;
-
-    // Payment table header
-    const ph_cols = [30, 90, 100, 100, 110, 93];
+    const ph_cols = [28, 88, 96, 96, 108, 107];
     const ph_hdrs = ['#', 'Date', 'Mode', 'Reference', 'Amount', 'Cumulative'];
-
-    doc.rect(36, y, 523, 20).fill(color);
-    let phx = 42;
+    doc.rect(ML, y, CW, 18).fill(color);
+    let phx = ML + 4;
     ph_hdrs.forEach((h, i) => {
-      doc.fontSize(8).fillColor(WHITE).font('Helvetica-Bold')
-         .text(h, phx, y + 6, { width: ph_cols[i] - 4, align: i >= 4 ? 'right' : 'left' });
+      doc.fontSize(7.5).fillColor(WHITE).font('Helvetica-Bold')
+         .text(h, phx, y + 5, { width: ph_cols[i] - 4, align: i >= 4 ? 'right' : 'left' });
       phx += ph_cols[i];
     });
-    y += 20;
+    y += 18;
 
-    // Payment rows
-    const MODE_LABELS = {
-      bank_transfer: 'Bank Transfer',
-      upi:           'UPI',
-      cheque:        'Cheque',
-      cash:          'Cash',
-      neft:          'NEFT/RTGS',
-      other:         'Other',
-    };
-
+    const MODE_LABELS = { bank_transfer:'Bank Transfer', upi:'UPI', cheque:'Cheque', cash:'Cash', neft:'NEFT/RTGS', other:'Other' };
     let cumulative = 0;
     payments.forEach((pmt, pi) => {
-      const rowH = pmt.notes ? 26 : 20;
-      if (pi % 2 === 1) doc.rect(36, y, 523, rowH).fill(BGALT);
-
+      const rowH = 18;
+      if (pi % 2 === 1) doc.rect(ML, y, CW, rowH).fill(BGALT);
       cumulative += Number(pmt.amount_paid || 0);
       const cells = [
-        String(pi + 1),
-        fmt_date(pmt.payment_date),
+        String(pi + 1), fmt_date(pmt.payment_date),
         MODE_LABELS[pmt.payment_mode] || pmt.payment_mode || '—',
         pmt.reference_number || '—',
-        INR(pmt.amount_paid),
-        INR(cumulative),
+        INR(pmt.amount_paid), INR(cumulative),
       ];
-
-      let px = 42;
+      let px = ML + 4;
       cells.forEach((cell, ci) => {
-        doc.fontSize(8.5).fillColor(DARK).font('Helvetica')
-           .text(cell, px, y + 6, { width: ph_cols[ci] - 4, align: ci >= 4 ? 'right' : 'left' });
+        doc.fontSize(8).fillColor(DARK).font('Helvetica')
+           .text(cell, px, y + 4, { width: ph_cols[ci] - 4, align: ci >= 4 ? 'right' : 'left', lineBreak: false });
         px += ph_cols[ci];
       });
-
-      // Notes below the row if present
-      if (pmt.notes) {
-        doc.fontSize(7.5).fillColor(GREY).font('Helvetica-Oblique')
-           .text(`Note: ${pmt.notes}`, 72, y + 17, { width: 445 });
-      }
-
-      doc.moveTo(36, y + rowH).lineTo(559, y + rowH).lineWidth(0.3).strokeColor(LGREY).stroke();
+      doc.moveTo(ML, y + rowH).lineTo(PW - MR, y + rowH).lineWidth(0.25).strokeColor(LGREY).stroke();
       y += rowH;
     });
-
-    // Total collected row
     const totalPaid = payments.reduce((s, p) => s + Number(p.amount_paid || 0), 0);
-    doc.rect(36, y, 523, 22).fill(GREEN);
-    doc.fontSize(9).fillColor(WHITE).font('Helvetica-Bold')
-       .text('Total Collected', 42, y + 7, { width: 390 });
-    doc.fontSize(9).fillColor(WHITE).font('Helvetica-Bold')
-       .text(INR(totalPaid), 42 + 390, y + 7, { width: ph_cols[4] + ph_cols[5] - 8, align: 'right' });
-    y += 26;
+    doc.rect(ML, y, CW, 20).fill(GREEN);
+    doc.fontSize(8.5).fillColor(WHITE).font('Helvetica-Bold').text('Total Collected', ML + 8, y + 6, { width: 380 });
+    doc.fontSize(8.5).fillColor(WHITE).font('Helvetica-Bold')
+       .text(INR(totalPaid), ML + 388, y + 6, { width: CW - 396, align: 'right' });
+    y += 22;
   }
 
-  // Bank details
+  // ── Bank Details ──────────────────────────────────────────────────────────
   if (bank && (bank.bank_name || bank.account_number)) {
-    y += 10;
-    const bl = [
-      ['Bank',    bank.bank_name],
-      ['Account', bank.account_number],
-      ['IFSC',    bank.ifsc_code],
-      ['UPI',     bank.upi_id],
-    ].filter(([, v]) => v);
-    const bh = bl.length * 13 + 24;
-    // Page break if bank details won't fit
-    if (y + bh > doc.page.height - 120) { doc.addPage(); y = 48; }
-    doc.rect(36, y, 4, bh).fill(color);
-    doc.rect(40, y, 519, bh).fill(BGALT);
-    doc.fontSize(8).fillColor(GREY).font('Helvetica-Bold').text('BANK DETAILS', 50, y + 7);
-    let by = y + 19;
+    y += 8;
+    const bl = [['Bank', bank.bank_name], ['Account', bank.account_number],
+                ['IFSC', bank.ifsc_code],  ['UPI', bank.upi_id]].filter(([, v]) => v);
+    const bh = bl.length * 13 + 22;
+    if (y + bh > FOOTER_SAFE - 20) {
+      draw_inv_footer('Page 1 of 2');
+      doc.addPage();
+      y = 48;
+    }
+    doc.rect(ML, y, 4, bh).fill(color);
+    doc.rect(ML + 4, y, CW - 4, bh).fill(BGALT);
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica-Bold').text('BANK DETAILS', ML + 10, y + 6);
+    let by = y + 18;
     bl.forEach(([label, value]) => {
-      doc.fontSize(9).fillColor(GREY).font('Helvetica').text(`${label}:`, 50, by);
-      doc.fontSize(9).fillColor(DARK).font('Helvetica-Bold').text(value, 110, by);
+      doc.fontSize(8.5).fillColor(GREY).font('Helvetica').text(`${label}:`, ML + 10, by);
+      doc.fontSize(8.5).fillColor(DARK).font('Helvetica-Bold').text(value, ML + 75, by);
       by += 13;
     });
-    y = by + 10;
+    y = by + 8;
   }
 
-  y = draw_notes(doc, invoice.notes, y + 6, color);
+  // ── Notes ─────────────────────────────────────────────────────────────────
+  if (invoice.notes) {
+    const nh = Math.max(30, doc.heightOfString(invoice.notes, { width: CW - 14 }) + 18);
+    if (y + nh < FOOTER_SAFE - 10) {
+      doc.rect(ML, y, 3, nh).fill(color);
+      doc.rect(ML + 3, y, CW - 3, nh).fill(BGALT);
+      doc.fontSize(7).fillColor(GREY).font('Helvetica-Bold').text('NOTES', ML + 9, y + 6);
+      doc.fontSize(8).fillColor(DARK).font('Helvetica')
+         .text(invoice.notes, ML + 9, y + 16, { width: CW - 14 });
+      y += nh + 6;
+    }
+  }
+
+  // Footer on page 1
+  draw_inv_footer('Page 1 of 2');
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PAGE 2 — TERMS & CONDITIONS
+  // ─────────────────────────────────────────────────────────────────────────
+  doc.addPage();
 
   const i_terms = (termsDoc && termsDoc.invoice_terms) ||
     '1. This invoice covers only the services specifically mentioned herein and/or in the approved quotation/proposal. Any additional services shall be charged separately.\n2. Payment shall be made within the due date mentioned on the invoice. Delay in payment may result in suspension of services and/or corresponding extension of the project timeline.\n3. The quoted fee includes only the agreed scope of work. Additional revisions, changes in requirements, or work outside the approved scope may attract additional charges.\n4. Project timelines are subject to timely receipt of required information, approvals, drawings, selections and decisions from the client.\n5. All drawings, designs, concepts, 3D views, specifications and related documents prepared by The Design Space remain its intellectual property unless otherwise agreed in writing.\n6. Design documents shall be used only for the project for which they are issued and shall not be reproduced, modified or reused for another project without written permission.\n7. Any additional site visits, travel, statutory approvals, specialist consultants, testing, printing or third-party expenses not specifically included in the agreed scope shall be charged separately.\n8. Design and execution decisions are based on the information and site conditions available at the time. Unforeseen site conditions or changes by other agencies may require additional work and charges.\n9. Applicable GST and other statutory taxes/charges shall be levied as per prevailing regulations.\n10. In case of cancellation or termination of the project, fees for all services completed or work in progress up to the date of termination shall remain payable.\n11. Any invoice-related discrepancy should be communicated within 7 days of receipt of the invoice.\n12. This invoice shall be read together with the approved quotation/proposal/agreement governing the project. In case of conflict, the terms of the signed agreement shall prevail.';
-  draw_terms(doc, i_terms, y + 10, color, brand);
+
+  const t_lines = i_terms.split('\n').filter(l => l.trim());
+
+  // Page background
+  doc.rect(0, 0, PW, PH).fill('#FDFCFB');
+  doc.rect(0, 0, 5, PH - 40).fill(color);
+  doc.rect(0, 0, PW, 50).fill(color);
+  doc.fontSize(15).fillColor(WHITE).font('Helvetica-Bold')
+     .text('TERMS & CONDITIONS', 22, 15, { width: PW - 44 });
+  doc.fontSize(7.5).fillColor('rgba(255,255,255,0.75)').font('Helvetica')
+     .text(firm_name, 22, 34, { width: PW - 44 });
+
+  let ty2 = 62;
+  doc.fontSize(7.5).fillColor('#9A8F82').font('Helvetica-Oblique')
+     .text('Please read the following terms carefully. These terms govern the services provided under this invoice.',
+           22, ty2, { width: PW - 44 });
+  ty2 += 16;
+  doc.moveTo(22, ty2).lineTo(PW - 22, ty2).lineWidth(0.4).strokeColor('#E0D8CE').stroke();
+  ty2 += 8;
+
+  const TERM_X = 22 + 20, TERM_W = PW - TERM_X - 22;
+  const TERM_BOTTOM = PH - 50;
+
+  t_lines.forEach((line, i) => {
+    const clean = line.replace(/^\d+\.\s*/, '').trim();
+    const num   = String(i + 1) + '.';
+    doc.fontSize(8).font('Helvetica');
+    const textH = doc.heightOfString(clean, { width: TERM_W });
+    const rowH  = Math.max(textH, 11) + 4;
+    if (ty2 + rowH > TERM_BOTTOM) return; // skip if overflow (all 12 fit at 8pt)
+    if (i % 2 === 0) doc.rect(20, ty2 - 1, PW - 42, rowH + 2).fill('#F5F1EB');
+    doc.fontSize(7.5).fillColor(color).font('Helvetica-Bold')
+       .text(num, 22, ty2 + 1, { width: 16, align: 'right' });
+    doc.fontSize(8).fillColor('#2C2520').font('Helvetica')
+       .text(clean, TERM_X, ty2, { width: TERM_W, lineGap: 1 });
+    ty2 += rowH;
+  });
+
+  ty2 += 8;
+  doc.moveTo(22, ty2).lineTo(PW - 22, ty2).lineWidth(0.4).strokeColor('#E0D8CE').stroke();
+  ty2 += 6;
+  doc.fontSize(7.5).fillColor('#9A8F82').font('Helvetica-Oblique')
+     .text('This document is computer-generated and constitutes a valid commercial document.',
+           22, ty2, { width: PW - 44, align: 'center' });
+
+  // Footer page 2
+  draw_inv_footer('Page 2 of 2');
 
   doc.end();
   return buf;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. PROPOSAL PDF
+// 3. PROPOSAL PDF  — Professional A4, max 2 pages, consistent with Invoice/Quotation
 // ─────────────────────────────────────────────────────────────────────────────
 exports.render_proposal_pdf = async (proposal) => {
   const brand    = await BrandTheme.findOne();
   const termsDoc = await TermsTemplate.findOne();
   const color    = brand_color(brand);
-  const client   = proposal.project && proposal.project.client;
-  const doc      = new PDFDocument({ margin: 36, size: 'A4' });
-  const buf      = to_buffer(doc);
+  const firm_name = (brand && brand.firm_name) || 'The Design Space';
 
-  let y = draw_header(doc, brand, 'PROPOSAL', proposal.prop_number || '');
+  const client = proposal.project && proposal.project.client;
+  const client_name    = (client && client.full_name)  || '—';
+  const client_email   = (client && client.email)      || '—';
+  const client_phone   = (client && client.phone)      || '—';
+  const client_address = (client && (client.billing_address || client.site_address)) || '—';
+  const project_name   = (proposal.project && proposal.project.name) || '—';
 
-  y = draw_info_boxes(doc,
-    'Prepared For',
-    [['Client', client && client.full_name], ['Email', client && client.email], ['Phone', client && client.phone], ['Project', proposal.project && proposal.project.name]],
-    'Proposal Details',
-    [['Ref #', proposal.prop_number], ['Date', fmt_date(proposal.created_at)], ['Status', (proposal.status || '').toUpperCase()]],
-    y
-  );
+  // Valid until: use stored value or created_at + 30 days
+  const valid_until_date = proposal.valid_until
+    ? new Date(proposal.valid_until)
+    : (() => { const d = new Date(proposal.created_at || Date.now()); d.setDate(d.getDate() + 30); return d; })();
 
-  doc.fontSize(14).fillColor(color).font('Helvetica-Bold').text(proposal.title || 'Proposal', 36, y + 10);
-  y += 30;
+  // Status color
+  const status_str = (proposal.status || 'draft').toUpperCase();
+  const status_color = proposal.status === 'accepted' ? '#15803D'
+                     : proposal.status === 'sent'     ? '#1D4ED8'
+                     : proposal.status === 'rejected' ? '#B91C1C'
+                     : color;
 
-  if (proposal.content) {
-    // Long content may span multiple pages — PDFKit handles auto page break with lineBreak
-    doc.fontSize(10).fillColor(DARK).font('Helvetica').text(proposal.content, 36, y, { width: 523, lineGap: 4 });
-    y = doc.y + 15;
-    // Safety: if content pushed us too close to page bottom, start fresh
-    if (y > doc.page.height - 120) {
+  const PW = 595, PH = 841.89;
+  const ML = 36, MR = 36;
+  const CW = PW - ML - MR; // 523
+  const FOOTER_SAFE = PH - 48;
+
+  const doc = new PDFDocument({ margin: 0, size: 'A4', autoFirstPage: true });
+  const buf = to_buffer(doc);
+
+  // ── Page-number-aware footer ───────────────────────────────────────────────
+  const draw_prop_footer = (page_of) => {
+    const fy = PH - 36;
+    doc.rect(0, fy - 4, PW, 40).fill('#F5F3EF');
+    doc.moveTo(ML, fy - 4).lineTo(PW - MR, fy - 4).lineWidth(0.4).strokeColor(LGREY).stroke();
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+       .text(`This is a computer-generated document. | ${firm_name}`,
+             ML, fy + 4, { width: CW - 60, align: 'center', lineBreak: false });
+    if (page_of) {
+      doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+         .text(page_of, PW - MR - 55, fy + 4, { width: 55, align: 'right', lineBreak: false });
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PAGE 1 — HEADER
+  // ─────────────────────────────────────────────────────────────────────────
+  doc.rect(0, 0, PW, 100).fill('#FAFAF8');
+  const logo_buf = get_logo_buffer(brand);
+  if (logo_buf) {
+    try { doc.image(logo_buf, ML, 14, { height: 64, fit: [70, 64] }); } catch (_) {}
+  }
+  doc.fontSize(19).fillColor(color).font('Helvetica-Bold')
+     .text(firm_name, 0, 22, { width: PW, align: 'center' });
+  if (brand && brand.tagline) {
+    doc.fontSize(8).fillColor(GREY).font('Helvetica')
+       .text(brand.tagline, 0, 46, { width: PW, align: 'center' });
+  }
+  doc.fontSize(22).fillColor(DARK).font('Helvetica-Bold')
+     .text('PROPOSAL', 360, 18, { width: 199, align: 'right' });
+  doc.fontSize(9).fillColor(GREY).font('Helvetica')
+     .text(proposal.prop_number || '', 360, 44, { width: 199, align: 'right' });
+  doc.rect(360, 58, 199, 18).fill(status_color);
+  doc.fontSize(8).fillColor(WHITE).font('Helvetica-Bold')
+     .text(status_str, 360, 62, { width: 199, align: 'center' });
+  doc.moveTo(ML, 100).lineTo(PW - MR, 100).lineWidth(1.5).strokeColor(color).stroke();
+
+  let y = 110;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INFO BOXES — Prepared For | Proposal Details
+  // ─────────────────────────────────────────────────────────────────────────
+  const BOX_L_W = 248, BOX_R_W = 259;
+  const BOX_L_X = ML,  BOX_R_X = ML + BOX_L_W + 16;
+  const ROW_H = 14;
+
+  const left_rows = [
+    ['Client',  client_name],
+    ['Email',   client_email],
+    ['Phone',   client_phone],
+    ['Address', client_address],
+    ['Project', project_name],
+  ];
+
+  const right_rows = [
+    ['Ref #',       proposal.prop_number || '—'],
+    ['Date',        fmt_date(proposal.created_at)],
+    ['Valid Until', fmt_date(valid_until_date)],
+    ['Status',      status_str],
+  ];
+
+  const left_box_h  = left_rows.length  * ROW_H + 26;
+  const right_box_h = right_rows.length * ROW_H + 26;
+  const box_h = Math.max(left_box_h, right_box_h);
+
+  // Left box
+  doc.rect(BOX_L_X, y, BOX_L_W, box_h).fillAndStroke(BGALT, LGREY).lineWidth(0.4);
+  doc.fontSize(7).fillColor(GREY).font('Helvetica-Bold').text('PREPARED FOR', BOX_L_X + 8, y + 7);
+  doc.moveTo(BOX_L_X + 8, y + 17).lineTo(BOX_L_X + BOX_L_W - 8, y + 17)
+     .lineWidth(0.3).strokeColor(LGREY).stroke();
+  let ly = y + 23;
+  left_rows.forEach(([label, value]) => {
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica').text(label + ':', BOX_L_X + 8, ly, { width: 52 });
+    doc.fontSize(7.5).fillColor(DARK).font('Helvetica-Bold')
+       .text(String(value || '—'), BOX_L_X + 64, ly, { width: BOX_L_W - 72, lineBreak: false, ellipsis: true });
+    ly += ROW_H;
+  });
+
+  // Right box
+  doc.rect(BOX_R_X, y, BOX_R_W, box_h).fillAndStroke(BGALT, LGREY).lineWidth(0.4);
+  doc.fontSize(7).fillColor(GREY).font('Helvetica-Bold').text('PROPOSAL DETAILS', BOX_R_X + 8, y + 7);
+  doc.moveTo(BOX_R_X + 8, y + 17).lineTo(BOX_R_X + BOX_R_W - 8, y + 17)
+     .lineWidth(0.3).strokeColor(LGREY).stroke();
+  let ry = y + 23;
+  right_rows.forEach(([label, value]) => {
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica').text(label + ':', BOX_R_X + 8, ry, { width: 70 });
+    doc.fontSize(7.5).fillColor(DARK).font('Helvetica-Bold')
+       .text(String(value || '—'), BOX_R_X + 82, ry, { width: BOX_R_W - 90, lineBreak: false });
+    ry += ROW_H;
+  });
+
+  y += box_h + 12;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PROPOSAL TITLE
+  // ─────────────────────────────────────────────────────────────────────────
+  if (proposal.title && proposal.title.trim()) {
+    doc.fontSize(12).fillColor(color).font('Helvetica-Bold')
+       .text(proposal.title.trim(), ML, y);
+    doc.moveTo(ML, y + 15).lineTo(PW - MR, y + 15).lineWidth(0.8).strokeColor(color).stroke();
+    y += 22;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SCOPE OF SERVICES — structured section
+  // ─────────────────────────────────────────────────────────────────────────
+  doc.fontSize(9).fillColor(color).font('Helvetica-Bold').text('SCOPE OF SERVICES', ML, y);
+  doc.moveTo(ML, y + 12).lineTo(PW - MR, y + 12).lineWidth(0.8).strokeColor(color).stroke();
+  y += 18;
+
+  // Header row for services
+  const SVC_COLS = [22, 390, 111];
+  const SVC_HDRS = ['#', 'Service / Deliverable', 'Remarks'];
+
+  doc.rect(ML, y, CW, 20).fill(color);
+  let shx = ML + 4;
+  SVC_HDRS.forEach((h, i) => {
+    doc.fontSize(7.5).fillColor(WHITE).font('Helvetica-Bold')
+       .text(h, shx, y + 6, { width: SVC_COLS[i] - 4, align: 'left' });
+    shx += SVC_COLS[i];
+  });
+  y += 20;
+
+  // Service rows — populated or placeholder
+  const svcs = Array.isArray(proposal.services) && proposal.services.length > 0
+    ? proposal.services
+    : [];
+
+  if (svcs.length === 0) {
+    // Show a placeholder row when no services are attached
+    doc.rect(ML, y, CW, 20).fill(BGALT);
+    doc.fontSize(8).fillColor(GREY).font('Helvetica-Oblique')
+       .text('No services listed — attach services from the proposal editor.', ML + 26, y + 6, { width: CW - 30 });
+    doc.moveTo(ML, y + 20).lineTo(PW - MR, y + 20).lineWidth(0.25).strokeColor(LGREY).stroke();
+    y += 20;
+  } else {
+    svcs.forEach((svc, ri) => {
+      const svc_name = (typeof svc === 'object' ? svc.name : null) || '—';
+      const svc_desc = (typeof svc === 'object' ? svc.description : null) || '';
+      const row_h = 20;
+      if (y + row_h > FOOTER_SAFE - 80) {
+        draw_prop_footer('Page 1 of 2');
+        doc.addPage();
+        y = 48;
+        // Redraw scope header
+        doc.rect(ML, y, CW, 20).fill(color);
+        let rhx = ML + 4;
+        SVC_HDRS.forEach((h, i) => {
+          doc.fontSize(7.5).fillColor(WHITE).font('Helvetica-Bold')
+             .text(h, rhx, y + 6, { width: SVC_COLS[i] - 4, align: 'left' });
+          rhx += SVC_COLS[i];
+        });
+        y += 20;
+      }
+      if (ri % 2 === 1) doc.rect(ML, y, CW, row_h).fill(BGALT);
+      doc.fontSize(8).fillColor(DARK).font('Helvetica-Bold')
+         .text(String(ri + 1), ML + 4, y + 6, { width: SVC_COLS[0] - 4 });
+      doc.fontSize(8).fillColor(DARK).font('Helvetica')
+         .text(svc_name + (svc_desc ? ` — ${svc_desc}` : ''), ML + 4 + SVC_COLS[0], y + 6,
+               { width: SVC_COLS[1] - 8, lineBreak: false, ellipsis: true });
+      doc.moveTo(ML, y + row_h).lineTo(PW - MR, y + row_h).lineWidth(0.25).strokeColor(LGREY).stroke();
+      y += row_h;
+    });
+  }
+  y += 6;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PROPOSAL CONTENT (free text scope/notes)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (proposal.content && proposal.content.trim()) {
+    doc.fontSize(9).fillColor(color).font('Helvetica-Bold').text('SCOPE DETAILS', ML, y);
+    doc.moveTo(ML, y + 12).lineTo(PW - MR, y + 12).lineWidth(0.6).strokeColor(color).stroke();
+    y += 16;
+
+    // Measure content height
+    doc.fontSize(9).font('Helvetica');
+    const contentH = doc.heightOfString(proposal.content.trim(), { width: CW, lineGap: 3 });
+
+    if (y + contentH > FOOTER_SAFE - 20) {
+      draw_prop_footer('Page 1 of 2');
       doc.addPage();
       y = 48;
     }
+    doc.fontSize(9).fillColor(DARK).font('Helvetica')
+       .text(proposal.content.trim(), ML, y, { width: CW, lineGap: 3 });
+    y = doc.y + 10;
   }
 
-  if (proposal.notes) y = draw_notes(doc, proposal.notes, y, color);
+  // ─────────────────────────────────────────────────────────────────────────
+  // NOTES
+  // ─────────────────────────────────────────────────────────────────────────
+  if (proposal.notes && proposal.notes.trim()) {
+    const nh = Math.max(30, doc.heightOfString(proposal.notes.trim(), { width: CW - 14 }) + 18);
+    if (y + nh < FOOTER_SAFE - 10) {
+      doc.rect(ML, y, 3, nh).fill(color);
+      doc.rect(ML + 3, y, CW - 3, nh).fill(BGALT);
+      doc.fontSize(7).fillColor(GREY).font('Helvetica-Bold').text('NOTES', ML + 9, y + 6);
+      doc.fontSize(8).fillColor(DARK).font('Helvetica')
+         .text(proposal.notes.trim(), ML + 9, y + 16, { width: CW - 14 });
+      y += nh + 6;
+    }
+  }
+
+  // Footer page 1
+  draw_prop_footer('Page 1 of 2');
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PAGE 2 — TERMS & CONDITIONS
+  // ─────────────────────────────────────────────────────────────────────────
+  doc.addPage();
 
   const p_terms = (termsDoc && termsDoc.proposal_terms) ||
-    '1. This proposal is valid for 30 days from date of issue.\n2. All designs and concepts remain property of The Design Space until full payment.\n3. Revisions beyond agreed scope will be charged separately.';
-  draw_terms(doc, p_terms, y + 10, color, brand);
+    '1. This proposal is valid for 30 days from date of issue.\n2. All designs and concepts remain property of The Design Space until full payment.\n3. Revisions beyond agreed scope will be charged separately.\n4. 50% advance payment required to commence work.\n5. Balance payment due before final handover.\n6. Any changes to scope may result in a revised proposal and additional charges.\n7. All prices are exclusive of GST unless otherwise stated.\n8. Project timelines are subject to timely receipt of approvals and decisions from the client.';
 
-  const svcs = (proposal.services || []).filter(s => s && s.media && s.media.some(m => m.file_type === 'image'));
-  if (svcs.length > 0) {
-    doc.addPage(); y = 40;
-    doc.fontSize(16).fillColor(color).font('Helvetica-Bold').text('OUR SERVICES', 36, y);
-    doc.moveTo(36, y + 20).lineTo(559, y + 20).lineWidth(1.5).strokeColor(color).stroke();
-    y += 35;
-    for (const svc of svcs) {
-      if (y + 180 > doc.page.height - 60) { doc.addPage(); y = 50; }
-      doc.rect(36, y, 523, 4).fill(color); y += 10;
-      doc.fontSize(13).fillColor(DARK).font('Helvetica-Bold').text(svc.name || '—', 36, y, { width: 290 }); y += 18;
-      if (svc.description) { doc.fontSize(9).fillColor(GREY).font('Helvetica').text(svc.description, 36, y, { width: 290 }); y += 14; }
+  const p_lines = p_terms.split('\n').filter(l => l.trim());
+
+  doc.rect(0, 0, PW, PH).fill('#FDFCFB');
+  doc.rect(0, 0, 5, PH - 40).fill(color);
+  doc.rect(0, 0, PW, 50).fill(color);
+  doc.fontSize(15).fillColor(WHITE).font('Helvetica-Bold')
+     .text('TERMS & CONDITIONS', 22, 15, { width: PW - 44 });
+  doc.fontSize(7.5).fillColor('rgba(255,255,255,0.75)').font('Helvetica')
+     .text(firm_name, 22, 34, { width: PW - 44 });
+
+  let ty2 = 62;
+  doc.fontSize(7.5).fillColor('#9A8F82').font('Helvetica-Oblique')
+     .text('Please read the following terms carefully. These terms govern the services provided under this proposal.',
+           22, ty2, { width: PW - 44 });
+  ty2 += 16;
+  doc.moveTo(22, ty2).lineTo(PW - 22, ty2).lineWidth(0.4).strokeColor('#E0D8CE').stroke();
+  ty2 += 8;
+
+  const TERM_X2 = 22 + 20, TERM_W2 = PW - TERM_X2 - 22;
+  const TERM_BOTTOM2 = PH - 50;
+
+  p_lines.forEach((line, i) => {
+    const clean = line.replace(/^\d+\.\s*/, '').trim();
+    const num   = String(i + 1) + '.';
+    doc.fontSize(8).font('Helvetica');
+    const textH = doc.heightOfString(clean, { width: TERM_W2 });
+    const rowH  = Math.max(textH, 11) + 4;
+    if (ty2 + rowH > TERM_BOTTOM2) return;
+    if (i % 2 === 0) doc.rect(20, ty2 - 1, PW - 42, rowH + 2).fill('#F5F1EB');
+    doc.fontSize(7.5).fillColor(color).font('Helvetica-Bold')
+       .text(num, 22, ty2 + 1, { width: 16, align: 'right' });
+    doc.fontSize(8).fillColor('#2C2520').font('Helvetica')
+       .text(clean, TERM_X2, ty2, { width: TERM_W2, lineGap: 1 });
+    ty2 += rowH;
+  });
+
+  ty2 += 8;
+  doc.moveTo(22, ty2).lineTo(PW - 22, ty2).lineWidth(0.4).strokeColor('#E0D8CE').stroke();
+  ty2 += 6;
+  doc.fontSize(7.5).fillColor('#9A8F82').font('Helvetica-Oblique')
+     .text('This document is computer-generated and constitutes a valid commercial document.',
+           22, ty2, { width: PW - 44, align: 'center' });
+
+  // Footer page 2
+  draw_prop_footer('Page 2 of 2');
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SERVICE SHOWCASE (page 3+ only if services have images)
+  // ─────────────────────────────────────────────────────────────────────────
+  const svcs_with_img = (proposal.services || []).filter(s => s && s.media && s.media.some(m => m.file_type === 'image'));
+  if (svcs_with_img.length > 0) {
+    doc.addPage();
+    let sy = 40;
+    doc.fontSize(14).fillColor(color).font('Helvetica-Bold').text('SERVICE SHOWCASE', ML, sy);
+    doc.moveTo(ML, sy + 18).lineTo(PW - MR, sy + 18).lineWidth(1).strokeColor(color).stroke();
+    sy += 28;
+    for (const svc of svcs_with_img) {
+      if (sy + 180 > PH - 60) { doc.addPage(); sy = 50; }
+      doc.rect(ML, sy, CW, 3).fill(color); sy += 8;
+      doc.fontSize(12).fillColor(DARK).font('Helvetica-Bold')
+         .text(svc.name || '—', ML, sy, { width: 280 }); sy += 16;
+      if (svc.description) {
+        doc.fontSize(8.5).fillColor(GREY).font('Helvetica')
+           .text(svc.description, ML, sy, { width: 280 }); sy += 12;
+      }
       const fi = svc.media.find(m => m.file_type === 'image');
       if (fi && fi.file_url) {
-        const ip = path.isAbsolute(fi.file_url) ? fi.file_url : path.join(__dirname, '..', fi.file_url.replace(/^\//, ''));
-        if (fs.existsSync(ip)) { try { doc.image(ip, 345, y - 32, { width: 200, height: 130, fit: [200, 130] }); } catch (_) {} }
+        const ip = path.isAbsolute(fi.file_url) ? fi.file_url
+                 : path.join(__dirname, '..', fi.file_url.replace(/^\//, ''));
+        if (fs.existsSync(ip)) {
+          try { doc.image(ip, 330, sy - 28, { width: 193, height: 120, fit: [193, 120] }); } catch (_) {}
+        }
       }
-      y += 20;
-      doc.moveTo(36, y).lineTo(559, y).lineWidth(0.4).strokeColor(LGREY).stroke();
-      y += 16;
+      sy += 18;
+      doc.moveTo(ML, sy).lineTo(PW - MR, sy).lineWidth(0.3).strokeColor(LGREY).stroke();
+      sy += 14;
     }
-    draw_footer(doc, brand);
+    const sfy = PH - 36;
+    doc.rect(0, sfy - 4, PW, 40).fill('#F5F3EF');
+    doc.moveTo(ML, sfy - 4).lineTo(PW - MR, sfy - 4).lineWidth(0.4).strokeColor(LGREY).stroke();
+    doc.fontSize(7.5).fillColor(GREY).font('Helvetica')
+       .text(`This is a computer-generated document. | ${firm_name}`,
+             ML, sfy + 4, { width: CW, align: 'center', lineBreak: false });
   }
+
   doc.end();
   return buf;
 };
