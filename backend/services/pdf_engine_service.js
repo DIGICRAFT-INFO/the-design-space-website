@@ -210,7 +210,8 @@ const draw_terms = (doc, terms_text, y, color, brand) => {
   const CONTENT_W = 480;
   const BOTTOM_MARGIN = 72;  // footer height + safe gap
 
-  // ── Always start T&C on a new page ────────────────────────────────────────
+  // ── Draw footer on current (bill) page, then start T&C on new page ────────
+  draw_footer(doc, brand);
   doc.addPage();
 
   const PAGE_W = doc.page.width;   // 595
@@ -411,9 +412,6 @@ exports.render_quotation_pdf = async (quotation) => {
   y = draw_totals(doc, total_lines, INR(quotation.grand_total), y, color);
 
   if (quotation.notes) y = draw_notes(doc, quotation.notes, y + 10, color);
-
-  // Footer on quotation page 1 (before T&C page)
-  draw_footer(doc, brand);
 
   const q_terms = (termsDoc && termsDoc.quotation_terms) ||
     '1. This quotation is valid until the date mentioned above.\n2. 50% advance payment required to commence work.\n3. Balance payment due before final handover.\n4. Any changes to scope may result in revised quotation.\n5. All prices are inclusive of taxes as applicable.';
@@ -672,9 +670,6 @@ exports.render_invoice_pdf = async (invoice) => {
 
   y = draw_notes(doc, invoice.notes, y + 6, color);
 
-  // Footer on invoice page(s) before T&C
-  draw_footer(doc, brand);
-
   const i_terms = (termsDoc && termsDoc.invoice_terms) ||
     '1. This invoice covers only the services specifically mentioned herein and/or in the approved quotation/proposal. Any additional services shall be charged separately.\n2. Payment shall be made within the due date mentioned on the invoice. Delay in payment may result in suspension of services and/or corresponding extension of the project timeline.\n3. The quoted fee includes only the agreed scope of work. Additional revisions, changes in requirements, or work outside the approved scope may attract additional charges.\n4. Project timelines are subject to timely receipt of required information, approvals, drawings, selections and decisions from the client.\n5. All drawings, designs, concepts, 3D views, specifications and related documents prepared by The Design Space remain its intellectual property unless otherwise agreed in writing.\n6. Design documents shall be used only for the project for which they are issued and shall not be reproduced, modified or reused for another project without written permission.\n7. Any additional site visits, travel, statutory approvals, specialist consultants, testing, printing or third-party expenses not specifically included in the agreed scope shall be charged separately.\n8. Design and execution decisions are based on the information and site conditions available at the time. Unforeseen site conditions or changes by other agencies may require additional work and charges.\n9. Applicable GST and other statutory taxes/charges shall be levied as per prevailing regulations.\n10. In case of cancellation or termination of the project, fees for all services completed or work in progress up to the date of termination shall remain payable.\n11. Any invoice-related discrepancy should be communicated within 7 days of receipt of the invoice.\n12. This invoice shall be read together with the approved quotation/proposal/agreement governing the project. In case of conflict, the terms of the signed agreement shall prevail.';
   draw_terms(doc, i_terms, y + 10, color, brand);
@@ -719,9 +714,6 @@ exports.render_proposal_pdf = async (proposal) => {
   }
 
   if (proposal.notes) y = draw_notes(doc, proposal.notes, y, color);
-
-  // Footer on proposal page(s) before T&C
-  draw_footer(doc, brand);
 
   const p_terms = (termsDoc && termsDoc.proposal_terms) ||
     '1. This proposal is valid for 30 days from date of issue.\n2. All designs and concepts remain property of The Design Space until full payment.\n3. Revisions beyond agreed scope will be charged separately.';
